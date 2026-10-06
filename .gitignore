@@ -1,0 +1,5 @@
+# Live-tenant capture — 502 DOM snapshots of a production console. Not for a public repo.
+evidence/
+# Local render output
+*.local.png
+.build/
