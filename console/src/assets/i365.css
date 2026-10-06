@@ -392,7 +392,12 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 .i-table td{
   padding:0 14px; height:var(--i-row-h); vertical-align:middle;
   border-bottom:1px solid var(--i-rule); font-size:13px; color:var(--i-ink);
+  /* Data cells do not wrap. A machine-generated name broken over three lines
+     is unreadable and makes every row a different height; the table scrolls
+     horizontally inside .table-responsive instead. */
+  white-space:nowrap;
 }
+.i-table td.i-wrap{ white-space:normal; }
 .i-table tbody tr:last-child td{ border-bottom:0; }
 .i-table tbody tr:hover td{ background:var(--i-tint); }
 .i-table tbody tr[aria-selected="true"] td{ background:var(--i-v50); }

@@ -22,6 +22,17 @@ const LATENCY = [40, 140]   // ms — enough for spinners to be honest, not anno
 const wait = () => new Promise(r =>
   setTimeout(r, LATENCY[0] + Math.random() * (LATENCY[1] - LATENCY[0])))
 
+/**
+ * IndexedDB stores values with the structured clone algorithm, which throws
+ * DataCloneError on a Proxy — and everything handed in from a Vue component
+ * is a reactive proxy. Unwrapping here rather than in each component means no
+ * caller has to remember, and it is also what a real HTTP adapter does
+ * implicitly when it serialises the body to JSON.
+ */
+function plain (value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value))
+}
+
 // ------------------------------------------------------------- seeding
 async function ensureSeeded () {
   if (localStorage.getItem(SEED_FLAG)) return
@@ -291,7 +302,8 @@ const handlers = {
   },
 
   /** Genuinely evaluates posture rules against a payload. Nothing canned. */
-  async 'deviceChecks.evaluate' ({ posture, checkIds }) {
+  async 'deviceChecks.evaluate' ({ posture: rawPosture, checkIds }) {
+    const posture = plain(rawPosture)
     let checks = await db.all('deviceChecks')
     if (checkIds?.length) checks = checks.filter(c => checkIds.includes(c.id))
     const results = checks.filter(c => c.enabled).map(c => {
@@ -319,7 +331,8 @@ const handlers = {
    * the decision plus the rule that made it and every rule considered — which
    * is the question the real console cannot answer today.
    */
-  async 'accessRules.evaluate' ({ userId, applicationId, at, posture }) {
+  async 'accessRules.evaluate' ({ userId, applicationId, at, posture: rawPosture }) {
+    const posture = plain(rawPosture)
     const user = await db.get('users', userId)
     const app = await db.get('applications', applicationId)
     if (!user || !app) return { ok: false, error: 'Pick a user and an application.' }
@@ -411,7 +424,7 @@ const handlers = {
     return row?.value ?? null
   },
   async 'settings.set' ({ key, value }) {
-    await db.put('settings', { id: key, value })
+    await db.put('settings', plain({ id: key, value }))
     return { ok: true }
   },
 
@@ -464,7 +477,7 @@ export const mockAdapter = {
 
   async create (store, body) {
     await ensureSeeded(); await wait()
-    const row = { id: body.id || id(store.slice(0, 3)), createdAt: new Date().toISOString(), ...body }
+    const row = plain({ id: body.id || id(store.slice(0, 3)), createdAt: new Date().toISOString(), ...body })
     await db.put(store, row)
     await record(`${store}.created`, `Created ${row.name || row.username || row.id} in ${store}`)
     return row
@@ -473,7 +486,7 @@ export const mockAdapter = {
   async update (store, rid, body) {
     await ensureSeeded(); await wait()
     const existing = await db.get(store, rid)
-    const row = { ...existing, ...body, id: rid, updatedAt: new Date().toISOString() }
+    const row = plain({ ...existing, ...body, id: rid, updatedAt: new Date().toISOString() })
     await db.put(store, row)
     await record(`${store}.updated`, `Updated ${row.name || row.username || rid}`)
     return row

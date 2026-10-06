@@ -14,10 +14,11 @@ const fmtDate = (v) => v ? new Date(v).toLocaleDateString('en-GB', { day: '2-dig
 const fmtAgo = (v) => {
   if (!v) return 'never'
   const s = (Date.now() - new Date(v)) / 1000
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'} ago`
   if (s < 60) return 'just now'
   if (s < 3600) return `${Math.floor(s / 60)} min ago`
-  if (s < 86400) return `${Math.floor(s / 3600)} hours ago`
-  return `${Math.floor(s / 86400)} days ago`
+  if (s < 86400) return plural(Math.floor(s / 3600), 'hour')
+  return plural(Math.floor(s / 86400), 'day')
 }
 const bytes = (n) => {
   if (!n) return '0 B'

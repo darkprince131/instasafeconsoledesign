@@ -1,0 +1,150 @@
+/* ==============================================================
+   app.css — what the running app needs on top of i365.css
+   ==============================================================
+   i365.css is the design system and is shared with the static component
+   reference. This file holds only what a live Vue app adds: the icon font
+   sizing, loading skeletons, the Demo Inbox drawer, and a handful of
+   screen-specific pieces.
+   ============================================================== */
+
+/* Font Awesome is sized per slot rather than globally, because FA's own
+   defaults are tuned for 16px body text and this interface is 13px. */
+.i-navitem > i.fa-solid{ width:17px; font-size:13.5px; text-align:center; color:var(--i-rail-mute); flex:none; }
+.i-navitem[aria-current="page"] > i.fa-solid,
+.i-navitem.is-active > i.fa-solid{ color:var(--i-rail-active-ink); }
+.i-navitem .i-caret{ margin-left:auto; font-size:9px; }
+.i-navitem .i-count + .i-caret{ margin-left:8px; }
+.i-mark svg{ width:24px; height:24px; display:block; }
+
+/* a parent whose child is the current page, while collapsed */
+.i-navitem.is-parent-active{ color:var(--i-rail-ink); font-weight:500; }
+.i-navitem.is-parent-active > i.fa-solid{ color:var(--i-rail-active-ink); }
+
+.i-new{
+  font-size:9.5px; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--i-v700); background:var(--i-v50); border-radius:99px; padding:2px 6px;
+}
+html[data-i-theme="dark"] .i-new,
+html[data-i-rail="dark"] .i-new{ color:#b7afff; background:rgba(114,101,224,.2); }
+
+.i-railfoot{ text-decoration:none; color:inherit; }
+.i-railfoot:hover{ background:var(--i-rail-hover); }
+
+/* ---------------- loading ---------------- */
+@keyframes i-pulse{ 0%,100%{opacity:1} 50%{opacity:.45} }
+.i-skel{
+  background:var(--i-rule); border-radius:4px; height:12px;
+  animation:i-pulse 1.4s ease-in-out infinite;
+}
+.i-skeleton-page{ height:260px; border-radius:8px; background:var(--i-tint); animation:i-pulse 1.4s ease-in-out infinite; }
+.i-table tbody tr.is-skel td{ height:52px; }
+.i-table tbody tr.is-skel .i-skel{ width:70%; }
+
+/* ---------------- toasts ---------------- */
+.i-toast{ animation:i-toast-in .18s cubic-bezier(.2,.7,.3,1); }
+@keyframes i-toast-in{ from{ transform:translateY(8px); opacity:0 } to{ transform:none; opacity:1 } }
+.i-toast .i-tx{ margin-left:auto; border:0; background:transparent; color:var(--i-mute); cursor:pointer; padding:0 2px; }
+
+/* ---------------- demo inbox ---------------- */
+/* Everything that would leave the system in production lands here. It is what
+   makes the simulated half of the demo honest: the flow runs for real right up
+   to the boundary, and you can see exactly what crossed it. */
+.i-inbox{
+  position:fixed; top:0; right:0; bottom:0; z-index:62;
+  width:min(440px,100vw); display:flex; flex-direction:column;
+  background:var(--i-canvas); box-shadow:var(--i-float-lg);
+}
+.i-inbox-msg{ padding:13px 20px; border-bottom:1px solid var(--i-rule); }
+.i-inbox-msg.is-unread{ background:var(--i-v50); }
+html[data-i-theme="dark"] .i-inbox-msg.is-unread{ background:rgba(114,101,224,.1); }
+.i-inbox-kind{
+  font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--i-mute); border:1px solid var(--i-rule-strong); border-radius:99px; padding:1px 7px;
+}
+.i-inbox-body{ font-size:12.5px; color:var(--i-dim); margin:5px 0 0; }
+.i-inbox-code{
+  font-family:var(--i-mono); font-size:19px; letter-spacing:.14em;
+  color:var(--i-ink); display:inline-block; margin-top:7px;
+}
+
+/* ---------------- dashboard ---------------- */
+.i-ring{ transform:rotate(-90deg); }
+.i-ring circle{ fill:none; stroke-width:3; }
+.i-ring .i-ring-bg{ stroke:var(--i-rule); }
+.i-ring .i-ring-fg{ stroke:var(--i-v600); transition:stroke-dashoffset .3s; }
+
+/* ---------------- MFA ---------------- */
+.i-qr{ background:#fff; padding:14px; border-radius:var(--i-r-float); border:1px solid var(--i-rule-strong); display:inline-block; }
+.i-qr svg{ display:block; }
+.i-secret{
+  font-family:var(--i-mono); font-size:13px; letter-spacing:.08em;
+  background:var(--i-tint); border:1px solid var(--i-rule); border-radius:var(--i-r-ctl);
+  padding:9px 11px; word-break:break-all; color:var(--i-ink);
+}
+.i-otp{
+  font-family:var(--i-mono); font-size:25px; letter-spacing:.4em;
+  text-align:center; width:100%; max-width:230px; height:48px;
+  border:1px solid var(--i-rule-strong); border-radius:var(--i-r-ctl);
+  background:var(--i-canvas); color:var(--i-ink); padding-left:.4em;
+}
+.i-otp:focus{ outline:none; border-color:var(--i-v600); box-shadow:0 0 0 3px var(--i-v50); }
+.i-step{ display:flex; gap:13px; padding:15px 0; border-bottom:1px solid var(--i-rule); }
+.i-step:last-child{ border-bottom:0; }
+.i-step-n{
+  width:23px; height:23px; flex:none; border-radius:99px; display:grid; place-items:center;
+  background:var(--i-tint); color:var(--i-dim); font-size:11.5px; font-weight:500;
+}
+.i-step.is-done .i-step-n{ background:var(--i-ok-bg); color:var(--i-ok); }
+.i-step.is-now .i-step-n{ background:var(--i-v600); color:#fff; }
+
+/* ---------------- verdict blocks ---------------- */
+/* Used by posture checks and the access explorer. The whole point of these
+   screens is the answer, so the answer gets the weight. */
+.i-verdict{ border-radius:var(--i-r-float); padding:17px 19px; border:1px solid var(--i-rule); }
+.i-verdict.is-pass{ background:var(--i-ok-bg); border-color:var(--i-ok-line); }
+.i-verdict.is-warn{ background:var(--i-c50); border-color:var(--i-c-line); }
+.i-verdict.is-block{ background:var(--i-bad-bg); border-color:transparent; }
+.i-verdict h3{ margin:0 0 3px; font-size:16px; font-weight:500; letter-spacing:-.014em; }
+.i-verdict p{ margin:0; font-size:12.5px; color:var(--i-dim); }
+.i-verdict.is-pass h3{ color:var(--i-ok); }
+.i-verdict.is-warn h3{ color:var(--i-c600); }
+.i-verdict.is-block h3{ color:var(--i-bad); }
+
+.i-checkrow{ display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid var(--i-rule); }
+.i-checkrow:last-child{ border-bottom:0; }
+.i-checkicon{ width:17px; text-align:center; flex:none; }
+
+/* a rule in the evaluation trace */
+.i-trace{ border-left:2px solid var(--i-rule); padding:7px 0 7px 13px; margin-left:3px; font-size:12.5px; }
+.i-trace.is-hit{ border-left-color:var(--i-v600); }
+.i-trace.is-shadowed{ opacity:.5; }
+.i-trace.is-shadowed .i-trace-name{ text-decoration:line-through; }
+
+/* ---------------- session surface ---------------- */
+/* The RDP / SSH launch target. Deliberately framed as a demo surface rather
+   than pretending to be a live desktop. */
+.i-session{
+  background:#0d0d11; border-radius:var(--i-r-float); overflow:hidden;
+  font-family:var(--i-mono); font-size:12.5px; color:#d6d6de; position:relative;
+}
+.i-session-bar{
+  display:flex; align-items:center; gap:9px; padding:8px 13px;
+  background:rgba(255,255,255,.05); font-family:var(--i-sans); font-size:12px; color:#9394a1;
+}
+.i-session-body{ padding:17px; min-height:290px; white-space:pre-wrap; line-height:1.65; }
+.i-session-wm{
+  position:absolute; inset:0; pointer-events:none; display:grid; place-items:center;
+  font-family:var(--i-sans); font-size:40px; font-weight:600; color:rgba(255,255,255,.055);
+  transform:rotate(-24deg); letter-spacing:.06em;
+}
+
+/* ---------------- misc ---------------- */
+.i-kv{ display:grid; grid-template-columns:180px 1fr; gap:9px 18px; font-size:12.5px; }
+.i-kv dt{ color:var(--i-mute); font-weight:400; }
+.i-kv dd{ margin:0; color:var(--i-ink); }
+.i-bar-mini{ height:5px; border-radius:99px; background:var(--i-rule); overflow:hidden; }
+.i-bar-mini > span{ display:block; height:100%; border-radius:99px; background:var(--i-v500); }
+.i-demo-note{
+  font-size:11.5px; color:var(--i-mute); border:1px dashed var(--i-rule-strong);
+  border-radius:var(--i-r-ctl); padding:9px 11px;
+}

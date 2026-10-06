@@ -1,0 +1,191 @@
+<script setup>
+import { ref, computed, watch, inject, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import api from '../api'
+import PageHeader from '../components/ui/PageHeader.vue'
+import DataTable from '../components/ui/DataTable.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import ConfirmModal from '../components/ui/ConfirmModal.vue'
+
+/**
+ * The generic list screen, driven by a config object from resources.js.
+ * Writing a new list screen is adding a config entry, not a component.
+ *
+ * Routes with no config yet render an honest "not built" state rather than a
+ * blank page or a fake table.
+ */
+
+const props = defineProps({
+  config: { type: Object, default: null },
+  route: { type: String, default: '' }
+})
+
+const r = useRoute()
+const toast = inject('toast', () => {})
+const refreshStats = inject('refreshStats', () => {})
+
+const rows = ref([])
+const total = ref(0)
+const loading = ref(true)
+const page = ref(1)
+const perPage = ref(25)
+const sort = ref('')
+const dir = ref('asc')
+const search = ref('')
+const activeFilter = ref('all')
+const selectedIds = ref([])
+const confirmOpen = ref(false)
+const table = ref(null)
+
+const cfg = computed(() => props.config)
+const title = computed(() => cfg.value?.title || r.meta?.label || 'Screen')
+
+/** Filters become chips, so an applied filter is always visible. */
+const chips = computed(() => {
+  const f = cfg.value?.filters?.[0]
+  if (!f) return []
+  return [{ key: 'all', label: 'All' }, ...f.options.map(o => ({ key: o, label: o }))]
+})
+
+async function load () {
+  if (!cfg.value) { loading.value = false; return }
+  loading.value = true
+  const filters = { ...(cfg.value.baseFilter || {}) }
+  const f = cfg.value.filters?.[0]
+  if (f && activeFilter.value !== 'all') filters[f.key] = activeFilter.value
+
+  const res = await api[cfg.value.resource].list({
+    page: page.value, perPage: perPage.value,
+    sort: sort.value, dir: dir.value,
+    search: search.value,
+    searchFields: cfg.value.searchFields,
+    filters
+  })
+  rows.value = res.data
+  total.value = res.total
+  loading.value = false
+}
+
+function onSort (key, d) { sort.value = key; dir.value = d; page.value = 1; load() }
+
+let searchTimer
+watch(search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { page.value = 1; load() }, 220)
+})
+watch([page, perPage, activeFilter], load)
+watch(() => props.config, () => {
+  page.value = 1; search.value = ''; sort.value = ''; activeFilter.value = 'all'; load()
+})
+
+async function removeSelected () {
+  const ids = selectedIds.value
+  await api[cfg.value.resource].removeMany(ids)
+  confirmOpen.value = false
+  table.value?.clearSelection()
+  toast(`${ids.length} ${ids.length === 1 ? 'record' : 'records'} deleted`)
+  refreshStats()
+  load()
+}
+
+function onRowAction (row) {
+  toast(`${cfg.value.rowAction.label} — ${row.name || row.id}. Wired in a later phase.`)
+}
+
+/** Names the objects in the confirm, which production never does. */
+const confirmBody = computed(() => {
+  const names = rows.value
+    .filter(x => selectedIds.value.includes(x.id))
+    .map(x => x.name || x.username || x.id)
+  const shown = names.slice(0, 3).join(', ')
+  const rest = names.length - 3
+  return rest > 0 ? `${shown} and ${rest} more` : shown
+})
+
+onMounted(load)
+</script>
+
+<template>
+  <div class="i-page">
+    <!-- a route with no config yet: say so plainly -->
+    <template v-if="!cfg">
+      <PageHeader :title="title" />
+      <EmptyState
+        icon="fa-screwdriver-wrench"
+        title="Not built yet"
+        :body="`${r.path} is a real route in the console and is in the plan — see SCOPE.md for which phase it lands in. Nothing here is faked in the meantime.`"
+      />
+    </template>
+
+    <template v-else>
+      <PageHeader :title="cfg.title" :subtitle="cfg.subtitle">
+        <template #actions>
+          <button class="i-btn">
+            <i class="fa-solid fa-download" aria-hidden="true" /> Export
+          </button>
+          <button v-if="cfg.primaryAction" class="i-btn i-primary">
+            <i class="fa-solid fa-plus" aria-hidden="true" /> {{ cfg.primaryAction }}
+          </button>
+        </template>
+      </PageHeader>
+
+      <div class="i-strip">
+        <div v-if="chips.length" class="i-ftabs">
+          <button
+            v-for="c in chips" :key="c.key"
+            class="i-chip" :class="{ 'is-on': activeFilter === c.key }"
+            :aria-pressed="activeFilter === c.key"
+            @click="activeFilter = c.key"
+          >{{ c.label }}</button>
+        </div>
+
+        <div class="i-right">
+          <label class="i-search">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
+            <input v-model="search" type="search" :placeholder="`Search ${cfg.title.toLowerCase()}`">
+          </label>
+        </div>
+      </div>
+
+      <DataTable
+        ref="table"
+        :columns="cfg.columns"
+        :rows="rows"
+        :total="total"
+        :loading="loading"
+        v-model:page="page"
+        v-model:perPage="perPage"
+        :sort="sort" :dir="dir"
+        :row-action="cfg.rowAction"
+        @sort="onSort"
+        @selection="selectedIds = $event"
+        @row-action="onRowAction"
+      >
+        <template #bulk>
+          <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
+        </template>
+
+        <template #empty>
+          <EmptyState
+            :icon="search ? 'fa-magnifying-glass' : 'fa-inbox'"
+            :title="search ? `Nothing matches “${search}”` : (cfg.emptyTitle || `No ${cfg.title.toLowerCase()} yet`)"
+            :body="search
+              ? 'Try a shorter term, or clear the search to see everything.'
+              : (cfg.emptyBody || 'Nothing has been added here yet.')"
+            :action-label="search ? 'Clear search' : (cfg.primaryAction || '')"
+            @action="search ? (search = '') : null"
+          />
+        </template>
+      </DataTable>
+    </template>
+
+    <ConfirmModal
+      v-model:open="confirmOpen"
+      :title="`Delete ${selectedIds.length} ${selectedIds.length === 1 ? 'record' : 'records'}?`"
+      :confirm-label="`Delete ${selectedIds.length}`"
+      @confirm="removeSelected"
+    >
+      <strong class="i-named">{{ confirmBody }}</strong> will be removed. This cannot be undone.
+    </ConfirmModal>
+  </div>
+</template>
