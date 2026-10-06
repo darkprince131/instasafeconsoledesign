@@ -1,13 +1,27 @@
-# Static site: no build step. Everything is hand-written HTML, CSS and JS.
-[build]
-  publish = "."
-  command = ""
+# This branch builds the working demo console, not the static prototypes.
+#
+# Netlify reads the netlify.toml at the repo root, so this is the file that
+# counts. console/netlify.toml is kept for anyone running the app standalone.
+#
+#   demo-console -> https://instasafe-console-demo.netlify.app
+#
+# The other two sites build from main and enhanced-ux, which carry their own
+# version of this file with no build step.
 
-# Two Netlify projects build from this one repo, each pinned to one branch:
-#   main        -> https://instasafe-console.netlify.app      (Version A, visual)
-#   enhanced-ux -> https://instasafe-console-ux.netlify.app   (Version B, structural)
-# The branch each project builds is set under
-# Site configuration > Build & deploy > Branches and deploy contexts.
+[build]
+  base    = "console"
+  command = "npm run build"
+  publish = "console/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Vue Router runs in history mode, so every path has to serve the app shell
+# rather than 404. This must stay last among redirects.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 [[headers]]
   for = "/*"
@@ -15,13 +29,8 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Audit docs stay reachable by link, out of search results. See robots.txt.
-[[headers]]
-  for = "/docs/*"
-  [headers.values]
-    X-Robots-Tag = "noindex, nofollow, noarchive"
-
+# Vite fingerprints every filename, so these can be cached hard.
 [[headers]]
   for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=31536000, immutable"
