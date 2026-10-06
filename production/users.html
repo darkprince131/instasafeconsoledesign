@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en" data-i-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Users — i365 component reference</title>
+<!--
+  Reference implementation of the Users screen in the i365 component layer.
+
+  Every route, element id and form field `name` below is the real one, read
+  out of the captured production page — /users, /user-groups, first_name,
+  last_name, email, country_code, location, groups, googleotp, auto_suspend,
+  enable_device_binding, device_check_enable, and the rest. The controller,
+  the request payload and the validation do not change. Only the markup
+  around them does.
+
+  In production this file is four Blade partials:
+    layouts/app.blade.php          rail + topbar  (replaces header + sidebar)
+    partials/page-header.blade.php the title block
+    partials/data-table.blade.php  the list, shared by all 54 list screens
+    partials/sheet.blade.php       the side panel, replaces the slide-in card
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="i365.css">
+<style>
+  html,body{margin:0;padding:0;height:100%}
+  body{background:var(--i-canvas)}
+</style>
+</head>
+<body>
+<div class="i-app" id="App">
+
+  <!-- ===================== rail =====================
+       19 top-level entries, grouped into six labelled sections. The labels
+       are signposts, not links. Counts appear only where something waits. -->
+  <nav class="i-rail" aria-label="Main">
+    <div class="i-brand">
+      <img class="i-mark" src="../assets/img/mark.png" alt="">
+      <span class="i-wm">InstaSafe</span>
+      <span class="i-tenant">veno</span>
+    </div>
+
+    <div class="i-navwrap">
+      <div class="i-navsec">Overview</div>
+      <a class="i-navitem" href="/dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 13h5l2-6 4 12 2-6h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="i-lab">Dashboard</span></a>
+      <a class="i-navitem" href="/asset-inventory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3" stroke-linecap="round"/></svg>
+        <span class="i-lab">Asset inventory</span></a>
+      <a class="i-navitem" href="/graph">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V9M10 20V4M16 20v-7M22 20h-20" stroke-linecap="round"/></svg>
+        <span class="i-lab">Graph</span></a>
+
+      <div class="i-navsec">Infrastructure</div>
+      <button class="i-navitem" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        <span class="i-lab">Controllers &amp; gateways</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+      <button class="i-navitem" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2"/></svg>
+        <span class="i-lab">General settings</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+
+      <div class="i-navsec">Identity</div>
+      <a class="i-navitem" href="/auth-profiles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span class="i-lab">Authentication profiles</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></a>
+      <button class="i-navitem is-active" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0 0-6M18 20a5 5 0 0 0-2-4"/></svg>
+        <span class="i-lab">Users &amp; groups</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+      <a class="i-subitem" href="/users" aria-current="page">Users</a>
+      <a class="i-subitem" href="/user-groups">User groups</a>
+      <a class="i-subitem" href="/blocked-users">Blocked users</a>
+      <button class="i-navitem" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h10M4 18h7" stroke-linecap="round"/></svg>
+        <span class="i-lab">User settings</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+
+      <div class="i-navsec">Security</div>
+      <button class="i-navitem" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/></svg>
+        <span class="i-lab">Devices &amp; checks</span>
+        <span class="i-count">775</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+      <button class="i-navitem" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5h18l-7 8v6l-4 2v-8z" stroke-linejoin="round"/></svg>
+        <span class="i-lab">Filters</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+
+      <div class="i-navsec">Access</div>
+      <a class="i-navitem" href="/applications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="i-lab">Applications</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></a>
+      <a class="i-navitem" href="/access-rules">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="8" cy="16" r="3"/><path d="m11 14 9-9M17 5h4v4" stroke-linecap="round"/></svg>
+        <span class="i-lab">Access rules</span><span class="i-count">57</span></a>
+
+      <div class="i-navsec">Monitoring</div>
+      <a class="i-navitem" href="/logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V9M10 20V4M16 20v-7M22 20h-20" stroke-linecap="round"/></svg>
+        <span class="i-lab">Logs &amp; reports</span>
+        <svg class="i-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></a>
+      <a class="i-navitem" href="/downloads/user-agents">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="i-lab">Downloads</span></a>
+
+      <div class="i-navsec">Administration</div>
+      <a class="i-navitem" href="/sub-admins">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+        <span class="i-lab">Sub admin roles</span><span class="i-count">3</span></a>
+      <a class="i-navitem" href="/tech-support">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2" y="14" width="5" height="6" rx="2"/><rect x="17" y="14" width="5" height="6" rx="2"/></svg>
+        <span class="i-lab">Tech support</span></a>
+    </div>
+
+    <div class="i-railfoot">
+      <span class="i-av">DD</span>
+      <span class="i-uname">Debajyoti</span>
+    </div>
+  </nav>
+
+  <!-- ===================== main ===================== -->
+  <main class="i-main">
+    <header class="i-topbar">
+      <nav class="i-crumb" aria-label="Breadcrumb">
+        <a href="/users">Identity</a> <span>&rsaquo;</span> <strong>Users</strong>
+      </nav>
+      <div class="i-tgroup">
+        <span class="i-sessclock" title="Session expires in">02:43:15</span>
+        <button class="i-tbtn" id="railToggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+          Dark rail</button>
+        <button class="i-tbtn" id="themeToggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z" stroke-linejoin="round"/></svg>
+          Dark</button>
+      </div>
+    </header>
+
+    <div class="i-page">
+
+      <div class="i-phead">
+        <div>
+          <h1>Users</h1>
+          <p class="i-sub">1,820 users · 318 connected now · 11 without MFA</p>
+        </div>
+        <div class="i-acts">
+          <button class="i-btn" id="btnExport">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export</button>
+          <button class="i-btn" id="btnImport">Import CSV</button>
+          <button class="i-btn i-primary" id="btnAdd">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            Add user</button>
+        </div>
+      </div>
+
+      <!-- Filters are visible and removable. A filter you cannot see is a
+           support ticket about missing data. -->
+      <div class="i-strip">
+        <div class="i-ftabs">
+          <button class="i-chip is-on" aria-pressed="true">All <span class="i-n">1,820</span></button>
+          <button class="i-chip" aria-pressed="false">Connected <span class="i-n">318</span></button>
+          <button class="i-chip" aria-pressed="false">Without MFA <span class="i-n">11</span></button>
+          <button class="i-chip" aria-pressed="false">Suspended <span class="i-n">4</span></button>
+        </div>
+        <div class="i-right">
+          <label class="i-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+            <input type="search" id="userSearch" placeholder="Search name, username or email">
+          </label>
+          <button class="i-btn i-sm" id="btnCols">Columns</button>
+        </div>
+      </div>
+
+      <!-- selection bar: destructive actions exist only once something is
+           selected, instead of a permanently armed Delete in the toolbar -->
+      <div class="i-selnote" id="selBar" hidden>
+        <strong id="selCount">2 selected</strong>
+        <div class="i-right">
+          <button class="i-btn i-sm">Add to group</button>
+          <button class="i-btn i-sm">Reset MFA</button>
+          <button class="i-btn i-sm i-danger" id="btnDelete">Delete</button>
+        </div>
+      </div>
+
+      <table class="i-table" id="AllUser">
+        <thead>
+          <tr>
+            <th style="width:34px"><input type="checkbox" id="checkbox" aria-label="Select all"></th>
+            <th aria-sort="none">Name <svg class="i-sarr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5m0 0-5 5m5-5 5 5" stroke-linecap="round"/></svg></th>
+            <th aria-sort="none">Username</th>
+            <th>Auth profile</th>
+            <th>MFA</th>
+            <th>Last seen</th>
+            <th>Status</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" id="checkbox-654467" aria-label="Select Alen Joseph"></td>
+            <td>Alen Joseph</td>
+            <td class="i-dimcell">alen.joseph</td>
+            <td>Local</td>
+            <td><span class="i-pill">Enrolled</span></td>
+            <td class="i-dimcell">2 hours ago</td>
+            <td><span class="i-pill"><span class="i-dot i-ok"></span>Active</span></td>
+            <td><button class="i-rowbtn" aria-label="Actions for Alen Joseph">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" id="checkbox-654687" aria-label="Select Priya Nair"></td>
+            <td>Priya Nair</td>
+            <td class="i-dimcell">priya.nair@instasafe.com</td>
+            <td>Azure AD</td>
+            <td><span class="i-pill i-att">Not enrolled</span></td>
+            <td class="i-dimcell">11 min ago</td>
+            <td><span class="i-pill"><span class="i-dot i-ok"></span>Active</span></td>
+            <td><button class="i-rowbtn" aria-label="Actions for Priya Nair">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" id="checkbox-670380" aria-label="Select Marcus Hall"></td>
+            <td>Marcus Hall</td>
+            <td class="i-dimcell">marcus.hall@instasafe.com</td>
+            <td>Local</td>
+            <td><span class="i-pill">Enrolled</span></td>
+            <td class="i-dimcell">6 days ago</td>
+            <td><span class="i-pill i-att">Suspended</span></td>
+            <td><button class="i-rowbtn" aria-label="Actions for Marcus Hall">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" id="checkbox-678416" aria-label="Select Demo Fresh"></td>
+            <td>Demo Fresh</td>
+            <td class="i-dimcell">demoone@instasafe.com</td>
+            <td>Local</td>
+            <td><span class="i-pill">Enrolled</span></td>
+            <td class="i-dimcell">just now</td>
+            <td><span class="i-pill"><span class="i-dot i-ok"></span>Active</span></td>
+            <td><button class="i-rowbtn" aria-label="Actions for Demo Fresh">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" aria-label="Select Fqdn One"></td>
+            <td>Fqdn One</td>
+            <td class="i-dimcell">fqdn1</td>
+            <td>RADIUS</td>
+            <td><span class="i-pill i-att">Not enrolled</span></td>
+            <td class="i-dimcell">never</td>
+            <td><span class="i-pill"><span class="i-dot"></span>Pending activation</span></td>
+            <td><button class="i-rowbtn" aria-label="Actions for Fqdn One">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="i-tfoot">
+        <span>1–5 of 1,820</span>
+        <div class="i-right">
+          <select class="i-ctl i-sm" name="pageselect" id="pageselect" style="width:auto;height:28px">
+            <option>10</option><option>25</option><option>50</option>
+          </select>
+          <button class="i-pbtn" disabled aria-label="Previous page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 6-6 6 6 6" stroke-linecap="round"/></svg></button>
+          <button class="i-pbtn" aria-label="Next page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 6 6 6-6 6" stroke-linecap="round"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===================== add user, as a sheet =====================
+     Replaces the slide-in card that pushed the table sideways. Every field
+     name is the production one, so the POST body is byte-identical. -->
+<div class="i-scrim" id="scrim" hidden></div>
+<aside class="i-sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="UserModelLabel" hidden>
+  <form id="UserModel" method="post" action="/users">
+    <div class="i-sheeth">
+      <div>
+        <h2 id="UserModelLabel">Add user</h2>
+        <p class="i-sub">They receive an activation mail once saved.</p>
+      </div>
+      <button type="button" class="i-x" id="sheetClose" aria-label="Close">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6 18 18M18 6 6 18" stroke-linecap="round"/></svg></button>
+    </div>
+
+    <div class="i-sheetb">
+      <div class="i-formsec">
+        <h3>Identity</h3>
+        <p class="i-secsub">How this person signs in.</p>
+        <div class="i-frow">
+          <div class="i-field">
+            <label for="first_name">First name <span class="i-req">*</span></label>
+            <input class="i-ctl" type="text" id="first_name" name="first_name" required>
+          </div>
+          <div class="i-field">
+            <label for="last_name">Last name</label>
+            <input class="i-ctl" type="text" id="last_name" name="last_name">
+          </div>
+        </div>
+        <div class="i-frow">
+          <div class="i-field">
+            <label for="email">Email <span class="i-req">*</span></label>
+            <input class="i-ctl" type="email" id="email" name="email" required>
+            <p class="i-hint">The activation link goes here. It cannot be changed later.</p>
+          </div>
+        </div>
+        <div class="i-frow">
+          <div class="i-field">
+            <label for="mobile">Mobile number <span class="i-req">*</span></label>
+            <div class="i-duo">
+              <select class="i-ctl" id="country_code" name="country_code">
+                <option value="91">India +91</option>
+                <option value="1">US +1</option>
+                <option value="44">UK +44</option>
+              </select>
+              <input class="i-ctl" type="tel" id="mobile" name="mobile" placeholder="Mobile number">
+            </div>
+            <p class="i-hint">Used for OTP when the auth profile requires it.</p>
+          </div>
+          <div class="i-field">
+            <label for="location">Location</label>
+            <input class="i-ctl" type="text" id="location" name="location">
+          </div>
+        </div>
+      </div>
+
+      <div class="i-formsec">
+        <h3>Access</h3>
+        <p class="i-secsub">Groups decide which applications they reach. Rules are inherited.</p>
+        <div class="i-frow">
+          <div class="i-field">
+            <label for="groups">Groups</label>
+            <select class="i-ctl" id="groups" name="groups[]" multiple size="1">
+              <option>venodemogrp</option><option>contractors</option><option>finance</option>
+            </select>
+            <p class="i-hint">Leave empty and they can sign in but reach nothing.</p>
+          </div>
+          <div class="i-field">
+            <label for="auth_type">Authentication type <span class="i-req">*</span></label>
+            <select class="i-ctl" id="auth_type" name="auth_type">
+              <option>Password + Certs</option><option>Password</option><option>Certs</option>
+            </select>
+          </div>
+        </div>
+        <div class="i-frow">
+          <div class="i-field">
+            <label for="activation_method">Activation <span class="i-req">*</span></label>
+            <select class="i-ctl" id="activation_method" name="activation_method">
+              <option>Immediately on provisioning</option>
+              <option>Automatically on first login</option>
+              <option>On date and time</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="i-formsec">
+        <h3>Device policy</h3>
+        <p class="i-secsub">Six switches that currently read as six identical checkboxes.</p>
+        <div class="i-frow" style="grid-template-columns:1fr">
+          <label class="i-sw"><input type="checkbox" id="enable_device_binding" name="enable_device_binding" checked><span class="i-track"></span>Bind to first device used</label>
+          <label class="i-sw"><input type="checkbox" id="device_check_enable" name="device_check_enable" checked><span class="i-track"></span>Run device posture checks</label>
+          <label class="i-sw"><input type="checkbox" id="device_update_enable" name="device_update_enable"><span class="i-track"></span>Require up-to-date agent</label>
+          <label class="i-sw"><input type="checkbox" id="enable_geo_fence" name="enable_geo_fence"><span class="i-track"></span>Restrict to geo-fence</label>
+          <label class="i-sw"><input type="checkbox" id="auto_suspend" name="auto_suspend"><span class="i-track"></span>Auto-suspend after 30 days idle</label>
+          <label class="i-sw"><input type="checkbox" id="googleotp" name="googleotp" checked><span class="i-track"></span>Require TOTP at sign-in</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="i-sheetf">
+      <button type="button" class="i-btn i-quiet" id="sheetCancel">Cancel</button>
+      <div class="i-right">
+        <button type="button" class="i-btn">Save and add another</button>
+        <button type="submit" class="i-btn i-primary">Save user</button>
+      </div>
+    </div>
+  </form>
+</aside>
+
+<!-- ===================== confirm, naming the object ===================== -->
+<div class="i-scrim" id="scrim2" hidden></div>
+<div class="i-modal" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+  <div class="i-modalb">
+    <h2 id="modalTitle">Delete 2 users?</h2>
+    <p><span class="i-named">Marcus Hall</span> and <span class="i-named">Demo Fresh</span> lose access
+       immediately and their active sessions end. Their audit history is kept. This cannot be undone.</p>
+  </div>
+  <div class="i-modalf">
+    <button class="i-btn" id="cancelDel">Cancel</button>
+    <button class="i-btn i-danger-solid" id="okDel">Delete 2 users</button>
+  </div>
+</div>
+
+<div class="i-toasts" id="toasts"></div>
+
+<script>
+(function(){
+  var d=document, R=d.documentElement;
+  function on(id,ev,fn){ var e=d.getElementById(id); if(e) e.addEventListener(ev,fn); }
+
+  on('themeToggle','click',function(){
+    var dark = R.getAttribute('data-i-theme')==='dark';
+    R.setAttribute('data-i-theme', dark?'light':'dark');
+    this.lastChild.textContent = dark?' Dark':' Light';
+  });
+  on('railToggle','click',function(){
+    var dark = R.getAttribute('data-i-rail')==='dark';
+    if(dark) R.removeAttribute('data-i-rail'); else R.setAttribute('data-i-rail','dark');
+    this.lastChild.textContent = dark?' Dark rail':' Light rail';
+  });
+
+  function show(id,on){ var e=d.getElementById(id); if(e) e.hidden=!on; }
+  function openSheet(o){ show('sheet',o); show('scrim',o); if(o) d.getElementById('first_name').focus(); }
+  on('btnAdd','click',function(){ openSheet(true); });
+  on('sheetClose','click',function(){ openSheet(false); });
+  on('sheetCancel','click',function(){ openSheet(false); });
+  on('scrim','click',function(){ openSheet(false); });
+
+  function openConfirm(o){ show('confirm',o); show('scrim2',o); }
+  on('btnDelete','click',function(){ openConfirm(true); });
+  on('cancelDel','click',function(){ openConfirm(false); });
+  on('scrim2','click',function(){ openConfirm(false); });
+  on('okDel','click',function(){ openConfirm(false); toast('2 users deleted'); });
+
+  d.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){ openSheet(false); openConfirm(false); }
+  });
+
+  // selection drives the selection bar; nothing destructive exists without it
+  var boxes=[].slice.call(d.querySelectorAll('#AllUser tbody input[type=checkbox]'));
+  var all=d.getElementById('checkbox');
+  function sync(){
+    var n=boxes.filter(function(b){return b.checked}).length;
+    d.getElementById('selBar').hidden = n===0;
+    d.getElementById('selCount').textContent = n+' selected';
+    boxes.forEach(function(b){ b.closest('tr').setAttribute('aria-selected', b.checked); });
+    if(all){ all.checked = n===boxes.length && n>0; all.indeterminate = n>0 && n<boxes.length; }
+  }
+  boxes.forEach(function(b){ b.addEventListener('change',sync); });
+  if(all) all.addEventListener('change',function(){ boxes.forEach(function(b){b.checked=all.checked}); sync(); });
+
+  // chips are single-select here; production binds these to the existing filter query
+  [].slice.call(d.querySelectorAll('.i-chip')).forEach(function(c){
+    c.addEventListener('click',function(){
+      d.querySelectorAll('.i-chip').forEach(function(x){ x.classList.remove('is-on'); x.setAttribute('aria-pressed','false'); });
+      c.classList.add('is-on'); c.setAttribute('aria-pressed','true');
+    });
+  });
+
+  function toast(msg){
+    var t=d.createElement('div'); t.className='i-toast';
+    t.innerHTML='<span class="i-td"></span><span></span>';
+    t.lastChild.textContent=msg;
+    d.getElementById('toasts').appendChild(t);
+    setTimeout(function(){ t.remove(); }, 3200);
+  }
+  on('btnExport','click',function(){ toast('Export queued — 1,820 rows'); });
+})();
+</script>
+</body>
+</html>

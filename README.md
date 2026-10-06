@@ -56,3 +56,23 @@ shadows in page flow **0**, unresolved fills **0**, pill-to-row ratio **0.30** o
 
 The 502-snapshot capture of the live tenant is excluded by `.gitignore` — it is 149 MB of
 production console data and does not belong in a public repository.
+
+---
+
+## `production/` — taking this into the real console
+
+The prototype at `/` shows where the console should land. `production/` is how it
+gets there without rebuilding the app.
+
+| File | What it is |
+|---|---|
+| `production/i365.css` | The design system as shippable classes, all prefixed `i-` |
+| `production/users.html` | The Users screen built with them — real routes, real ids, real form field names |
+| `production/MIGRATION.md` | Order of work, class map, design contracts, verification |
+
+Nothing behind the markup moves: routes, controllers, API payloads, form field
+`name` attributes, element `id`s, `v-model` bindings and validation are all
+unchanged. The `i-` prefix means `i365.css` and the existing `style.css` load
+side by side, so screens migrate one at a time with no flag day.
+
+Start with `MIGRATION.md`.
