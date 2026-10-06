@@ -52,27 +52,6 @@ export const RESOURCES = {
     ]
   },
 
-  '/applications': {
-    title: 'Applications',
-    subtitle: 'What people connect to. RDP, SSH and VNC applications can be launched from here.',
-    resource: 'applications',
-    primaryAction: 'Add application',
-    searchFields: ['name', 'host', 'owner'],
-    filters: [
-      { key: 'type', label: 'All types', options: ['web', 'rdp', 'ssh', 'vnc'] }
-    ],
-    columns: [
-      { key: 'name', label: 'Application', bold: true },
-      { key: 'type', label: 'Type', upper: true },
-      { key: 'host', label: 'Host', mono: true },
-      { key: 'port', label: 'Port', mono: true, align: 'right' },
-      { key: 'owner', label: 'Owner' },
-      { key: 'sessionRecording', label: 'Recording', bool: true },
-      { key: 'status', label: 'Status', pill: statusPill }
-    ],
-    rowAction: { label: 'Connect', when: (r) => ['rdp', 'ssh', 'vnc'].includes(r.type) }
-  },
-
   '/application-services': {
     title: 'Application services',
     subtitle: 'Protocol and port definitions that applications reference.',

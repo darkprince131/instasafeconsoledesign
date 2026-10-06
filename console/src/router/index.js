@@ -18,6 +18,7 @@ const bespoke = {
   '/users':            () => import('../views/identity/Users.vue'),
   '/devices':          () => import('../views/devices/Devices.vue'),
   '/device-checks':    () => import('../views/devices/DeviceChecks.vue'),
+  '/applications':     () => import('../views/network/Applications.vue'),
   '/access-rules':     () => import('../views/network/AccessRules.vue'),
   '/access-explorer':  () => import('../views/network/AccessExplorer.vue'),
   '/controllers':      () => import('../views/network/Controllers.vue'),

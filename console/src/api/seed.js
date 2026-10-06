@@ -152,31 +152,37 @@ export function seedDevices (users, count = 2140) {
 
 // --------------------------------------------------------- applications
 export function seedApplications () {
+  /* Columns: name, type, host, port, owner, recording, blockCopyPaste, watermark.
+     The session controls are set deliberately rather than randomly: these three
+     switches are the differentiated part of the RDP/SSH story, so the demo has
+     to contain a clear example of each one being on and each being off.
+     Leaving it to chance once produced a seed where copy-blocking appeared
+     nowhere at all. */
   const apps = [
-    ['Jira',              'web',  'https://jira.internal',      443, 'Engineering'],
-    ['Confluence',        'web',  'https://wiki.internal',      443, 'Engineering'],
-    ['GitLab',            'web',  'https://git.internal',       443, 'Engineering'],
-    ['Finance DB',        'rdp',  '10.20.4.17',                3389, 'Finance'],
-    ['Payroll Web',       'web',  'https://payroll.internal',   443, 'Finance'],
-    ['Reports DB',        'ssh',  '10.20.4.33',                  22, 'Finance'],
-    ['Build Server',      'ssh',  '10.20.8.12',                  22, 'Engineering'],
-    ['Jump Host',         'ssh',  '10.20.0.5',                   22, 'IT'],
-    ['Code Server',       'web',  'https://code.internal',      443, 'Engineering'],
-    ['Salesforce',        'web',  'https://sf.internal',        443, 'Sales'],
-    ['Legacy ERP',        'rdp',  '10.20.6.41',                3389, 'Operations'],
-    ['Design VM',         'vnc',  '10.20.9.22',                5900, 'Marketing'],
-    ['HR Portal',         'web',  'https://hr.internal',        443, 'HR'],
-    ['Support Desk',      'web',  'https://desk.internal',      443, 'Support'],
-    ['Log Collector',     'ssh',  '10.20.1.90',                  22, 'Security'],
-    ['Domain Controller', 'rdp',  '10.20.0.10',                3389, 'IT']
+    ['Jira',              'web',  'https://jira.internal',      443, 'Engineering', 0, 0, 0],
+    ['Confluence',        'web',  'https://wiki.internal',      443, 'Engineering', 0, 0, 0],
+    ['GitLab',            'web',  'https://git.internal',       443, 'Engineering', 0, 0, 0],
+    ['Finance DB',        'rdp',  '10.20.4.17',                3389, 'Finance',     1, 1, 1],
+    ['Payroll Web',       'web',  'https://payroll.internal',   443, 'Finance',     0, 0, 0],
+    ['Reports DB',        'ssh',  '10.20.4.33',                  22, 'Finance',     1, 1, 0],
+    ['Build Server',      'ssh',  '10.20.8.12',                  22, 'Engineering', 1, 0, 0],
+    ['Jump Host',         'ssh',  '10.20.0.5',                   22, 'IT',          1, 1, 1],
+    ['Code Server',       'web',  'https://code.internal',      443, 'Engineering', 0, 0, 0],
+    ['Salesforce',        'web',  'https://sf.internal',        443, 'Sales',       0, 0, 0],
+    ['Legacy ERP',        'rdp',  '10.20.6.41',                3389, 'Operations',  1, 0, 1],
+    ['Design VM',         'vnc',  '10.20.9.22',                5900, 'Marketing',   0, 1, 0],
+    ['HR Portal',         'web',  'https://hr.internal',        443, 'HR',          0, 0, 0],
+    ['Support Desk',      'web',  'https://desk.internal',      443, 'Support',     0, 0, 0],
+    ['Log Collector',     'ssh',  '10.20.1.90',                  22, 'Security',    1, 0, 0],
+    ['Domain Controller', 'rdp',  '10.20.0.10',                3389, 'IT',          1, 1, 1]
   ]
-  return apps.map(([name, type, host, port, owner], i) => ({
+  return apps.map(([name, type, host, port, owner, rec, cpb, wm], i) => ({
     id: `app_${pad(i + 1, 4)}`,
     name, type, host, port, owner,
-    status: chance(0.94) ? 'active' : 'disabled',
-    sessionRecording: ['rdp', 'ssh', 'vnc'].includes(type) && chance(0.6),
-    blockCopyPaste: ['rdp', 'vnc'].includes(type) && chance(0.5),
-    watermark: ['rdp', 'vnc'].includes(type) && chance(0.4),
+    status: name === 'Legacy ERP' ? 'disabled' : 'active',
+    sessionRecording: !!rec,
+    blockCopyPaste: !!cpb,
+    watermark: !!wm,
     createdAt: ago(100 + r() * 500)
   }))
 }
