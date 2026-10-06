@@ -1,0 +1,6 @@
+# The prototype and the production component layer are public.
+# The audit documents are reachable by link but not indexed — they describe
+# weaknesses in a shipping product and should not surface in search.
+User-agent: *
+Disallow: /docs/
+Allow: /
