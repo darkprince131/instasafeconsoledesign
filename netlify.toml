@@ -11,10 +11,14 @@
 [build]
   base    = "console"
   command = "npm run build"
-  publish = "console/dist"
+  # publish is relative to `base`, so this is console/dist
+  publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # Vite 7 requires ^20.19.0 || >=22.12.0. A bare "20" resolves to whatever
+  # Netlify's newest 20.x image happens to be, which is not guaranteed to
+  # clear 20.19 - so pin 22 and leave no room for it.
+  NODE_VERSION = "22"
 
 # Vue Router runs in history mode, so every path has to serve the app shell
 # rather than 404. This must stay last among redirects.
