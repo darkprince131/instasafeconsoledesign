@@ -553,7 +553,7 @@ async function seedTenant (tenant, body) {
       })
       await sql.query(
         `insert into ${table} (${keys.join(',')}) values ${tuples.join(',')}
-         on conflict (id) do nothing`, args)
+         on conflict do nothing`, args)
     }
     counts[resource] = rows.length
   }

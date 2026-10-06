@@ -42,9 +42,19 @@ function pad (n, w = 4) { return String(n).padStart(w, '0') }
 // ---------------------------------------------------------------- users
 export function seedUsers (count = 1820) {
   const out = []
+  /* Usernames must be unique: the database has a unique index on
+     (tenant_id, username) and will refuse the insert otherwise. Forty first
+     names against forty surnames collide long before 420 rows, so a name
+     that has already been used gets a numeric suffix. IndexedDB had no such
+     constraint and silently overwrote the earlier row, which hid this. */
+  const taken = new Set()
   for (let i = 1; i <= count; i++) {
     const first = pick(FIRST), last = pick(LAST)
-    const username = `${first}.${last}`.toLowerCase() + (i > 300 ? i : '')
+    const base = `${first}.${last}`.toLowerCase()
+    let username = base
+    let n = 1
+    while (taken.has(username)) username = base + ++n
+    taken.add(username)
     const enrolled = chance(0.94)               // most people have MFA
     const status = chance(0.975) ? 'active' : (chance(0.5) ? 'suspended' : 'pending')
     out.push({
