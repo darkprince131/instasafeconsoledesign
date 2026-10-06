@@ -126,23 +126,6 @@ export const RESOURCES = {
     ]
   },
 
-  '/profile/local': {
-    title: 'Authentication profiles',
-    subtitle: 'How people prove who they are. Eight profile types, each with its own connection test.',
-    resource: 'authProfiles',
-    primaryAction: 'Add profile',
-    searchFields: ['name', 'type'],
-    columns: [
-      { key: 'name', label: 'Profile', bold: true },
-      { key: 'type', label: 'Type', upper: true },
-      { key: 'host', label: 'Host', mono: true, cell: (v) => v || dash },
-      { key: 'port', label: 'Port', mono: true, align: 'right', cell: (v) => v || dash },
-      { key: 'users', label: 'Users', align: 'right', num: true },
-      { key: 'status', label: 'Status', pill: statusPill }
-    ],
-    rowAction: { label: 'Test' }
-  },
-
   '/reports/access-logs': {
     title: 'Access logs',
     subtitle: 'Every allow and deny decision, with the rule that made it.',
