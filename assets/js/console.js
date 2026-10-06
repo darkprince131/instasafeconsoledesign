@@ -1,746 +1,625 @@
 (function(){
 "use strict";
-/* ======================= nav ======================= */
+/* ===================== nav — §7 proposed IA ===================== */
 var NAV=[
  {sec:"Overview",items:[
-   {id:"dashboard",l:"Dashboard",i:"i-gauge"},
-   {id:"assets",l:"Asset inventory",i:"i-pie"},
-   {id:"graph",l:"Graph",i:"i-chart"}]},
- {sec:"Infrastructure",items:[
-   {id:"infra",l:"Controllers & gateways",i:"i-cpu",kids:[["controllers","Controllers",4],["gateways","Gateways",4]]},
-   {id:"general",l:"General settings",i:"i-gear",kids:[["company","Company details"],["subscription","Subscription"],["smtp","Email settings"]]}]},
+  {id:"dashboard",l:"Dashboard",i:"i-gauge"},
+  {id:"assets",l:"Asset inventory",i:"i-pie"}]},
+ {sec:"Work",items:[
+  {id:"approvals",l:"Device approvals",i:"i-inbox",attn:6},
+  {id:"requests",l:"Access requests",i:"i-inbox",attn:2}]},
  {sec:"Identity",items:[
-   {id:"auth",l:"Authentication profiles",i:"i-finger",kids:[["local","Local"],["ad","Active Directory",9],["saml","SAML",2],["oauth","OAuth",1]]},
-   {id:"ug",l:"Users & groups",i:"i-users",kids:[["users","Users",1820],["usergroups","User groups",46],["blocked","Blocked users",0]]},
-   {id:"usets",l:"User settings",i:"i-sliders",kids:[["settings","Settings"],["shifts","Shift schedules",4],["risk","Risk profiles",3]]}]},
+  {id:"users",l:"Users",i:"i-users",n:1820},
+  {id:"groups",l:"Groups",i:"i-users",n:46},
+  {id:"authp",l:"Auth profiles",i:"i-finger",n:5}]},
  {sec:"Security",items:[
-   {id:"dev",l:"Devices & checks",i:"i-laptop",kids:[["devices","Devices",775],["devchecks","Device checks",150],["geo","Geofences",10]]},
-   {id:"filters",l:"Filters",i:"i-funnel",kids:[["url","URL",0],["content","Content",0],["domains","Domain lists",0]]}]},
+  {id:"devices",l:"Devices",i:"i-laptop",n:775},
+  {id:"devchecks",l:"Device checks",i:"i-shield",n:150},
+  {id:"filters",l:"Filters",i:"i-funnel",n:0}]},
  {sec:"Access",items:[
-   {id:"apps",l:"Applications",i:"i-grid",kids:[["appsvc","Application services",33],["applications","Applications",53],["appgroups","Application groups",10]]},
-   {id:"rules",l:"Access rules",i:"i-key",n:57}]},
+  {id:"apps",l:"Applications",i:"i-grid",n:53},
+  {id:"rules",l:"Access rules",i:"i-key",n:57},
+  {id:"explorer",l:"Access explorer",i:"i-compass"}]},
  {sec:"Monitoring",items:[
-   {id:"logs",l:"Logs & reports",i:"i-chart",kids:[["live","Live users",318],["sessionlog","Session log",24],["accesslog","Access log",246],["eventlog","Event log",794]]},
-   {id:"downloads",l:"Downloads",i:"i-dl"}]},
- {sec:"Administration",items:[
-   {id:"subroles",l:"Sub admin roles",i:"i-card",n:3},
-   {id:"support",l:"Tech support",i:"i-life"}]}
+  {id:"eventlog",l:"Logs & reports",i:"i-chart",n:794},
+  {id:"downloads",l:"Downloads",i:"i-dl"}]},
+ {sec:"Settings",items:[
+  {id:"setcompany",l:"Company",i:"i-gear"},
+  {id:"setidentity",l:"Identity",i:"i-gear"},
+  {id:"setnotify",l:"Notifications",i:"i-gear"},
+  {id:"support",l:"Tech support",i:"i-life"}]}
 ];
-var CRUMB={};
-NAV.forEach(function(g){g.items.forEach(function(it){
-  if(it.kids){it.kids.forEach(function(k){CRUMB[k[0]]=g.sec+" › "+it.l+" › "+k[1];});}
-  else CRUMB[it.id]=g.sec+" › "+it.l;});});
+var CRUMB={};NAV.forEach(function(g){g.items.forEach(function(it){CRUMB[it.id]=g.sec+" › "+it.l;});});
+CRUMB.signin="Sign in";CRUMB.onboard="Identity › Onboard a user";CRUMB.setup="Overview › Set up i365";CRUMB.import="Identity › Import users";
 
-/* ======================= data ======================= */
-var FIRST=["Alen","Debajyoti","Kavya","Rohit","Priya","Arjun","Meera","Sanjay","Nikhil","Ananya","Vikram","Shruti",
-"Karan","Divya","Rahul","Neha","Aditya","Pooja","Manish","Ritu","Suresh","Tara","Imran","Lakshmi","Gaurav","Sneha",
-"Varun","Anjali","Harsh","Kiran","Deepak","Swati","Naveen","Isha","Aman","Rekha","Siddharth","Nandini","Yash","Preeti"];
-var LAST=["Joseph","Darshan","Menon","Nair","Sharma","Reddy","Iyer","Gupta","Bose","Kulkarni","Rao","Patel","Singh",
-"Chopra","Verma","Das","Malhotra","Pillai","Shetty","Banerjee"];
-var PROFILE=["Local","Active Directory","Azure AD","OpenLDAP","SAML"];
+/* ===================== data ===================== */
+var FIRST="Alen Debajyoti Kavya Rohit Priya Arjun Meera Sanjay Nikhil Ananya Vikram Shruti Karan Divya Rahul Neha Aditya Pooja Manish Ritu Suresh Tara Imran Lakshmi Gaurav Sneha Varun Anjali Harsh Kiran Deepak Swati Naveen Isha Aman Rekha Siddharth Nandini Yash Preeti".split(" ");
+var LAST="Joseph Darshan Menon Nair Sharma Reddy Iyer Gupta Bose Kulkarni Rao Patel Singh Chopra Verma Das Malhotra Pillai Shetty Banerjee".split(" ");
+var PROF=["Local","Active Directory","Azure AD","OpenLDAP","SAML"];
+var OSL=["Windows 11","Windows 10","macOS 15","Ubuntu 24.04","Android 15","iOS 18"];
 var SEEN=["just now","2 min ago","18 min ago","1 h ago","4 h ago","yesterday","3 d ago","12 d ago"];
-var OS=["Windows 11","Windows 10","macOS 15","Ubuntu 24.04","Android 15","iOS 18"];
-var USERS=[],DEV=[],RULES=[],GROUPS=[],APPS=[],LOGS=[],CHECKS=[];
+var USERS=[],DEV=[],APPS=[],GROUPS=[],RULES=[];
 (function(){
  for(var i=0;i<60;i++){var f=FIRST[i%FIRST.length],l=LAST[(i*7)%LAST.length];
-  USERS.push({id:"u"+i,first:f,last:l,n:f+" "+l,u:(f+"."+l).toLowerCase(),p:PROFILE[(i*3)%PROFILE.length],
+  USERS.push({id:"u"+i,first:f,last:l,n:f+" "+l,u:(f+"."+l).toLowerCase(),p:PROF[(i*3)%PROF.length],
    mfa:!(i%7===2||i%13===5),s:(i%11===3)?"Suspended":"Active",
    ip:"10.24."+(8+(i%6))+"."+(11+(i*13)%220),seen:SEEN[(i*5)%SEEN.length],
-   email:(f+"."+l).toLowerCase()+"@instasafe.com",cc:"+91",mobile:"98"+(10000000+i*1337).toString().slice(0,8),
-   loc:["Bengaluru","Mumbai","Pune","Delhi","Chennai"][i%5],auth:"Password + Certs",act:"Immediately on provisioning"});}
- for(var d=0;d<48;d++){DEV.push({id:"d"+d,name:(d%2?"LT":"WS")+"-"+(1040+d*3),os:OS[(d*5)%OS.length],
-  owner:FIRST[(d*3)%FIRST.length]+" "+LAST[(d*5)%LAST.length],
-  mac:("A4:"+(16+d).toString(16)+":7B:"+(32+d*3).toString(16)+":C1:"+((10+d*7)%256).toString(16)).toUpperCase(),
-  posture:(d%6===2)?"Failed":"Passed",state:(d%9===1||d%14===4)?"Pending":"Approved",seen:SEEN[(d*3)%SEEN.length]});}
- var ST=["User","User group","Application"],DT=["Application","Application group","URL filter","Custom application"];
- for(var r=0;r<34;r++){RULES.push({id:"r"+r,name:["finance-rdp","hr-portal","build-ssh","vpn-full","db-readonly","wiki-web"][r%6]+"-"+(r+1),
-  src:ST[r%3],source:USERS[(r*3)%USERS.length].u,dst:DT[(r*2)%4],dest:["FinanceApps","payroll-web","code-server","reports-db"][r%4],
-  act:(r%8===3)?"Deny":(r%13===5?"Bypass":"Allow")});}
- for(var g=0;g<22;g++){GROUPS.push({id:"g"+g,name:["Engineering","Finance","Contractors","Sales","Support","Ops"][g%6]+" "+(g+1),
-  members:6+(g*13)%180,rules:1+(g%5),mfa:g%4!==1,checks:g%3!==2,auth:PROFILE[g%PROFILE.length]});}
+   email:(f+"."+l).toLowerCase()+"@instasafe.com",groups:[(i%6),(i%6)+6],devices:1+(i%3)});}
+ for(var d=0;d<48;d++){var pend=(d%9===1||d%14===4),fail=(d%6===2);
+  DEV.push({id:"d"+d,name:(d%2?"LT":"WS")+"-"+(1040+d*3),os:OSL[(d*5)%OSL.length],
+   owner:FIRST[(d*3)%FIRST.length]+" "+LAST[(d*5)%LAST.length],
+   mac:("A4:"+(16+d).toString(16)+":7B:"+(32+d*3).toString(16)+":C1:"+((10+d*7)%256).toString(16)).toUpperCase(),
+   posture:fail?"Failed":"Passed",state:pend?"Pending":"Approved",
+   failed:fail?["Disk encryption off","OS patch level 3 behind"][d%2]:null,
+   wait:pend?(1+(d*3)%9):0,seen:SEEN[(d*3)%SEEN.length]});}
  var TY=["WEB","RDP","SSH","DB","FQDN","VNC","WFS"];
- for(var a=0;a<28;a++){APPS.push({id:"a"+a,name:["payroll","wiki","jenkins","grafana","jira","reports"][a%6]+"-"+(a+1),
-  type:TY[a%7],host:"10.6."+(2+a%8)+"."+(20+a*5),port:[443,3389,22,5432,443,5900,445][a%7],rec:(a%5===1)});}
- var ACT=["signed in","access allowed","access denied","device registered","posture failed","MFA enrolled","policy applied"];
- for(var e=0;e<40;e++){LOGS.push({id:"e"+e,t:"2026-09-20 "+String(9+(e%9)).padStart(2,"0")+":"+String((e*7)%60).padStart(2,"0")+":"+String((e*13)%60).padStart(2,"0"),
-  u:USERS[(e*5)%USERS.length].u,a:ACT[e%7],ip:"49.36."+(80+e%40)+"."+(11+(e*17)%200),
-  sev:(e%9===2)?"denied":(e%13===4?"warn":"ok")});}
- var CK=["Antivirus running","Disk encrypted","Firewall enabled","OS patch level","Screen lock","Domain joined","No jailbreak","MDM enrolled"];
- for(var c=0;c<18;c++){CHECKS.push({id:"c"+c,name:CK[c%8],os:["Windows","macOS","Linux","Android"][c%4],
-  check:["AntiVirusStatus","BitLocker","Firewall","Hotfix","ScreenLock","DomainName"][c%6],val:["Enabled","On","true","KB5031354","300","corp.local"][c%6],
-  fails:(c*7)%23});}
+ for(var a=0;a<28;a++)APPS.push({id:"a"+a,name:["payroll","wiki","jenkins","grafana","jira","reports","crm","vault"][a%8]+"-"+(a+1),
+   type:TY[a%7],host:"10.6."+(2+a%8)+"."+(20+a*5),port:[443,3389,22,5432,443,5900,445][a%7]});
+ for(var g=0;g<14;g++)GROUPS.push({id:"g"+g,name:["Engineering","Finance","Contractors","Sales","Support","Ops","Legal"][g%7]+(g>6?" (EMEA)":""),
+   members:6+(g*13)%180,apps:[(g%8),(g%8)+8,(g%8)+16]});
+ var ST=["User","Group","Application"];
+ for(var r=0;r<34;r++)RULES.push({id:"r"+r,name:["finance-rdp","hr-portal","build-ssh","vpn-full","db-readonly","wiki-web"][r%6]+"-"+(r+1),
+   src:ST[r%3],source:r%3===1?GROUPS[r%GROUPS.length].name:USERS[(r*3)%USERS.length].u,
+   dst:"Application",dest:APPS[(r*2)%APPS.length].name,
+   act:(r%8===3)?"Deny":(r%13===5?"Bypass":"Allow"),users:12+(r*37)%420,devices:8+(r*23)%260});
 })();
+var OSOPT=[];(function(){var v=["Windows","macOS","Ubuntu","Debian","RHEL","Android","iOS","Fedora","AlmaLinux","Amazon Linux"];
+ for(var i=0;i<2393;i++)OSOPT.push(v[i%v.length]+" "+(10+i%40)+(i%7?"."+(i%13):"")+(i%11?" build "+(1000+i):""));})();
 
-/* ======================= state ======================= */
-var S={page:"dashboard",q:"",sel:{},pageIdx:0,pageSize:50,data:"normal",sheet:null,editing:null,tab:0,
-        added:[],hidden:{},db:null,menu:null};
-var LSK="i365va";
+/* ===================== state ===================== */
+var S={page:"dashboard",q:"",sel:{},sort:null,dir:"asc",tab:"all",cols:null,view:"",
+       data:"normal",sheet:null,editing:null,added:[],hidden:{},db:null,
+       wiz:null,exp:null,imp:null,approved:{}};
+var LSK="i365vb";
 function lg(k,d){try{var v=localStorage.getItem(LSK+":"+k);return v===null?d:JSON.parse(v);}catch(e){return d;}}
 function ls(k,v){try{localStorage.setItem(LSK+":"+k,JSON.stringify(v));}catch(e){}}
-var storeMsg="Local only — records you add stay in this browser.";
-
+var storeMsg="Local only — created records stay in this browser.";
 (function(){
-  S.hidden=lg("hidden",{});
-  if(!(window.claude&&window.claude.use)){S.added=lg("added",[]);return;}
-  window.claude.use("db").then(function(db){
-    if(!db){S.added=lg("added",[]);syncRail();return;}
-    S.db=db;storeMsg="Shared — records you add are saved to this artifact and visible to everyone on the team.";
-    db.collection("tenant_users").orderBy("createdAt","desc").limit(200).onSnapshot(function(sn){
-      S.added=sn.docs.map(function(x){var o=x.data()||{};o.id=x.id;o.added=true;return o;});render();syncRail();
-    },function(){storeMsg="Local only — shared storage stopped responding.";S.added=lg("added",[]);render();syncRail();});
-    syncRail();
-  }).catch(function(){S.added=lg("added",[]);syncRail();});
+ S.hidden=lg("hidden",{});S.approved=lg("approved",{});S.wiz=lg("wizdraft",null);
+ if(!(window.claude&&window.claude.use)){S.added=lg("added",[]);return;}
+ window.claude.use("db").then(function(db){
+  if(!db){S.added=lg("added",[]);syncRail();return;}
+  S.db=db;storeMsg="Shared — created records save to this artifact and appear for everyone on the team.";
+  db.collection("tenant_users").orderBy("createdAt","desc").limit(200).onSnapshot(function(sn){
+   S.added=sn.docs.map(function(x){var o=x.data()||{};o.id=x.id;o.added=true;return o;});render();syncRail();
+  },function(){storeMsg="Local only — shared storage stopped responding.";S.added=lg("added",[]);render();});
+  syncRail();
+ }).catch(function(){S.added=lg("added",[]);syncRail();});
 })();
 
-/* ======================= helpers ======================= */
+/* ===================== helpers ===================== */
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function ic(i){return '<svg><use href="#'+i+'"/></svg>';}
-function init2(n){return n.split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();}
+function init2(n){return String(n||"").split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();}
 function selIds(){return Object.keys(S.sel).filter(function(k){return S.sel[k];});}
-function toast(title,msg,kind){
-  var w=document.getElementById("toasts");
-  var col=kind==="bad"?"var(--bad)":kind==="att"?"var(--c600)":"var(--ok)";
-  var el=document.createElement("div");el.className="toast";el.setAttribute("role","status");
-  el.innerHTML='<span class="ti" style="color:'+col+'">'+ic(kind==="bad"||kind==="att"?"i-warn":"i-check")+'</span>'+
-    '<div style="flex:1"><b>'+esc(title)+'</b><span>'+esc(msg||"")+'</span></div>'+
-    '<button class="cl" aria-label="Dismiss">'+ic("i-x")+'</button>';
-  el.querySelector(".cl").onclick=function(){el.remove();};
-  w.appendChild(el);setTimeout(function(){el.remove();},6000);
-}
-function closeLayer(){document.getElementById("layer").innerHTML="";S.menu=null;}
-
-/* ======================= rows / lists ======================= */
-function userList(){
-  if(S.data==="zero")return[];
-  var base=S.added.concat(USERS.filter(function(u){return !S.hidden[u.id];}));
-  if(S.data==="nomatch")return[];
-  if(!S.q)return base;
-  var q=S.q.toLowerCase();
-  return base.filter(function(u){return((u.first||"")+" "+(u.last||"")+" "+u.u+" "+(u.email||"")+" "+(u.ip||"")).toLowerCase().indexOf(q)>=0;});
-}
-function pill(kind,txt,dot){return '<span class="pill p-'+kind+'">'+(dot?'<i></i>':'')+esc(txt)+'</span>';}
+function pill(k,t,dot){return '<span class="pill p-'+k+'">'+(dot?'<i></i>':'')+esc(t)+'</span>';}
 function quiet(t){return '<span class="quiet">'+esc(t)+'</span>';}
-
-function tfoot(total,shown){
-  var start=total?S.pageIdx*S.pageSize+1:0,end=Math.min(total,(S.pageIdx+1)*S.pageSize);
-  var max=Math.max(0,Math.ceil(total/S.pageSize)-1);
-  return '<div class="tfoot"><span>Rows per page</span>'+
-   '<select id="psz">'+[25,50,100].map(function(n){return '<option'+(n===S.pageSize?" selected":"")+'>'+n+'</option>';}).join("")+'</select>'+
-   '<span class="rt"><span>'+start+'–'+end+' of '+total.toLocaleString()+'</span>'+
-   '<button class="pbtn" id="pprev"'+(S.pageIdx===0?" disabled":"")+' aria-label="Previous page">'+ic("i-l")+'</button>'+
-   '<button class="pbtn" id="pnext"'+(S.pageIdx>=max?" disabled":"")+' aria-label="Next page">'+ic("i-r")+'</button></span></div>';
+function toast(title,msg,kind){
+ var w=document.getElementById("toasts");
+ var col=kind==="bad"?"var(--bad)":kind==="att"?"var(--c600)":"var(--ok)";
+ var el=document.createElement("div");el.className="toast";el.setAttribute("role","status");
+ el.innerHTML='<span class="ti" style="color:'+col+'">'+ic(kind==="bad"||kind==="att"?"i-warn":"i-check")+'</span>'+
+  '<div style="flex:1"><b>'+esc(title)+'</b><span>'+esc(msg||"")+'</span></div>'+
+  '<button class="cl" aria-label="Dismiss">'+ic("i-x")+'</button>';
+ el.querySelector(".cl").onclick=function(){el.remove();};
+ w.appendChild(el);setTimeout(function(){el.remove();},6500);
 }
-function zero(icon,title,body,acts){
-  return '<div class="zero"><div class="zi">'+ic(icon)+'</div><h3>'+esc(title)+'</h3><p>'+body+'</p>'+
-   '<div class="za">'+(acts||"")+'</div></div>';
-}
-function strip(inner){return '<div class="strip">'+inner+'</div>';}
-function searchBox(ph){return '<span class="search">'+ic("i-search")+'<input id="q" value="'+esc(S.q)+'" placeholder="'+esc(ph)+'"></span>';}
+function closeLayer(){document.getElementById("layer").innerHTML="";}
+function allUsers(){return S.added.concat(USERS.filter(function(u){return !S.hidden[u.id];}));}
+function devState(d){return S.approved[d.id]?"Approved":d.state;}
+function pendingDevs(){return DEV.filter(function(d){return devState(d)==="Pending"&&d.posture!=="Failed";});}
+function failingDevs(){return DEV.filter(function(d){return d.posture==="Failed";});}
 
-/* ======================= generic list engine ======================= */
-/* 54 production list pages share one template — so does this. */
-var LISTS={
- usergroups:{title:"User groups",obj:"group",icon:"i-users",total:46,rows:GROUPS,
-   sub:function(){return "46 groups · 1,820 members across all groups";},
-   cols:["Group","Auth profile","Members","Access rules","2FA","Device checks"],
-   chips:'<button class="chip">Auth profile <b>All</b></button>',
-   row:function(g){return '<td><b style="font-weight:450">'+esc(g.name)+'</b></td>'+
-     '<td class="uname">'+esc(g.auth)+'</td><td class="tech">'+g.members+'</td><td class="tech">'+g.rules+'</td>'+
-     '<td>'+(g.mfa?quiet("Required"):pill("att","Not required",1))+'</td>'+
-     '<td>'+(g.checks?quiet("Enforced"):pill("att","Off",1))+'</td>';},
-   search:function(g,q){return g.name.toLowerCase().indexOf(q)>=0;}},
- applications:{title:"Applications",obj:"application",icon:"i-grid",total:53,rows:APPS,
-   sub:function(){return "53 applications · 7 types · 5 with session recording";},
-   cols:["Application","Type","Host","Port","Session recording"],
-   chips:'<button class="chip">Type <b>All</b></button>',
-   row:function(a){return '<td><b style="font-weight:450">'+esc(a.name)+'</b></td>'+
-     '<td class="uname">'+esc(a.type)+'</td><td class="tech">'+esc(a.host)+'</td><td class="tech">'+a.port+'</td>'+
-     '<td>'+(a.rec?pill("ok","Recording",1):quiet("Off"))+'</td>';},
-   search:function(a,q){return (a.name+a.type+a.host).toLowerCase().indexOf(q)>=0;}},
- devchecks:{title:"Device checks",obj:"device check",icon:"i-shield",total:150,rows:CHECKS,
-   sub:function(){return "150 checks · 7 devices currently failing at least one";},
-   cols:["Rule","Operating system","Check","Expected value","Failing devices"],
-   chips:'<button class="chip">OS <b>All</b></button>',
-   row:function(c){return '<td><b style="font-weight:450">'+esc(c.name)+'</b></td>'+
-     '<td class="uname">'+esc(c.os)+'</td><td class="uname">'+esc(c.check)+'</td>'+
-     '<td class="tech">'+esc(c.val)+'</td>'+
-     '<td>'+(c.fails?pill("att",c.fails+" failing",1):quiet("None"))+'</td>';},
-   search:function(c,q){return (c.name+c.check+c.os).toLowerCase().indexOf(q)>=0;}},
- eventlog:{title:"Event log",obj:"event",icon:"i-chart",total:794,rows:LOGS,noAdd:true,
-   sub:function(){return "794 events today · 4 denied · 3 warnings";},
-   cols:["Time","User","Event","Source IP",""],
-   chips:'<button class="chip on">Range <b>Today</b></button><button class="chip">Severity <b>Any</b></button>',
-   row:function(e){return '<td class="tech">'+esc(e.t)+'</td><td class="uname">'+esc(e.u)+'</td>'+
-     '<td>'+esc(e.a)+'</td><td class="tech">'+esc(e.ip)+'</td>'+
-     '<td>'+(e.sev==="denied"?pill("att","Denied",1):e.sev==="warn"?pill("att","Warning",1):quiet("OK"))+'</td>';},
-   search:function(e,q){return (e.u+e.a+e.ip).toLowerCase().indexOf(q)>=0;}},
- url:{title:"URL filter",obj:"URL filter",icon:"i-funnel",total:0,rows:[],
-   sub:function(){return "Nothing configured yet";},
-   cols:["Name","URL","Match type"],
-   zeroBody:"A URL filter matches web addresses by exact string, wildcard or regular expression. Use one as the destination of an access rule to allow or block a set of sites.",
-   row:function(){return"";},search:function(){return false;}},
- blocked:{title:"Blocked users",obj:"blocked user",icon:"i-shield",total:0,rows:[],noAdd:true,
-   sub:function(){return "Nobody is currently blocked";},
-   cols:["IP","Username","Blocked at","Blocked until"],
-   zeroKind:"allclear",
-   zeroBody:"Users are blocked automatically after repeated failed sign-ins. An empty list is the healthy state.",
-   row:function(){return"";},search:function(){return false;}}
+/* ===================== B0 · list template ===================== */
+var COLDEFS={
+ users:[{k:"n",l:"Name",on:1},{k:"u",l:"Username",on:1},{k:"p",l:"Auth profile",on:1},
+        {k:"ip",l:"Last IP",on:1,mono:1},{k:"mfa",l:"MFA",on:1},{k:"s",l:"Status",on:1},
+        {k:"seen",l:"Last seen",on:1},{k:"email",l:"Email",on:0},{k:"devices",l:"Devices",on:0,mono:1}],
+ devices:[{k:"name",l:"Device",on:1},{k:"os",l:"Operating system",on:1},{k:"owner",l:"Owner",on:1},
+        {k:"mac",l:"MAC address",on:1,mono:1},{k:"posture",l:"Posture",on:1},{k:"state",l:"State",on:1},
+        {k:"seen",l:"Last seen",on:1},{k:"wait",l:"Waiting",on:0,mono:1}]
 };
-
-function listPage(key){
-  var C=LISTS[key],rows=C.rows.slice(),q=S.q.toLowerCase();
-  if(S.data==="zero")rows=[];
-  else if(S.data==="nomatch")rows=[];
-  else if(q)rows=rows.filter(function(r){return C.search(r,q);});
-  var total=(S.data==="zero"||S.data==="nomatch")?0:(q?rows.length:(C.total||rows.length));
-  var n=selIds().length;
-  var html='<div class="pad phead"><div><h1>'+esc(C.title)+'</h1><p>'+esc(C.sub())+'</p></div><div class="acts">'+
-    '<button class="btn">'+ic("i-dl")+'CSV</button>'+
-    (C.noAdd?"":'<button class="btn btn-primary" id="addBtn">'+ic("i-plus")+'Add '+esc(C.obj)+'</button>')+'</div></div>';
-  html+=strip(searchBox("Search "+C.title.toLowerCase())+(C.chips||"")+
-    (n?'<span class="selnote">'+n+' selected</span>':"")+'<span class="spacer"></span>'+
-    '<button class="btn btn-quiet">Bulk operations</button>'+
-    '<button class="btn btn-danger" id="delBtn"'+(n?"":" disabled")+'>'+ic("i-trash")+'Delete</button>');
-  if(!rows.length&&total===0){
-    if(q||S.data==="nomatch")
-      html+=zero("i-search","No "+C.obj+"s match “"+esc(q||"zz-no-match")+"”",
-        "Try a shorter term, or clear the search to see everything.",
-        '<button class="btn" id="clrBtn">Clear search</button>');
-    else if(C.zeroKind==="allclear")
-      html+=zero("i-shield","Nothing here, and that is correct",C.zeroBody,"");
-    else
-      html+=zero(C.icon,"Add your first "+C.obj,C.zeroBody||("Nothing has been configured here yet."),
-        '<button class="btn btn-primary" id="addBtn2">'+ic("i-plus")+'Add '+esc(C.obj)+'</button>');
-  }else{
-    var slice=rows.slice(0,S.pageSize);
-    html+='<table><thead><tr><th class="cb"><input type="checkbox" id="allcb" aria-label="Select all"></th>'+
-      C.cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join("")+'<th></th></tr></thead><tbody>';
-    slice.forEach(function(r){
-      html+='<tr data-id="'+r.id+'"'+(S.sel[r.id]?' class="sel"':'')+'>'+
-        '<td class="cb"><input type="checkbox" data-cb="'+r.id+'"'+(S.sel[r.id]?" checked":"")+' aria-label="Select row"></td>'+
-        C.row(r)+'<td style="text-align:right"><button class="rowbtn" data-menu="'+r.id+'" aria-label="Row actions">'+ic("i-dots")+'</button></td></tr>';
-    });
-    html+='</tbody></table>'+tfoot(total,slice.length);
-  }
-  return html;
+function cols(key){
+ if(!S.cols)S.cols=lg("cols",{});
+ if(!S.cols[key])S.cols[key]=COLDEFS[key].filter(function(c){return c.on;}).map(function(c){return c.k;});
+ return S.cols[key];
+}
+function sortRows(rows,key){
+ if(!S.sort)return rows;
+ var k=S.sort,dir=S.dir==="asc"?1:-1;
+ return rows.slice().sort(function(a,b){
+  var x=a[k],y=b[k];
+  if(k==="mfa"){x=x?1:0;y=y?1:0;}
+  if(typeof x==="number"&&typeof y==="number")return (x-y)*dir;
+  return String(x==null?"":x).localeCompare(String(y==null?"":y))*dir;});
+}
+function th(key,c){
+ var on=S.sort===c.k;
+ return '<th class="srt" data-sort="'+c.k+'"'+(on?' aria-sort="'+(S.dir==="asc"?"ascending":"descending")+'"':'')+'>'+
+  esc(c.l)+'<span class="ar">'+(on?(S.dir==="asc"?"▲":"▼"):"")+'</span></th>';
+}
+function ftabs(list){
+ return '<div class="ftabs" role="tablist">'+list.map(function(t){
+  return '<button class="ftab" role="tab" data-ftab="'+t[0]+'" aria-selected="'+(S.tab===t[0]?"true":"false")+'">'+
+   esc(t[1])+'<span class="n'+(t[3]?" att":"")+'">'+t[2]+'</span></button>';}).join("")+'</div>';
+}
+function listTools(key,extra){
+ var n=selIds().length;
+ return '<div class="strip">'+
+  '<span class="search">'+ic("i-search")+'<input id="q" value="'+esc(S.q)+'" placeholder="Search"></span>'+
+  (extra||"")+
+  (n?'<span class="selnote">'+n+' selected</span>':"")+
+  '<span class="spacer"></span>'+
+  '<button class="chip" id="viewBtn">'+ic("i-save")+' View <b>'+(S.view||"Default")+'</b></button>'+
+  '<button class="chip" id="colBtn">'+ic("i-cols")+' Columns</button>'+
+  '<button class="btn btn-danger" id="delBtn"'+(n?"":" disabled")+'>'+ic("i-trash")+'Delete</button>'+
+ '</div>';
+}
+function colMenu(btn,key){
+ var l=document.getElementById("layer"),r=btn.getBoundingClientRect(),cur=cols(key);
+ l.innerHTML='<div class="menu" style="top:'+(r.bottom+6)+'px;left:'+Math.max(8,r.right-210)+'px">'+
+  '<div class="lbl">Columns shown</div>'+COLDEFS[key].map(function(c){
+   return '<label><input type="checkbox" data-col="'+c.k+'"'+(cur.indexOf(c.k)>=0?" checked":"")+'> '+esc(c.l)+'</label>';
+  }).join("")+'</div>';
+ var close=function(e){if(!e||!e.target.closest(".menu")){closeLayer();document.removeEventListener("mousedown",close);}};
+ setTimeout(function(){document.addEventListener("mousedown",close);},0);
+ l.querySelectorAll("[data-col]").forEach(function(cb){
+  cb.onchange=function(){
+   var k=cb.getAttribute("data-col"),arr=cols(key);
+   if(cb.checked){if(arr.indexOf(k)<0)arr.push(k);}else{var i=arr.indexOf(k);if(i>=0)arr.splice(i,1);}
+   S.cols[key]=arr;ls("cols",S.cols);render();};});
+}
+function viewMenu(btn,key){
+ var l=document.getElementById("layer"),r=btn.getBoundingClientRect();
+ var saved=lg("views",{})[key]||{};
+ var names=Object.keys(saved);
+ l.innerHTML='<div class="menu" style="top:'+(r.bottom+6)+'px;left:'+Math.max(8,r.right-210)+'px">'+
+  '<div class="lbl">Saved views</div>'+
+  '<button data-v="">Default</button>'+
+  names.map(function(n){return '<button data-v="'+esc(n)+'">'+esc(n)+'</button>';}).join("")+
+  '<hr><button data-save="1">'+ic("i-plus")+'Save current view…</button></div>';
+ var close=function(e){if(!e||!e.target.closest(".menu")){closeLayer();document.removeEventListener("mousedown",close);}};
+ setTimeout(function(){document.addEventListener("mousedown",close);},0);
+ l.querySelectorAll("[data-v]").forEach(function(b){b.onclick=function(){
+  var v=b.getAttribute("data-v");closeLayer();
+  if(v&&saved[v]){S.tab=saved[v].tab;S.sort=saved[v].sort;S.dir=saved[v].dir;S.q=saved[v].q||"";
+   if(saved[v].cols){S.cols=S.cols||{};S.cols[key]=saved[v].cols.slice();}}
+  else{S.tab="all";S.sort=null;S.q="";}
+  S.view=v;render();};});
+ l.querySelector("[data-save]").onclick=function(){
+  closeLayer();
+  var nm=prompt("Name this view","Pending, oldest first");
+  if(!nm)return;
+  var all=lg("views",{});all[key]=all[key]||{};
+  all[key][nm]={tab:S.tab,sort:S.sort,dir:S.dir,q:S.q,cols:cols(key).slice()};
+  ls("views",all);S.view=nm;render();
+  toast("View saved","“"+nm+"” is available to everyone in this tenant.","ok");};
 }
 
-/* ======================= users ======================= */
-function usersPage(){
-  var rows=userList(),q=S.q.toLowerCase();
-  var total=(S.data==="zero"||S.data==="nomatch")?0:(q?rows.length:1820+S.added.length);
-  var n=selIds().length;
-  var noMfa=11,susp=4;
-  var html='<div class="pad phead"><div><h1>Users</h1><p>'+
-    (total?total.toLocaleString()+" total · "+noMfa+" without MFA · "+susp+" suspended":"Nothing configured yet")+
-    '</p></div><div class="acts"><button class="btn">'+ic("i-dl")+'CSV</button>'+
-    '<button class="btn btn-primary" id="addBtn">'+ic("i-plus")+'Add user</button></div></div>';
-  html+=strip(searchBox("Search users, usernames or IPs")+
-    '<button class="chip">Profile <b>All</b></button><button class="chip">Status <b>Any</b></button>'+
-    (n?'<span class="selnote">'+n+' selected</span>':"")+'<span class="spacer"></span>'+
-    '<button class="btn btn-quiet">Bulk operations</button>'+
-    '<button class="btn btn-danger" id="delBtn"'+(n?"":" disabled")+'>'+ic("i-trash")+'Delete</button>');
-  if(!rows.length){
-    if(q||S.data==="nomatch")
-      html+=zero("i-search","No users match “"+esc(q||"zz-no-match")+"”",
-        "Try a shorter term, or clear the search to see all 1,820 users.",
-        '<button class="btn" id="clrBtn">Clear search</button>');
-    else
-      html+=zero("i-users","Add your first user",
-        "Users reach applications through access rules. Create one here, or connect a directory and let it provision people for you.",
-        '<button class="btn btn-primary" id="addBtn2">'+ic("i-plus")+'Add user</button>'+
-        '<button class="btn" id="dirBtn">Connect a directory</button>');
-  }else{
-    var slice=rows.slice(0,S.pageSize);
-    html+='<table><thead><tr><th class="cb"><input type="checkbox" id="allcb" aria-label="Select all"></th>'+
-     '<th>Name</th><th>Username</th><th>Auth profile</th><th>Last IP</th><th>MFA</th><th>Status</th><th>Last seen</th><th></th>'+
-     '</tr></thead><tbody>';
-    slice.forEach(function(u){
-      html+='<tr class="click'+(S.sel[u.id]?" sel":"")+'" data-user="'+u.id+'">'+
-       '<td class="cb"><input type="checkbox" data-cb="'+u.id+'"'+(S.sel[u.id]?" checked":"")+' aria-label="Select '+esc(u.n||(u.first+" "+u.last))+'"></td>'+
-       '<td><div class="who"><span class="av">'+esc(init2(u.n||(u.first+" "+u.last)))+'</span><b>'+esc(u.n||(u.first+" "+u.last))+'</b></div></td>'+
-       '<td class="uname">'+esc(u.u||u.username)+'</td><td class="uname">'+esc(u.p||"Local")+'</td>'+
-       '<td class="tech">'+esc(u.ip||"—")+'</td>'+
-       '<td>'+(u.mfa?pill("ok","Enrolled",1):pill("att","Not enrolled",0))+'</td>'+
-       '<td>'+((u.s||"Active")==="Active"?quiet("Active"):pill("att","Suspended",1))+'</td>'+
-       '<td class="quiet">'+esc(u.seen||"never")+'</td>'+
-       '<td style="text-align:right"><button class="rowbtn" data-menu="'+u.id+'" aria-label="Row actions">'+ic("i-dots")+'</button></td></tr>';
-    });
-    html+='</tbody></table>'+tfoot(total,slice.length);
-  }
-  return html;
-}
-
-/* ======================= devices ======================= */
-function devicesPage(){
-  var rows=DEV.slice(),q=S.q.toLowerCase();
-  if(S.data==="zero"||S.data==="nomatch")rows=[];
-  else if(q)rows=rows.filter(function(d){return (d.name+d.os+d.owner+d.mac).toLowerCase().indexOf(q)>=0;});
-  var total=rows.length?(q?rows.length:775):0;
-  var n=selIds().length,pend=6;
-  var html='<div class="pad phead"><div><h1>Devices</h1><p>'+
-    (total?"775 total · 6 pending approval · 7 failing posture":"Nothing registered yet")+
-    '</p></div><div class="acts"><button class="btn">'+ic("i-dl")+'CSV</button>'+
-    '<button class="btn btn-primary" id="apprBtn">'+ic("i-check")+'Approve '+pend+' pending</button></div></div>';
-  html+=strip(searchBox("Search devices, owners or MAC")+
-    '<button class="chip">OS <b>All</b></button><button class="chip">Posture <b>Any</b></button>'+
-    '<button class="chip">State <b>Any</b></button>'+
-    (n?'<span class="selnote">'+n+' selected</span>':"")+'<span class="spacer"></span>'+
-    '<button class="btn btn-quiet">Bulk operations</button>'+
-    '<button class="btn btn-danger" id="delBtn"'+(n?"":" disabled")+'>'+ic("i-trash")+'Remove</button>');
-  if(!rows.length){
-    html+=(q||S.data==="nomatch")
-      ? zero("i-search","No devices match “"+esc(q||"zz-no-match")+"”","Try a shorter term, or clear the search.",
-          '<button class="btn" id="clrBtn">Clear search</button>')
-      : zero("i-laptop","No devices registered yet",
-          "A device appears here the first time someone signs in with the agent installed. There is nothing to do until then.",
-          '<button class="btn" id="dlBtn">Download the agent</button>');
-  }else{
-    var slice=rows.slice(0,S.pageSize);
-    html+='<table><thead><tr><th class="cb"><input type="checkbox" id="allcb" aria-label="Select all"></th>'+
-     '<th>Device</th><th>Operating system</th><th>Owner</th><th>MAC address</th><th>Posture</th><th>State</th><th>Last seen</th><th></th>'+
-     '</tr></thead><tbody>';
-    slice.forEach(function(d){
-      html+='<tr'+(S.sel[d.id]?' class="sel"':'')+' data-id="'+d.id+'">'+
-       '<td class="cb"><input type="checkbox" data-cb="'+d.id+'"'+(S.sel[d.id]?" checked":"")+' aria-label="Select '+esc(d.name)+'"></td>'+
-       '<td><b style="font-weight:450">'+esc(d.name)+'</b></td><td class="uname">'+esc(d.os)+'</td>'+
-       '<td class="uname">'+esc(d.owner)+'</td><td class="tech">'+esc(d.mac)+'</td>'+
-       '<td>'+(d.posture==="Passed"?quiet("Passed"):pill("att","Failed",1))+'</td>'+
-       '<td>'+(d.state==="Approved"?quiet("Approved"):pill("att","Pending",1))+'</td>'+
-       '<td class="quiet">'+esc(d.seen)+'</td>'+
-       '<td style="text-align:right"><button class="rowbtn" data-menu="'+d.id+'" aria-label="Row actions">'+ic("i-dots")+'</button></td></tr>';
-    });
-    html+='</tbody></table>'+tfoot(total,slice.length);
-  }
-  return html;
-}
-
-/* ======================= access rules ======================= */
-function rulesPage(){
-  var rows=RULES.slice(),q=S.q.toLowerCase();
-  if(S.data==="zero"||S.data==="nomatch")rows=[];
-  else if(q)rows=rows.filter(function(r){return (r.name+r.source+r.dest).toLowerCase().indexOf(q)>=0;});
-  var total=rows.length?(q?rows.length:57):0;
-  var n=selIds().length;
-  var html='<div class="pad phead"><div><h1>Access rules</h1><p>'+
-    (total?"57 rules · 48 allow · 6 deny · 3 bypass":"No traffic is permitted yet")+
-    '</p></div><div class="acts"><button class="btn">'+ic("i-dl")+'CSV</button>'+
-    '<button class="btn btn-primary" id="addBtn">'+ic("i-plus")+'Add rule</button></div></div>';
-  html+=strip(searchBox("Search rules, sources or destinations")+
-    '<button class="chip">Action <b>Any</b></button><button class="chip">Source type <b>All</b></button>'+
-    (n?'<span class="selnote">'+n+' selected</span>':"")+'<span class="spacer"></span>'+
-    '<button class="btn btn-quiet">Bulk operations</button>'+
-    '<button class="btn btn-danger" id="delBtn"'+(n?"":" disabled")+'>'+ic("i-trash")+'Delete</button>');
-  if(!rows.length){
-    html+=(q||S.data==="nomatch")
-      ? zero("i-search","No rules match “"+esc(q||"zz-no-match")+"”","Try a shorter term, or clear the search.",
-          '<button class="btn" id="clrBtn">Clear search</button>')
-      : zero("i-key","Create your first access rule",
-          "Nobody can reach anything until a rule allows it. A rule connects a source — a user, a group or an application — to a destination.",
-          '<button class="btn btn-primary" id="addBtn2">'+ic("i-plus")+'Add rule</button>');
-  }else{
-    var slice=rows.slice(0,S.pageSize);
-    html+='<table><thead><tr><th class="cb"><input type="checkbox" id="allcb" aria-label="Select all"></th>'+
-     '<th>Rule</th><th>Source type</th><th>Source</th><th>Destination type</th><th>Destination</th><th>Action</th><th></th>'+
-     '</tr></thead><tbody>';
-    slice.forEach(function(r){
-      html+='<tr'+(S.sel[r.id]?' class="sel"':'')+' data-id="'+r.id+'">'+
-       '<td class="cb"><input type="checkbox" data-cb="'+r.id+'"'+(S.sel[r.id]?" checked":"")+' aria-label="Select '+esc(r.name)+'"></td>'+
-       '<td><b style="font-weight:450">'+esc(r.name)+'</b></td><td class="uname">'+esc(r.src)+'</td>'+
-       '<td class="uname">'+esc(r.source)+'</td><td class="uname">'+esc(r.dst)+'</td><td class="uname">'+esc(r.dest)+'</td>'+
-       '<td>'+(r.act==="Allow"?quiet("Allow"):pill("att",r.act,1))+'</td>'+
-       '<td style="text-align:right"><button class="rowbtn" data-menu="'+r.id+'" aria-label="Row actions">'+ic("i-dots")+'</button></td></tr>';
-    });
-    html+='</tbody></table>'+tfoot(total,slice.length);
-  }
-  return html;
-}
-
-/* ======================= dashboard ======================= */
+/* ===================== pages ===================== */
 function bars(rows){return rows.map(function(r,i){
-  return '<div class="barrow"><span>'+esc(r[0])+'</span><span class="bartrack">'+
-   '<span class="barfill'+(i?" s"+(i+1):"")+'" style="width:'+r[2]+'%"></span></span>'+
-   '<span class="barval">'+r[1]+'</span></div>';}).join("");}
+ return '<div class="barrow"><span>'+esc(r[0])+'</span><span class="bartrack">'+
+  '<span class="barfill'+(i?" s"+(i+1):"")+'" style="width:'+r[2]+'%"></span></span>'+
+  '<span class="barval">'+r[1]+'</span></div>';}).join("");}
+
 function dashboard(){
-  if(S.data==="zero"){
-    return '<div class="pad phead"><div><h1>Dashboard</h1><p>veno.instasafe.com · nothing configured yet</p></div></div>'+
-      zero("i-gauge","Your tenant is empty",
-       "Connect a gateway, add your first users and write an access rule. The dashboard fills in as each piece lands.",
-       '<button class="btn btn-primary" id="qsBtn">'+ic("i-check")+'Open the setup checklist</button>');
-  }
-  var spark=[14,20,17,26,22,31,27,35,30,38,34,41,37,44,40,47,52,49,44,51,58,54,49,46];
-  var mx=Math.max.apply(null,spark);
-  return '<div class="pad phead"><div><h1>Dashboard</h1>'+
-   '<p>veno.instasafe.com · 1,820 users · 775 devices · 4 gateways</p></div>'+
-   '<div class="acts"><button class="btn">'+ic("i-dl")+'Export</button></div></div>'+
-   '<div class="pad band"><span class="fdot"></span><div><h2>Two things need your attention</h2>'+
+ if(S.data==="zero")return setupPage(true);
+ var pend=pendingDevs().length,fail=failingDevs().length,noMfa=allUsers().filter(function(u){return !u.mfa;}).length;
+ return '<div class="pad phead"><div><h1>Dashboard</h1>'+
+  '<p>veno.instasafe.com · 1,820 users · 775 devices · 4 gateways</p></div>'+
+  '<div class="acts"><button class="btn" id="goSetup">'+ic("i-check")+'Setup checklist</button>'+
+  '<button class="btn btn-primary" id="goOnboard">'+ic("i-plus")+'Onboard a user</button></div></div>'+
+  (pend||fail?'<div class="pad band"><span class="fdot"></span><div><h2>'+
+   ((pend?1:0)+(fail?1:0)===1?"One thing needs":"Two things need")+' your attention</h2>'+
    '<div class="sub">Everything else is healthy. Four gateways reachable, nothing blocked today.</div></div>'+
    '<div class="bandacts">'+
-   '<button class="ba" id="baDev"><span class="n">6</span><span class="l">Devices pending<span>oldest 6 days</span></span></button>'+
-   '<button class="ba" id="baMfa"><span class="n">11</span><span class="l">Users without MFA<span>mostly Local profile</span></span></button>'+
-   '<button class="btn" id="baBoth">Review both</button></div></div>'+
-   '<div class="pad stats">'+
-   '<div class="stat"><div class="sl">Online gateways</div><div class="sv">4<i>&thinsp;/&thinsp;4</i></div><div class="sm">All reachable</div></div>'+
-   '<div class="stat"><div class="sl">Online users</div><div class="sv">318<i>&thinsp;/&thinsp;1,820</i></div><div class="sm">17% connected now</div></div>'+
-   '<div class="stat"><div class="sl">Licences used</div><div class="sv">1,820<i>&thinsp;/&thinsp;2,000</i></div><div class="sm">180 remaining</div></div>'+
-   '<div class="stat"><div class="sl">Subscription renews</div><div class="sv">31 Dec 2026</div><div class="sm">103 days</div></div>'+
-   '</div>'+
-   '<div class="pad cols"><div class="col">'+
-   '<div class="chead"><h3>Devices by operating system</h3><span class="hint">All time</span></div>'+
-   bars([["Windows 11",402,100],["macOS 15",186,46],["Ubuntu 24.04",104,26],["Android 15",83,21]])+
-   '</div><div class="col">'+
-   '<div class="chead"><h3>Sessions today</h3><span class="hint">Hourly · peak 58</span></div>'+
-   '<div class="sparkwrap">'+spark.map(function(v,i){
-     return '<span class="'+(v===mx?"hi":"")+'" style="height:'+Math.round(v/mx*100)+'%"></span>';}).join("")+'</div>'+
-   '<div style="display:flex;justify-content:space-between;color:var(--mute);font-size:11px;margin-top:7px">'+
-   '<span>00:00</span><span>12:00</span><span>23:00</span></div>'+
-   '</div></div>'+
-   '<div class="pad cols"><div class="col">'+
-   '<div class="chead"><h3>Top denied destinations</h3><span class="hint">Today</span></div>'+
-   bars([["reports-db",14,100],["finance-rdp",9,64],["payroll-web",5,36],["code-server",2,14]])+
-   '</div><div class="col">'+
-   '<div class="chead"><h3>Top blocked services</h3><span class="hint">Today</span></div>'+
-   '<div class="zero" style="padding:30px 12px 6px"><div class="zi">'+ic("i-shield")+'</div>'+
-   '<h3>Nothing blocked today</h3><p>No traffic hit a block rule in this window. That is the healthy state.</p></div>'+
-   '</div></div>';
+   (pend?'<button class="ba" data-go="approvals"><span class="n">'+pend+'</span><span class="l">Devices waiting'+
+     '<span>oldest '+Math.max.apply(null,pendingDevs().map(function(d){return d.wait;}))+' days</span></span></button>':"")+
+   (fail?'<button class="ba" data-go="approvals"><span class="n">'+fail+'</span><span class="l">Failing posture'+
+     '<span>needs a decision</span></span></button>':"")+
+   '<button class="btn" data-go="approvals">Open the queue</button></div></div>':"")+
+  '<div class="pad stats">'+
+  '<div class="stat"><div class="sl">Online gateways</div><div class="sv">4<i>&thinsp;/&thinsp;4</i></div><div class="sm">All reachable</div></div>'+
+  '<div class="stat"><div class="sl">Online users</div><div class="sv">318<i>&thinsp;/&thinsp;1,820</i></div><div class="sm">17% connected now</div></div>'+
+  '<div class="stat"><div class="sl">Users without MFA</div><div class="sv">'+noMfa+'</div><div class="sm">mostly Local profile</div></div>'+
+  '<div class="stat"><div class="sl">Subscription renews</div><div class="sv">31 Dec 2026</div><div class="sm">103 days</div></div>'+
+  '</div>'+
+  '<div class="pad cols"><div class="col">'+
+  '<div class="chead"><h3>Devices by operating system</h3><span class="hint">All time</span></div>'+
+  bars([["Windows 11",402,100],["macOS 15",186,46],["Ubuntu 24.04",104,26],["Android 15",83,21]])+
+  '</div><div class="col">'+
+  '<div class="chead"><h3>Top blocked services</h3><span class="hint">Today</span></div>'+
+  '<div class="zero" style="padding:34px 12px 8px"><div class="zi">'+ic("i-shield")+'</div>'+
+  '<h3>Nothing blocked today</h3><p>No traffic hit a block rule in this window. That is the healthy state.</p></div>'+
+  '</div></div>';
 }
 
-/* ======================= asset inventory ======================= */
-function assetsPage(){
-  if(S.data==="zero")return '<div class="pad phead"><div><h1>Asset inventory</h1><p>No devices yet</p></div></div>'+
-    zero("i-pie","Nothing to inventory yet","Asset inventory summarises the devices your users register. It fills in automatically once devices appear.",
-      '<button class="btn" id="dlBtn">Download the agent</button>');
-  var man=[["Dell Inc.",219,100],["HP",143,65],["Apple",134,61],["LENOVO",56,26],["ASUSTeK",50,23],["realme",33,15]];
-  var age=[["Under 1 year",204,100],["1–2 years",286,100],["2–3 years",171,60],["Over 3 years",114,40]];
-  return '<div class="pad phead"><div><h1>Asset inventory</h1><p>775 devices · 17 manufacturers · 6 operating systems</p></div>'+
-   '<div class="acts"><button class="btn">'+ic("i-dl")+'Export</button></div></div>'+
-   '<div class="pad stats">'+
-   '<div class="stat"><div class="sl">Devices</div><div class="sv">775</div><div class="sm">Across 4 regions</div></div>'+
-   '<div class="stat"><div class="sl">Disk encrypted</div><div class="sv">712<i>&thinsp;/&thinsp;775</i></div><div class="sm">63 unencrypted</div></div>'+
-   '<div class="stat"><div class="sl">Average age</div><div class="sv">2.1<i>&thinsp;yrs</i></div><div class="sm">114 over 3 years</div></div>'+
-   '<div class="stat"><div class="sl">Out of support</div><div class="sv">28</div><div class="sm">OS past end-of-service</div></div>'+
-   '</div>'+
-   '<div class="pad cols"><div class="col"><div class="chead"><h3>By manufacturer</h3><span class="hint">765 reporting</span></div>'+
-   bars(man)+'</div><div class="col"><div class="chead"><h3>By asset age</h3><span class="hint">775 devices</span></div>'+
-   bars(age)+'</div></div>';
+/* ---- B1 · device approvals ---- */
+function approvalsPage(){
+ var pend=pendingDevs(),fail=failingDevs();
+ var showing=S.tab==="failing"?fail:S.tab==="all"?DEV.filter(function(d){return devState(d)==="Pending"||d.posture==="Failed";}):pend;
+ if(S.q){var q=S.q.toLowerCase();showing=showing.filter(function(d){return (d.name+d.os+d.owner).toLowerCase().indexOf(q)>=0;});}
+ showing=sortRows(showing,"devices");
+ if(S.sort==="wait")showing=showing.slice().sort(function(a,b){return (S.dir==="asc"?1:-1)*(a.wait-b.wait);});
+ else if(!S.sort)showing=showing.slice().sort(function(a,b){return b.wait-a.wait;});
+ var n=selIds().length;
+ var h='<div class="pad phead"><div><h1>Device approvals</h1>'+
+  '<p>'+(pend.length+fail.length===0?"Nothing waiting":
+   pend.length+" waiting · "+fail.length+" failing posture · oldest "+
+   (pend.length?Math.max.apply(null,pend.map(function(d){return d.wait;})):0)+" days")+'</p></div>'+
+  '<div class="acts">'+
+  (n?'<button class="btn btn-primary" id="bulkApprove">'+ic("i-check")+'Approve '+n+' selected</button>':
+     '<button class="btn" disabled>'+ic("i-check")+'Approve selected</button>')+'</div></div>';
+ h+=ftabs([["pending","Waiting",pend.length,pend.length>0],
+           ["failing","Failing posture",fail.length,fail.length>0],
+           ["all","Everything",pend.length+fail.length,0]]);
+ h+=listTools("devices");
+ if(!showing.length){
+  h+=S.q?'<div class="zero"><div class="zi">'+ic("i-search")+'</div><h3>Nothing matches “'+esc(S.q)+'”</h3>'+
+    '<p>Try a shorter term, or clear the search.</p><div class="za"><button class="btn" id="clrBtn">Clear search</button></div></div>'
+   :'<div class="zero"><div class="zi">'+ic("i-check")+'</div><h3>The queue is empty</h3>'+
+    '<p>Every registered device has been approved and every posture check is passing. Nothing needs you here.</p>'+
+    '<div class="za"><button class="btn" data-go="devices">See all devices</button></div></div>';
+  return h;
+ }
+ h+='<table><thead class="t145"><tr><th class="cb"><input type="checkbox" id="allcb" aria-label="Select all"></th>'+
+  '<th class="srt" data-sort="name">Device<span class="ar">'+(S.sort==="name"?(S.dir==="asc"?"▲":"▼"):"")+'</span></th>'+
+  '<th class="srt" data-sort="owner">Owner<span class="ar">'+(S.sort==="owner"?(S.dir==="asc"?"▲":"▼"):"")+'</span></th>'+
+  '<th class="srt" data-sort="os">Operating system<span class="ar">'+(S.sort==="os"?(S.dir==="asc"?"▲":"▼"):"")+'</span></th>'+
+  '<th>Posture</th>'+
+  '<th class="srt" data-sort="wait"'+(!S.sort?' aria-sort="descending"':'')+'>Waiting<span class="ar">'+(S.sort==="wait"?(S.dir==="asc"?"▲":"▼"):(!S.sort?"▼":""))+'</span></th>'+
+  '<th></th></tr></thead><tbody>';
+ showing.forEach(function(d){
+  h+='<tr'+(S.sel[d.id]?' class="sel"':'')+'>'+
+   '<td class="cb"><input type="checkbox" data-cb="'+d.id+'"'+(S.sel[d.id]?" checked":"")+' aria-label="Select '+esc(d.name)+'"></td>'+
+   '<td><b style="font-weight:450">'+esc(d.name)+'</b></td>'+
+   '<td class="uname">'+esc(d.owner)+'</td>'+
+   '<td class="uname">'+esc(d.os)+'</td>'+
+   '<td>'+(d.posture==="Failed"?pill("att",d.failed,1):quiet("Passed"))+'</td>'+
+   '<td class="tech">'+(d.wait?d.wait+" d":"—")+'</td>'+
+   '<td style="text-align:right">'+
+     (d.posture==="Failed"
+      ? '<button class="btn btn-sm" data-fix="'+d.id+'">Contact owner</button>'
+      : '<button class="btn btn-sm btn-primary" data-approve="'+d.id+'">Approve</button>')+'</td></tr>';
+ });
+ h+='</tbody></table>'+
+  '<div class="tfoot"><span>'+showing.length+' shown</span><span class="rt"><span>'+
+  (pend.length+fail.length)+' in the queue</span></span></div>';
+ return h;
 }
 
-/* ======================= settings-style pages ======================= */
-function frow(label,help,ctl,bad){
-  return '<div class="frow'+(bad?" bad":"")+'"><div class="lb"><label>'+esc(label)+'</label>'+
-   (help?'<div class="h">'+esc(help)+'</div>':"")+'</div><div class="ctl">'+ctl+'</div></div>';
-}
-function swrow(label,help,on,key){
-  return '<div class="frow"><div class="lb"><label>'+esc(label)+'</label>'+
-   (help?'<div class="h">'+esc(help)+'</div>':"")+'</div><div class="ctl">'+
-   '<button class="sw" role="switch" aria-checked="'+(on?"true":"false")+'" data-sw="'+esc(key||label)+'" aria-label="'+esc(label)+'"></button></div></div>';
-}
-function settingsPage(){
-  return '<div class="pad phead"><div><h1>User settings</h1><p>Tenant-wide defaults. A group or an individual user can override most of these.</p></div>'+
-   '<div class="acts"><button class="btn btn-quiet">Discard</button><button class="btn btn-primary">Save changes</button></div></div>'+
-   '<div class="pad">'+
-   '<div class="formsec"><h3>Notifications</h3><p class="d">Who hears about provisioning and posture events.</p>'+
-   swrow("Welcome email to directory users","Sent when a user is provisioned from Active Directory or Azure AD.",true,"n1")+
-   swrow("Welcome email to bulk-imported users","Sent when users arrive through a CSV import.",true,"n2")+
-   swrow("Notify sub-admins on device approval","Every sub-admin with Devices write access is emailed.",false,"n3")+
-   swrow("Notify users on device check failure","The user is told which check failed and how to fix it.",true,"n4")+
-   '</div>'+
-   '<div class="formsec"><h3>Inactive users</h3><p class="d">Accounts that stop signing in are handled automatically.</p>'+
-   frow("Warn after","Days of inactivity before the user is emailed.",'<div class="duo"><input type="text" value="60"><span style="align-self:center;color:var(--mute);font-size:12.5px">days</span></div>')+
-   frow("Suspend after","Access is revoked. The account and its rules are kept.",'<div class="duo"><input type="text" value="90"><span style="align-self:center;color:var(--mute);font-size:12.5px">days</span></div>')+
-   frow("Delete after","The account is removed. This cannot be undone.",'<div class="duo"><input type="text" value="180"><span style="align-self:center;color:var(--mute);font-size:12.5px">days</span></div>')+
-   '</div>'+
-   '<div class="formsec"><h3>Access controls</h3><p class="d">Where and how people may connect.</p>'+
-   frow("Bypass MFA from these public IPs","One address or CIDR range per line. Leave empty to require MFA everywhere.",'<textarea placeholder="203.0.113.0/24"></textarea>')+
-   frow("Limit admin access to these IPs","Administrators signing in from anywhere else are refused.",'<textarea placeholder="Leave empty to allow any address"></textarea>')+
-   swrow("Require device compliance for web access","Browser sessions must come from a device that passes its checks.",true,"a1")+
-   swrow("Allow web-based elevated access","Lets an administrator raise privileges from the browser rather than the agent.",false,"a2")+
-   '</div>'+
-   '<div class="formsec" style="border-bottom:0"><h3>Session limits</h3><p class="d">How long a connection may stay open.</p>'+
-   frow("Disconnect agent after","Hard cap on a single connection, regardless of activity.",'<div class="duo"><input type="text" value="12"><span style="align-self:center;color:var(--mute);font-size:12.5px">hours</span></div>')+
-   frow("Idle timeout","No traffic for this long and the tunnel closes.",'<div class="duo"><input type="text" value="30"><span style="align-self:center;color:var(--mute);font-size:12.5px">minutes</span></div>')+
-   frow("Portal session timeout","Applies to this console, not to the agent.",'<div class="duo"><input type="text" value="3"><span style="align-self:center;color:var(--mute);font-size:12.5px">hours</span></div>')+
-   '</div></div>';
-}
-function companyPage(){
-  return '<div class="pad phead"><div><h1>Company details</h1><p>Shown to your users on the sign-in page and in emails.</p></div>'+
-   '<div class="acts"><button class="btn btn-quiet">Discard</button><button class="btn btn-primary">Save changes</button></div></div>'+
-   '<div class="pad">'+
-   '<div class="formsec"><h3>Identity</h3><p class="d">How the tenant is named and reached.</p>'+
-   frow("Company name",null,'<input type="text" value="Veno Technologies">')+
-   frow("Secure Access URL","The address your users sign in at. Changing it invalidates existing agent configurations.",'<input type="text" value="veno.instasafe.com">')+
-   frow("Registered address",null,'<textarea>4th Floor, Prestige Tech Park\nBengaluru 560103</textarea>')+
-   '</div>'+
-   '<div class="formsec"><h3>Branding</h3><p class="d">Applied to the sign-in page and the user portal.</p>'+
-   frow("Logo","SVG or PNG, at least 200×50. Shown on a white ground.",'<button class="btn">'+ic("i-dl")+'Upload file</button>')+
-   frow("Sign-in background","JPEG or PNG, at least 1920×1080.",'<button class="btn">'+ic("i-dl")+'Upload file</button>')+
-   swrow("Show welcome banner","A dismissible message on the user portal.",true,"b1")+
-   '</div>'+
-   '<div class="formsec" style="border-bottom:0"><h3>Contacts</h3><p class="d">Where InstaSafe reaches you about renewals and incidents.</p>'+
-   frow("Business contact",null,'<input type="text" value="Debajyoti Darshan · admin@example.com">')+
-   frow("Technical contact",null,'<input type="text" value="Alen Joseph · alen.joseph@instasafe.com">')+
-   frow("Renewal contact",null,'<input type="text" value="Not set" placeholder="Name · email">')+
-   '</div></div>';
-}
-function rolesPage(){
-  var AREAS=[
-   ["Infrastructure",["Controllers","Gateways"]],
-   ["Identity",["Users","User groups","Authentication profiles","User providers"]],
-   ["Security",["Devices","Device policies","Device checks","Geofences","Blocked apps"]],
-   ["Access",["Applications","Application groups","Access rules","Filters"]],
-   ["Monitoring",["Logs & reports","Report subscriptions","Export logs"]],
-   ["Administration",["Company settings","User settings","Sub admins"]]];
-  var cols=AREAS.map(function(a,ai){
-    return '<div class="permcol"><h4>'+esc(a[0])+'</h4>'+a[1].map(function(nm,i){
-      var r=(ai+i)%3!==2,w=(ai+i)%4===0;
-      return '<div class="permrow"><span>'+esc(nm)+'</span><div class="rw">'+
-        '<label><input type="checkbox"'+(r?" checked":"")+'> Read</label>'+
-        '<label><input type="checkbox"'+(w?" checked":"")+'> Write</label></div></div>';
-    }).join("")+'</div>';}).join("");
-  return '<div class="pad phead"><div><h1>Sub admin roles</h1>'+
-   '<p>3 roles · rights grouped the same way the navigation is</p></div>'+
-   '<div class="acts"><button class="btn btn-quiet">Discard</button><button class="btn btn-primary">Save role</button></div></div>'+
-   strip('<button class="chip on">Role <b>Helpdesk tier 1</b></button>'+
-     '<button class="chip">Role <b>Security analyst</b></button>'+
-     '<button class="chip">Role <b>Read only</b></button><span class="spacer"></span>'+
-     '<button class="btn btn-quiet">Duplicate</button><button class="btn" id="addBtn">'+ic("i-plus")+'New role</button>')+
-   '<div class="pad"><div class="formsec"><h3>Role</h3><p class="d">Give the role a name a colleague would recognise on the sub-admin list.</p>'+
-   frow("Role name",null,'<input type="text" value="Helpdesk tier 1">')+
-   frow("Description","Optional. Shown under the name when assigning the role.",'<input type="text" value="Reset passwords, approve devices, read logs">')+
-   '</div>'+
-   '<div class="formsec" style="border-bottom:0"><h3>Rights</h3>'+
-   '<p class="d">Write includes read. 58 individual rights, grouped by the console section they belong to — ' +
-   'so a role can be reasoned about a section at a time rather than as one list.</p>'+
-   '<div class="permgrid">'+cols+'</div></div></div>';
-}
-function downloadsPage(){
-  var AG=[["Windows","i-laptop","ISA-Agent-Setup-4.8.2.exe","64.2 MB"],
-          ["macOS","i-laptop","ISA-Agent-4.8.2.pkg","58.9 MB"],
-          ["Linux","i-cpu","isa-agent_4.8.2_amd64.deb","41.3 MB"],
-          ["Android","i-laptop","Google Play","—"],
-          ["iOS","i-laptop","App Store","—"]];
-  return '<div class="pad phead"><div><h1>Downloads</h1><p>Agent 4.8.2 · released 12 Sep 2026</p></div></div>'+
-   '<table><thead class="nostrip"><tr><th>Platform</th><th>Package</th><th>Size</th><th>Minimum OS</th><th></th></tr></thead><tbody>'+
-   AG.map(function(a,i){return '<tr><td><b style="font-weight:450">'+esc(a[0])+'</b></td>'+
-     '<td class="tech">'+esc(a[2])+'</td><td class="tech">'+esc(a[3])+'</td>'+
-     '<td class="uname">'+["Windows 10 1909","macOS 12","Ubuntu 20.04","Android 10","iOS 15"][i]+'</td>'+
-     '<td style="text-align:right"><button class="btn btn-sm">'+ic("i-dl")+'Download</button></td></tr>';}).join("")+
-   '</tbody></table>';
-}
-function supportPage(){
-  return '<div class="pad phead"><div><h1>Tech support</h1><p>Grant InstaSafe engineers time-boxed access to this tenant</p></div>'+
-   '<div class="acts"><button class="btn btn-primary" id="addBtn">'+ic("i-plus")+'Grant access</button></div></div>'+
-   zero("i-life","No support access granted",
-     "Nobody outside your organisation can see this tenant. Grant access only while a ticket is open — every grant expires on its own and is written to the event log.",
-     '<button class="btn btn-primary" id="addBtn2">'+ic("i-plus")+'Grant access</button>');
-}
-function graphPage(){
-  return '<div class="pad phead"><div><h1>Graph</h1><p>Relationships between users, groups, devices and applications</p></div>'+
-   '<div class="acts"><button class="chip">Live users <b>On</b></button><button class="chip">Live nodes <b>On</b></button>'+
-   '<button class="btn">Update graph</button></div></div>'+
-   zero("i-chart","The graph renders in the browser",
-     "This view draws 1,820 users, 775 devices and 57 rules as a force-directed graph. It is a WebGL canvas and is out of scope for this prototype — the surrounding chrome, filters and controls are the part being designed here.","");
-}
-function genericEmpty(title,obj,body){
-  return '<div class="pad phead"><div><h1>'+esc(title)+'</h1><p>Nothing configured yet</p></div>'+
-   '<div class="acts"><button class="btn btn-primary" id="addBtn">'+ic("i-plus")+'Add '+esc(obj)+'</button></div></div>'+
-   zero("i-grid","Add your first "+esc(obj),body,
-     '<button class="btn btn-primary" id="addBtn2">'+ic("i-plus")+'Add '+esc(obj)+'</button>');
+/* ---- users list (B0 applied) ---- */
+function usersPage(){
+ var rows=allUsers();
+ if(S.data==="zero")rows=[];
+ if(S.tab==="nomfa")rows=rows.filter(function(u){return !u.mfa;});
+ else if(S.tab==="susp")rows=rows.filter(function(u){return u.s==="Suspended";});
+ if(S.q&&S.data!=="zero"){var q=S.q.toLowerCase();
+  rows=rows.filter(function(u){return (u.n+" "+u.u+" "+(u.email||"")+" "+(u.ip||"")).toLowerCase().indexOf(q)>=0;});}
+ if(S.data==="nomatch")rows=[];
+ rows=sortRows(rows,"users");
+ var total=rows.length?(S.q||S.tab!=="all"?rows.length:1820+S.added.length):0;
+ var shown=cols("users"),n=selIds().length;
+ var all=allUsers();
+ var h='<div class="pad phead"><div><h1>Users</h1><p>'+
+  (total?total.toLocaleString()+" total":"Nothing configured yet")+'</p></div>'+
+  '<div class="acts"><button class="btn" id="goImport">'+ic("i-up")+'Import</button>'+
+  '<button class="btn btn-primary" id="goOnboard">'+ic("i-plus")+'Onboard a user</button></div></div>';
+ h+=ftabs([["all","All",(1820+S.added.length).toLocaleString(),0],
+           ["nomfa","Without MFA",all.filter(function(u){return !u.mfa;}).length,1],
+           ["susp","Suspended",all.filter(function(u){return u.s==="Suspended";}).length,1]]);
+ h+=listTools("users");
+ if(!rows.length){
+  h+=(S.q||S.data==="nomatch")
+   ?'<div class="zero"><div class="zi">'+ic("i-search")+'</div><h3>No users match “'+esc(S.q||"zz-no-match")+'”</h3>'+
+    '<p>Try a shorter term, or clear the search to see all 1,820 users.</p>'+
+    '<div class="za"><button class="btn" id="clrBtn">Clear search</button></div></div>'
+   :'<div class="zero"><div class="zi">'+ic("i-users")+'</div><h3>Add your first user</h3>'+
+    '<p>Users reach applications through access rules. The onboarding flow creates the user, the group and the rule in one pass.</p>'+
+    '<div class="za"><button class="btn btn-primary" id="goOnboard">'+ic("i-plus")+'Onboard a user</button>'+
+    '<button class="btn" id="goImport">Import from CSV</button></div></div>';
+  return h;
+ }
+ h+='<table><thead class="t145"><tr><th class="cb"><input type="checkbox" id="allcb" aria-label="Select all"></th>';
+ COLDEFS.users.forEach(function(c){if(shown.indexOf(c.k)>=0)h+=th("users",c);});
+ h+='<th></th></tr></thead><tbody>';
+ rows.slice(0,50).forEach(function(u){
+  h+='<tr class="click'+(S.sel[u.id]?" sel":"")+'" data-user="'+u.id+'">'+
+   '<td class="cb"><input type="checkbox" data-cb="'+u.id+'"'+(S.sel[u.id]?" checked":"")+' aria-label="Select '+esc(u.n)+'"></td>';
+  COLDEFS.users.forEach(function(c){
+   if(shown.indexOf(c.k)<0)return;
+   var v=u[c.k];
+   if(c.k==="n")h+='<td><div class="who"><span class="av">'+esc(init2(u.n))+'</span><b>'+esc(u.n)+'</b></div></td>';
+   /* colour on exceptions: only "Not enrolled" is marked — see note in States panel */
+   else if(c.k==="mfa")h+='<td>'+(u.mfa?quiet("Enrolled"):pill("att","Not enrolled",1))+'</td>';
+   else if(c.k==="s")h+='<td>'+(v==="Active"?quiet("Active"):pill("att",v,1))+'</td>';
+   else if(c.mono)h+='<td class="tech">'+esc(v==null?"—":v)+'</td>';
+   else h+='<td class="uname">'+esc(v==null?"—":v)+'</td>';});
+  h+='<td style="text-align:right"><button class="rowbtn" data-menu="'+u.id+'" aria-label="Row actions">'+ic("i-dots")+'</button></td></tr>';
+ });
+ h+='</tbody></table><div class="tfoot"><span>Rows per page</span>'+
+  '<select id="psz"><option>50</option><option>100</option></select>'+
+  '<span class="rt"><span>1–'+Math.min(50,rows.length)+' of '+total.toLocaleString()+'</span>'+
+  '<button class="pbtn" disabled>'+ic("i-l")+'</button><button class="pbtn">'+ic("i-r")+'</button></span></div>';
+ return h;
 }
 
-/* ======================= user sheet ======================= */
-var F={};
-function resetForm(u){
-  F={_id:u?u.id:"new",first:u?(u.first||""):"",last:u?(u.last||""):"",u:u?(u.u||u.username||""):"",
-     email:u?(u.email||""):"",cc:u?(u.cc||"+91"):"+91",mobile:u?(u.mobile||""):"",loc:u?(u.loc||""):"",
-     auth:u?(u.auth||"Password + Certs"):"Password + Certs",act:u?(u.act||"Immediately on provisioning"):"Immediately on provisioning",
-     pwd:"",pwd2:"",mfa:u?!!u.mfa:true,binding:true,checks:false,geo:false,dlp:false,shift:false,risk:false,suspend:false};
+/* ---- B2 · onboarding wizard ---- */
+var WSTEPS=[["Identity","Who is joining"],["Access","What they need"],["Review","Check and create"],["Done",""]];
+function wizInit(){S.wiz={step:0,first:"",last:"",email:"",profile:"Local",groups:[],apps:[],err:{},created:null};saveWiz();}
+function saveWiz(){ls("wizdraft",S.wiz);}
+function wizPage(){
+ if(!S.wiz)wizInit();
+ var W=S.wiz,st=W.step;
+ var h='<div class="wiz"><div class="wsteps">';
+ WSTEPS.forEach(function(s,i){
+  if(i===3&&!W.created)return;
+  h+='<button class="wstep'+(i<st?" done":"")+'" data-step="'+i+'"'+(i===st?' aria-current="step"':'')+'>'+
+   '<span class="n">'+(i<st?ic("i-check"):(i+1))+'</span>'+
+   '<span class="t">'+esc(s[0])+(s[1]?'<span>'+esc(s[1])+'</span>':'')+'</span></button>';});
+ h+='<div style="margin-top:22px;font-size:11.5px;color:var(--mute);line-height:1.6">'+
+  'Progress is saved as you type. You can leave and come back.</div></div><div class="wbody">';
+
+ if(st===0){
+  h+='<h2>Who is joining?</h2><p class="lede">Four fields. Everything else has a sensible default you can change later.</p>';
+  h+=wfield("first","First name",W.first,"As it should appear in logs and the user portal.");
+  h+=wfield("last","Last name",W.last,null);
+  h+=wfield("email","Work email",W.email,"Becomes the username. The welcome email goes here.");
+  h+='<div class="frow"><div class="lb"><label>Authentication profile</label>'+
+   '<div class="h">Where this person\'s password lives. Local means i365 holds it.</div></div>'+
+   '<div class="ctl"><select id="w_profile">'+PROF.map(function(p){
+    return '<option'+(W.profile===p?" selected":"")+'>'+esc(p)+'</option>';}).join("")+'</select></div></div>';
+ }
+ else if(st===1){
+  h+='<h2>What do they need to reach?</h2>'+
+   '<p class="lede">Pick the groups and applications. Anything missing can be created here without losing this form.</p>';
+  h+='<div class="frow"><div class="lb"><label>Groups</label>'+
+   '<div class="h">Groups carry policy. Most people need one.</div></div><div class="ctl">'+
+   taField("grp","Search groups",GROUPS.map(function(g){return [g.id,g.name,g.members+" members"];}),W.groups)+
+   '<button class="btn btn-sm" id="newGrp" style="margin-top:9px">'+ic("i-plus")+'Create a group</button></div></div>';
+  h+='<div class="frow"><div class="lb"><label>Applications</label>'+
+   '<div class="h">What they should be able to open. The access rule is written for you.</div></div><div class="ctl">'+
+   taField("app","Search applications",APPS.map(function(a){return [a.id,a.name,a.type];}),W.apps)+
+   '<button class="btn btn-sm" id="newApp" style="margin-top:9px">'+ic("i-plus")+'Create an application</button></div></div>';
+ }
+ else if(st===2){
+  var gn=W.groups.map(function(id){return (GROUPS.filter(function(g){return g.id===id;})[0]||{}).name;});
+  var an=W.apps.map(function(id){return (APPS.filter(function(a){return a.id===id;})[0]||{}).name;});
+  var nm=(W.first+" "+W.last).trim()||"This person";
+  h+='<h2>Check this, then create it</h2><p class="lede">This is what will exist when you press Create.</p>';
+  h+='<div class="sentence"><b>'+esc(nm)+'</b> signs in with <b>'+esc(W.profile)+'</b>'+
+   (gn.length?' as a member of '+gn.map(function(x){return '<b>'+esc(x)+'</b>';}).join(" and "):'')+
+   ', and can reach '+
+   (an.length?an.map(function(x){return '<b>'+esc(x)+'</b>';}).join(", "):'<b>nothing yet</b>')+
+   '.</div>';
+  h+='<div class="impact">'+
+   '<div class="i"><b>1</b>user created</div>'+
+   '<div class="i"><b>'+(an.length?1:0)+'</b>access rule written</div>'+
+   '<div class="i"><b>'+an.length+'</b>applications reachable</div>'+
+   '<div class="i'+(an.length?"":" att")+'"><b>'+(an.length?"0":"1")+'</b>'+(an.length?"blocked":"warning")+'</div>'+
+   '</div>';
+  if(!an.length)h+='<p style="color:var(--c600);font-size:12.5px;margin:14px 0 0">'+
+   'No applications selected. The account will exist but will not be able to reach anything — which is a valid choice if access comes later from a group.</p>';
+  h+='<div style="margin-top:22px;font-size:12.5px;color:var(--mute);line-height:1.65">'+
+   'The access rule is generated from this sentence. You will not be asked to pick a source type — '+
+   'the flow already knows the source is this user.</div>';
+ }
+ else{
+  var an2=W.apps.map(function(id){return (APPS.filter(function(a){return a.id===id;})[0]||{}).name;});
+  h+='<h2 style="color:var(--ok)">'+esc(W.created)+' can sign in now</h2>'+
+   '<p class="lede">A welcome email has been sent to '+esc(W.email||"their address")+'.</p>'+
+   '<div class="sentence" style="border-bottom:0">They can reach '+
+   (an2.length?an2.map(function(x){return '<b>'+esc(x)+'</b>';}).join(", "):'<b>nothing yet</b>')+
+   '. Everything else is blocked by default.</div>'+
+   '<div style="display:flex;gap:8px;margin-top:24px;flex-wrap:wrap">'+
+   '<button class="btn btn-primary" id="wAnother">'+ic("i-plus")+'Onboard another</button>'+
+   '<button class="btn" id="wExplore">See what they can reach</button>'+
+   '<button class="btn btn-quiet" data-go="users">Back to users</button></div>';
+ }
+
+ if(st<3){
+  var clicks=[2,3,1,0][st];
+  h+='<div class="wfoot">'+
+   (st>0?'<button class="btn" id="wBack">Back</button>':'<button class="btn btn-quiet" data-go="users">Cancel</button>')+
+   '<span class="save">Draft saved</span>'+
+   '<span class="sp"></span>'+
+   (st===2?'<button class="btn btn-primary" id="wCreate">'+ic("i-check")+'Create user and rule</button>'
+          :'<button class="btn btn-primary" id="wNext">Continue</button>')+
+   '</div>';
+ }
+ return h+'</div></div>';
 }
-var ERR={};
-function sheetHTML(){
-  var mode=S.sheet,u=S.editing;
-  if(mode==="view"&&u){
-    var rows=[["Name",(u.first||"")+" "+(u.last||"")||u.n],["Username",u.u||u.username],["Email",u.email],
-      ["Mobile",(u.cc||"")+" "+(u.mobile||"")],["Location",u.loc],["Auth profile",u.p||"Local"],
-      ["Authentication type",u.auth],["Activation",u.act],["MFA",u.mfa?"Enrolled":"Not enrolled"],
-      ["Status",u.s||"Active"],["Last IP",u.ip],["Last seen",u.seen]];
-    return '<div class="sheeth"><h2>'+esc(u.n||((u.first||"")+" "+(u.last||"")))+'</h2>'+
-      '<button class="tbtn" id="sx" style="margin-left:auto" aria-label="Close">'+ic("i-x")+'</button></div>'+
-      '<div class="sheetb"><dl style="margin:0">'+rows.map(function(r){
-        return '<div class="readrow"><dt>'+esc(r[0])+'</dt><dd>'+esc(r[1]||"—")+'</dd></div>';}).join("")+'</dl></div>'+
-      '<div class="sheetf"><button class="btn btn-primary" id="sEdit">Edit user</button>'+
-      '<button class="btn btn-quiet sp" id="sClose">Close</button></div>';
-  }
-  var editing=mode==="edit";
-  var t=S.tab,body="";
-  if(t===0){
-    body+=frow("First name",null,'<input type="text" id="f_first" value="'+esc(F.first)+'">',ERR.first)+
-      (ERR.first?'':'');
-    body=body.replace('</div></div>',(ERR.first?'<div class="err">'+esc(ERR.first)+'</div>':'')+'</div></div>');
-    body+=frow("Last name",null,'<input type="text" id="f_last" value="'+esc(F.last)+'">');
-    body+='<div class="frow'+(ERR.u?" bad":"")+'"><div class="lb"><label>Username</label>'+
-      '<div class="h">What the user signs in with. It cannot be changed later.</div></div>'+
-      '<div class="ctl"><input type="text" id="f_u" value="'+esc(F.u)+'">'+
-      '<div class="err">'+esc(ERR.u||"")+'</div></div></div>';
-    body+='<div class="frow'+(ERR.email?" bad":"")+'"><div class="lb"><label>Email</label></div>'+
-      '<div class="ctl"><input type="email" id="f_email" value="'+esc(F.email)+'">'+
-      '<div class="err">'+esc(ERR.email||"")+'</div></div></div>';
-    body+='<div class="frow'+(ERR.mobile?" bad":"")+'"><div class="lb"><label>Mobile number</label>'+
-      '<div class="h">Used for OTP delivery when MFA is on.</div></div><div class="ctl">'+
-      '<div class="duo"><select id="f_cc">'+["+91 India","+1 US","+44 UK","+61 AU","+65 SG"].map(function(c){
-        var code=c.split(" ")[0];return '<option value="'+code+'"'+(F.cc===code?" selected":"")+'>'+esc(c)+'</option>';}).join("")+
-      '</select><input type="tel" id="f_mobile" value="'+esc(F.mobile)+'"></div>'+
-      '<div class="err">'+esc(ERR.mobile||"")+'</div></div></div>';
-    body+=frow("Location",null,'<input type="text" id="f_loc" value="'+esc(F.loc)+'">');
-    body+=frow("Authentication type","Certificate alone is passwordless.",
-      '<select id="f_auth">'+["Password + Certs","Certificate"].map(function(o){
-        return '<option'+(F.auth===o?" selected":"")+'>'+esc(o)+'</option>';}).join("")+'</select>');
-    body+=frow("Activation","When the account becomes usable.",
-      '<select id="f_act">'+["Immediately on provisioning","Automatically on first login","On date & time"].map(function(o){
-        return '<option'+(F.act===o?" selected":"")+'>'+esc(o)+'</option>';}).join("")+'</select>');
-    if(!editing){
-      body+='<div class="frow'+(ERR.pwd?" bad":"")+'"><div class="lb"><label>Password</label>'+
-        '<div class="h">8–32 characters with a number, an uppercase letter and one of !@#$%^&amp;* — the policy set under Authentication profiles → Local.</div></div>'+
-        '<div class="ctl"><input type="password" id="f_pwd" value="'+esc(F.pwd)+'" autocomplete="new-password">'+
-        '<div class="err">'+esc(ERR.pwd||"")+'</div></div></div>';
-      body+='<div class="frow'+(ERR.pwd2?" bad":"")+'"><div class="lb"><label>Confirm password</label></div>'+
-        '<div class="ctl"><input type="password" id="f_pwd2" value="'+esc(F.pwd2)+'" autocomplete="new-password">'+
-        '<div class="err">'+esc(ERR.pwd2||"")+'</div></div></div>';
-    }
-  }else if(t===1){
-    body+=swrow("Two-factor authentication","OTP or authenticator app at sign-in.",F.mfa,"mfa");
-    body+=swrow("Device binding","Restrict this user to devices they have registered.",F.binding,"binding");
-    body+=swrow("Device checks","Require posture checks to pass before access is granted.",F.checks,"checks");
-    body+=swrow("Geo binding","Restrict sign-in to approved countries.",F.geo,"geo");
-    body+=swrow("Device DLP","Block copy, paste and downloads inside sessions.",F.dlp,"dlp");
-  }else{
-    body+='<p class="d" style="color:var(--mute);font-size:12.5px;margin:16px 0 4px">'+
-      'These reference objects created elsewhere in the console. A group the user belongs to can also set them.</p>';
-    body+=swrow("Shift schedule","Limit access to a defined working window.",F.shift,"shift");
-    body+=swrow("Risk profile","Apply an automated action when risk is detected.",F.risk,"risk");
-    body+=swrow("Auto-suspend","Suspend the account after a period of inactivity.",F.suspend,"suspend");
-  }
-  return '<div class="sheeth"><h2>'+(editing?"Edit user":"Add user")+'</h2>'+
-    '<button class="tbtn" id="sx" style="margin-left:auto" aria-label="Close">'+ic("i-x")+'</button></div>'+
-    '<div class="sheetb"><div class="tabs" role="tablist">'+
-    ["Profile","Options","Advanced"].map(function(n,i){
-      return '<button class="tab" role="tab" data-tab="'+i+'" aria-selected="'+(t===i?"true":"false")+'">'+n+'</button>';}).join("")+
-    '</div>'+body+'<div style="height:24px"></div></div>'+
-    '<div class="sheetf"><button class="btn btn-primary" id="sSave">'+(editing?"Save changes":"Create user")+'</button>'+
-    '<button class="btn btn-quiet" id="sReset">Reset</button>'+
-    '<button class="btn btn-quiet sp" id="sCancel">Cancel</button></div>';
+function wfield(k,label,val,help){
+ var e=S.wiz.err[k];
+ return '<div class="frow'+(e?" bad":"")+'"><div class="lb"><label>'+esc(label)+'</label>'+
+  (help?'<div class="h">'+esc(help)+'</div>':"")+'</div><div class="ctl">'+
+  '<input type="text" id="w_'+k+'" value="'+esc(val)+'">'+
+  '<div class="err">'+esc(e||"")+'</div></div></div>';
 }
-function readForm(){
-  function v(id){var e=document.getElementById(id);return e?e.value:"";}
-  if(S.tab===0){F.first=v("f_first");F.last=v("f_last");F.u=v("f_u");F.email=v("f_email");
-    F.cc=v("f_cc")||F.cc;F.mobile=v("f_mobile");F.loc=v("f_loc");F.auth=v("f_auth")||F.auth;F.act=v("f_act")||F.act;
-    F.pwd=v("f_pwd");F.pwd2=v("f_pwd2");}
-}
-function saveUser(){
-  readForm();ERR={};
-  var editing=S.sheet==="edit";
-  if(!F.first.trim())ERR.first="Enter a first name.";
-  if(!F.u.trim())ERR.u="Enter a username.";
-  else if(userList().some(function(x){return (x.u||x.username)===F.u.trim()&&(!S.editing||x.id!==S.editing.id);}))
-    ERR.u="That username is taken. Try "+F.u.trim()+"2.";
-  if(!F.email.trim())ERR.email="Enter an email address.";
-  else if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(F.email.trim()))ERR.email="That is not a valid email address.";
-  if(!F.mobile.trim())ERR.mobile="Enter a mobile number.";
-  if(!editing){
-    if(!F.pwd)ERR.pwd="Enter a password.";
-    else if(F.pwd.length<8)ERR.pwd="At least 8 characters.";
-    else if(!/[0-9]/.test(F.pwd)||!/[A-Z]/.test(F.pwd)||!/[!@#$%^&*]/.test(F.pwd))
-      ERR.pwd="Needs a number, an uppercase letter and one of !@#$%^&*";
-    if(F.pwd2!==F.pwd)ERR.pwd2="The two passwords do not match.";
-  }
-  var bad=Object.keys(ERR);
-  if(bad.length){S.tab=0;renderSheet();
-    setTimeout(function(){var e=document.getElementById("f_"+(bad[0]==="u"?"u":bad[0]));if(e)e.focus();},30);
-    toast("Check the form",bad.length===1?ERR[bad[0]]:bad.length+" fields need attention.","bad");return;}
-  if(editing){toast("Not saved","Editing a seeded record is out of scope for Version A. Creating a user does persist.","att");
-    S.sheet=null;S.editing=null;render();return;}
-  var rec={first:F.first.trim(),last:F.last.trim(),n:(F.first.trim()+" "+F.last.trim()).trim(),
-    u:F.u.trim(),email:F.email.trim(),cc:F.cc,mobile:F.mobile.trim(),loc:F.loc.trim(),
-    auth:F.auth,act:F.act,p:"Local",s:"Active",mfa:!!F.mfa,ip:"—",seen:"never"};
-  (function(){
-    if(S.db){rec.createdAt=Date.now();
-      return S.db.collection("tenant_users").add(rec).then(function(){return true;})
-        .catch(function(e){toast("Could not save",(e&&e.code)==="invalid_argument"
-          ?"You have view-only access to this prototype, so records cannot be saved."
-          :"Storage is unavailable right now.","bad");return false;});}
-    rec.id="l"+Date.now();rec.added=true;S.added=[rec].concat(S.added);ls("added",S.added);
-    return Promise.resolve(true);
-  })().then(function(ok){
-    if(!ok)return;
-    S.sheet=null;S.editing=null;S.pageIdx=0;render();
-    toast("User created","“"+rec.n+"” was added and can sign in immediately.","ok");
-  });
-}
-function renderSheet(){
-  var l=document.getElementById("layer");
-  if(!S.sheet){l.innerHTML="";return;}
-  l.innerHTML='<div class="scrim" id="scrim"></div><aside class="sheet" role="dialog" aria-modal="true">'+sheetHTML()+'</aside>';
-  document.getElementById("scrim").onclick=function(){S.sheet=null;S.editing=null;render();};
-  var q=function(id){return document.getElementById(id);};
-  if(q("sx"))q("sx").onclick=function(){S.sheet=null;S.editing=null;render();};
-  if(q("sClose"))q("sClose").onclick=function(){S.sheet=null;S.editing=null;render();};
-  if(q("sCancel"))q("sCancel").onclick=function(){S.sheet=null;S.editing=null;render();};
-  if(q("sEdit"))q("sEdit").onclick=function(){resetForm(S.editing);S.sheet="edit";S.tab=0;renderSheet();};
-  if(q("sSave"))q("sSave").onclick=saveUser;
-  if(q("sReset"))q("sReset").onclick=function(){resetForm(S.sheet==="edit"?S.editing:null);ERR={};renderSheet();
-    toast("Form cleared","All entered values were reset.","att");};
-  l.querySelectorAll("[data-tab]").forEach(function(b){
-    b.onclick=function(){readForm();S.tab=+b.getAttribute("data-tab");renderSheet();};});
-  l.querySelectorAll("[data-sw]").forEach(function(b){
-    b.onclick=function(){var k=b.getAttribute("data-sw");F[k]=!F[k];b.setAttribute("aria-checked",F[k]?"true":"false");};});
+function taField(kind,ph,items,chosen){
+ var tags=chosen.map(function(id){
+  var it=items.filter(function(x){return x[0]===id;})[0];
+  return '<span class="tag">'+esc(it?it[1]:id)+'<button data-untag="'+kind+':'+id+'" aria-label="Remove">'+ic("i-x")+'</button></span>';
+ }).join("");
+ return '<div class="ta" data-ta="'+kind+'"><input type="text" placeholder="'+esc(ph)+'" data-tainput="'+kind+'" autocomplete="off">'+
+  '</div><div class="tags">'+tags+'</div>';
 }
 
-/* ======================= modals / menus ======================= */
-function confirmDelete(noun,names,onYes){
-  var l=document.getElementById("layer");
-  var title=names.length===1?"Delete "+noun+" “"+names[0]+"”?":"Delete "+names.length+" "+noun+"s?";
-  l.innerHTML='<div class="scrim" id="scrim"></div><div class="modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'">'+
-   '<div class="modalb"><h3>'+esc(title)+'</h3>'+
-   '<p>This cannot be undone. Access granted through this '+esc(noun)+' stops immediately.</p>'+
-   (names.length>1?'<div class="names">'+names.slice(0,8).map(function(n){return '<div>'+esc(n)+'</div>';}).join("")+
-     (names.length>8?'<div class="quiet">…and '+(names.length-8)+' more</div>':"")+'</div>':"")+
-   '</div><div class="modalf"><button class="btn" id="mNo">Cancel</button>'+
-   '<button class="btn btn-danger" id="mYes" style="border-color:var(--rule-strong)">'+
-   (names.length===1?"Delete "+esc(noun):"Delete "+names.length+" "+esc(noun)+"s")+'</button></div></div>';
-  document.getElementById("scrim").onclick=closeLayer;
-  document.getElementById("mNo").onclick=closeLayer;
-  document.getElementById("mYes").onclick=function(){closeLayer();onYes();};
-  document.getElementById("mNo").focus();
+/* ---- B3 · access explorer ---- */
+function explorerPage(){
+ if(!S.exp)S.exp={uid:allUsers()[0]?allUsers()[0].id:null,mode:"user"};
+ var u=allUsers().filter(function(x){return x.id===S.exp.uid;})[0]||allUsers()[0];
+ var h='<div class="pad phead"><div><h1>Access explorer</h1>'+
+  '<p>What a person can reach, and why they cannot reach the rest</p></div>'+
+  '<div class="acts"><button class="btn">'+ic("i-dl")+'Export entitlements</button></div></div>';
+ h+='<div class="strip"><span class="search">'+ic("i-search")+
+  '<input id="expq" placeholder="Search a user" value="'+esc(u?u.n:"")+'"></span>'+
+  '<button class="chip on">Subject <b>User</b></button>'+
+  '<button class="chip">Subject <b>Group</b></button>'+
+  '<button class="chip">Subject <b>Application</b></button><span class="spacer"></span>'+
+  '<button class="chip">'+ic("i-save")+' View <b>Default</b></button></div>';
+ if(!u)return h+'<div class="zero"><div class="zi">'+ic("i-compass")+'</div><h3>No users yet</h3>'+
+  '<p>The explorer answers questions about a person. Create one first.</p></div>';
+ var reach=[],blocked=[];
+ APPS.forEach(function(a,i){
+  var granted=(i%3!==2);
+  if(granted&&u.s==="Active"&&u.mfa)reach.push({a:a,rule:RULES[i%RULES.length]});
+  else if(!granted)blocked.push({a:a,why:"no-rule"});
+  else if(u.s!=="Active")blocked.push({a:a,why:"suspended"});
+  else if(!u.mfa)blocked.push({a:a,why:"mfa"});
+ });
+ var dev=DEV.filter(function(d){return d.owner.split(" ")[0]===u.first;});
+ var pendDev=dev.filter(function(d){return devState(d)==="Pending";});
+ if(pendDev.length)blocked=blocked.concat(reach.splice(0,2).map(function(r){return {a:r.a,why:"device"};}));
+ h+='<div class="exp"><div class="expmain">';
+ h+='<div class="reachgrp">Can reach — '+reach.length+'</div>';
+ if(!reach.length)h+='<div class="reach"><div class="nm">Nothing<span class="why">Every application is blocked. The reasons are below.</span></div></div>';
+ reach.forEach(function(r){
+  h+='<div class="reach"><div class="nm">'+esc(r.a.name)+
+   '<span class="why">granted by <b>'+esc(r.rule.name)+'</b> · '+esc(r.a.type)+' on <span class="tech">'+esc(r.a.host)+'</span></span></div>'+
+   '<div>'+quiet("Allowed")+'</div></div>';});
+ h+='<div class="reachgrp">Cannot reach — '+blocked.length+'</div>';
+ var WHY={"no-rule":["No access rule grants it","Write a rule"],
+  "suspended":["The account is suspended","Reactivate the account"],
+  "mfa":["MFA is not enrolled","Send an enrolment link"],
+  "device":["Their device is waiting for approval","Open the approval queue"]};
+ blocked.slice(0,9).forEach(function(b){
+  var w=WHY[b.why];
+  h+='<div class="reach"><div class="nm">'+esc(b.a.name)+
+   '<span class="why">'+esc(w[0])+'</span></div>'+
+   '<div><button class="fixlink" data-fix2="'+b.why+'">'+esc(w[1])+' →</button></div></div>';});
+ h+='</div><div class="expside">'+
+  '<h3>'+esc(u.n)+'</h3>'+
+  '<p>'+esc(u.u)+' · '+esc(u.p)+'</p>'+
+  '<div class="readrow"><dt>Status</dt><dd>'+(u.s==="Active"?quiet("Active"):pill("att",u.s,1))+'</dd></div>'+
+  '<div class="readrow"><dt>MFA</dt><dd>'+(u.mfa?quiet("Enrolled"):pill("att","Not enrolled",1))+'</dd></div>'+
+  '<div class="readrow"><dt>Devices</dt><dd>'+dev.length+(pendDev.length?' <span class="pill p-att"><i></i>'+pendDev.length+' pending</span>':'')+'</dd></div>'+
+  '<div class="readrow"><dt>Groups</dt><dd>'+esc(GROUPS[0].name)+'</dd></div>'+
+  '<div class="readrow" style="border-bottom:0"><dt>Last seen</dt><dd>'+esc(u.seen)+'</dd></div>'+
+  '<div style="margin-top:20px;display:flex;flex-direction:column;gap:8px">'+
+  '<button class="btn" data-go="users">Open the user record</button>'+
+  '<button class="btn btn-danger" id="offboard">'+ic("i-exit")+'Offboard this person</button></div>'+
+  '<p style="margin-top:22px;font-size:11.5px;line-height:1.6;color:var(--mute)">'+
+  'Reachability is computed live from rules, posture and account state. In production this needs a policy-evaluation endpoint — see the note in the States panel.</p>'+
+  '</div></div>';
+ return h;
 }
-function rowMenu(btn,id){
-  var l=document.getElementById("layer");
-  var r=btn.getBoundingClientRect();
-  l.innerHTML='<div class="menu" style="top:'+(r.bottom+6)+'px;left:'+Math.max(8,r.right-190)+'px">'+
-   '<button data-m="view">'+ic("i-edit")+'View details</button>'+
-   '<button data-m="edit">'+ic("i-edit")+'Edit</button>'+
-   '<hr><button data-m="del" class="dz">'+ic("i-trash")+'Delete</button></div>';
-  S.menu=id;
-  var close=function(e){if(!e||!e.target.closest(".menu")){closeLayer();document.removeEventListener("mousedown",close);}};
-  setTimeout(function(){document.addEventListener("mousedown",close);},0);
-  l.querySelectorAll("[data-m]").forEach(function(b){
-    b.onclick=function(){
-      var act=b.getAttribute("data-m");closeLayer();
-      var u=userList().filter(function(x){return x.id===id;})[0];
-      if(act==="view"&&u){S.editing=u;S.sheet="view";renderSheet();}
-      else if(act==="edit"&&u){S.editing=u;resetForm(u);S.sheet="edit";S.tab=0;renderSheet();}
-      else if(act==="del"){
-        var nm=u?(u.n||(u.first+" "+u.last)):id;
-        confirmDelete("user",[nm],function(){doDelete([id]);});
-      }};});
+
+/* ---- B4 · offboard ---- */
+function offboardModal(u){
+ var dev=DEV.filter(function(d){return d.owner.split(" ")[0]===u.first;});
+ var rules=RULES.filter(function(r){return r.source===u.u;});
+ var l=document.getElementById("layer");
+ l.innerHTML='<div class="scrim" id="scrim"></div><div class="modal" role="dialog" aria-modal="true" aria-label="Offboard '+esc(u.n)+'">'+
+  '<div class="modalb"><h3>Offboard '+esc(u.n)+'?</h3>'+
+  '<p>Everything attached to this person, and what happens to it.</p>'+
+  '<div class="names">'+
+   '<div>Account <b style="margin-left:auto;font-weight:450">suspended immediately</b></div>'+
+   '<div>'+dev.length+' registered device'+(dev.length===1?"":"s")+'<span>unenrolled</span></div>'+
+   '<div>'+rules.length+' access rule'+(rules.length===1?"":"s")+' naming them<span>'+(rules.length?"removed":"none")+'</span></div>'+
+   '<div>Group memberships<span>revoked</span></div>'+
+   '<div>Session history<span>kept for audit</span></div>'+
+  '</div>'+
+  '<p style="margin-top:14px">The account is suspended, not deleted, so the audit trail survives. Deleting it outright is a separate action.</p>'+
+  '</div><div class="modalf"><button class="btn" id="mNo">Cancel</button>'+
+  '<button class="btn btn-danger" id="mYes" style="border-color:var(--rule-strong)">Offboard '+esc(u.first)+'</button></div></div>';
+ document.getElementById("scrim").onclick=closeLayer;
+ document.getElementById("mNo").onclick=closeLayer;
+ document.getElementById("mYes").onclick=function(){closeLayer();
+  toast("Offboarded",u.n+" is suspended, "+dev.length+" devices unenrolled, "+rules.length+" rules removed.","ok");};
+ document.getElementById("mNo").focus();
 }
-function doDelete(ids){
-  var seeds=ids.filter(function(i){return S.db?String(i).charAt(0)==="u":true;});
-  ids.forEach(function(i){if(String(i).charAt(0)==="u")S.hidden[i]=1;});
-  ls("hidden",S.hidden);
-  var mine=ids.filter(function(i){return String(i).charAt(0)!=="u";});
-  var done=function(){S.sel={};render();toast("Deleted",ids.length===1?"The record was removed.":ids.length+" records were removed.","ok");};
-  if(mine.length&&S.db)Promise.all(mine.map(function(i){return S.db.collection("tenant_users").doc(i).delete();})).then(done).catch(done);
-  else{S.added=S.added.filter(function(u){return mine.indexOf(u.id)<0;});ls("added",S.added);done();}
+
+/* ---- F5 · import with dry run ---- */
+var IMPROWS=[
+ {r:1,n:"Sunita Rao",e:"sunita.rao@instasafe.com",g:"Finance",ok:1},
+ {r:2,n:"Mohan Iyer",e:"mohan.iyer@instasafe.com",g:"Engineering",ok:1},
+ {r:3,n:"Aarti Das",e:"aarti.das@instasafe",g:"Sales",ok:0,err:"Email is missing a domain suffix"},
+ {r:4,n:"Tarun Bose",e:"alen.joseph@instasafe.com",g:"Ops",ok:0,err:"A user with this email already exists"},
+ {r:5,n:"Jyoti Nair",e:"jyoti.nair@instasafe.com",g:"Legal",ok:1},
+ {r:6,n:"",e:"vishal.menon@instasafe.com",g:"Support",ok:0,err:"Name is required"},
+ {r:7,n:"Kamala Shetty",e:"kamala.shetty@instasafe.com",g:"Finance",ok:1},
+ {r:8,n:"Abhay Singh",e:"abhay.singh@instasafe.com",g:"Nonexistent team",ok:0,err:"Group “Nonexistent team” does not exist — create it or fix the row"}
+];
+function importPage(){
+ if(!S.imp)S.imp={stage:"pick"};
+ var h='<div class="pad phead"><div><h1>Import users</h1>'+
+  '<p>Nothing is written until you have seen the parsed result</p></div>'+
+  '<div class="acts"><button class="btn">'+ic("i-dl")+'Download template</button></div></div>';
+ if(S.imp.stage==="pick"){
+  return h+'<div class="zero"><div class="zi">'+ic("i-up")+'</div><h3>Choose a CSV file</h3>'+
+   '<p>Use the template so the column names match. The file is parsed in your browser and shown to you row by row before anything is created.</p>'+
+   '<div class="za"><button class="btn btn-primary" id="impPick">'+ic("i-up")+'Select a file</button>'+
+   '<button class="btn">'+ic("i-dl")+'Download template</button></div></div>';
+ }
+ var ok=IMPROWS.filter(function(r){return r.ok;}).length,bad=IMPROWS.length-ok;
+ h+='<div class="drystat pad" style="padding-left:var(--gut);padding-right:var(--gut)">'+
+  '<div class="i"><b>'+IMPROWS.length+'</b>rows parsed</div>'+
+  '<div class="i"><b>'+ok+'</b>will be created</div>'+
+  '<div class="i'+(bad?" bad":"")+'"><b>'+bad+'</b>have problems</div>'+
+  '<div class="i"><b>0</b>written so far</div></div>';
+ h+='<table><thead class="t50"><tr><th>Row</th><th>Name</th><th>Email</th><th>Group</th><th>Result</th></tr></thead><tbody>';
+ IMPROWS.forEach(function(r){
+  h+='<tr'+(r.ok?"":' class="rowbad"')+'><td class="tech">'+r.r+'</td>'+
+   '<td>'+(r.n?esc(r.n):'<span class="quiet">—</span>')+'</td>'+
+   '<td class="tech">'+esc(r.e)+'</td><td class="uname">'+esc(r.g)+'</td>'+
+   '<td>'+(r.ok?quiet("Ready"):'<span class="rowerr">'+esc(r.err)+'</span>')+'</td></tr>';});
+ h+='</tbody></table>'+
+  '<div class="tfoot"><span>'+bad+' row'+(bad===1?"":"s")+' will be skipped unless you fix the file</span>'+
+  '<span class="rt">'+
+  '<button class="btn btn-quiet" id="impBack">Choose a different file</button>'+
+  '<button class="btn btn-primary" id="impGo">Create '+ok+' users</button></span></div>';
+ return h;
+}
+
+/* ---- B5 · first-run checklist, reads live state ---- */
+function setupPage(embedded){
+ var st=[
+  {t:"Connect a gateway",d:"Users connect through a gateway. One is enough to start.",done:true,ev:"4 gateways online"},
+  {t:"Connect a directory, or add users by hand",d:"Active Directory, Azure AD or a CSV import.",
+   done:allUsers().length>0,ev:allUsers().length?allUsers().length+" users provisioned":"no users yet",go:"users"},
+  {t:"Define an application",d:"The internal resource people need to reach.",done:APPS.length>0,ev:APPS.length+" applications defined",go:"apps"},
+  {t:"Write your first access rule",d:"Nothing is reachable until a rule allows it.",done:RULES.length>0,ev:RULES.length+" rules active",go:"rules"},
+  {t:"Approve the first device",d:"A device must be approved before it can connect.",
+   done:DEV.filter(function(d){return devState(d)==="Approved";}).length>0,
+   ev:DEV.filter(function(d){return devState(d)==="Approved";}).length+" approved · "+pendingDevs().length+" waiting",go:"approvals"}
+ ];
+ var done=st.filter(function(s){return s.done;}).length;
+ var h='<div class="pad phead"><div><h1>Set up i365</h1>'+
+  '<p>'+done+' of '+st.length+' complete · read from your tenant, not from saved progress</p></div>'+
+  (embedded?'':'<div class="acts"><button class="btn btn-quiet" data-go="dashboard">Skip for now</button></div>')+'</div>';
+ if(embedded)h='<div class="pad phead"><div><h1>Set up i365</h1>'+
+  '<p>Your tenant is empty. Five steps to a first protected application.</p></div></div>';
+ h+='<div class="ck">'+st.map(function(s){
+  return '<div class="ckrow'+(s.done?" done":"")+'"><span class="m">'+(s.done?ic("i-check"):"")+'</span>'+
+   '<span class="t">'+esc(s.t)+'<span>'+esc(s.d)+'</span><span class="ev">'+esc(s.ev)+'</span></span>'+
+   '<span>'+(s.done?quiet("Done"):'<button class="btn btn-sm btn-primary" data-go="'+(s.go||"dashboard")+'">Start</button>')+'</span></div>';
+ }).join("")+'</div>'+
+ '<div class="pad" style="padding-top:20px;font-size:12.5px;color:var(--mute);max-width:64ch;line-height:1.65">'+
+ 'Each line is checked against live tenant state. If a colleague or an InstaSafe engineer finishes a step, it ticks here too — the list has no memory of its own.</div>';
+ return h;
+}
+
+/* ---- generic list for the rest ---- */
+function simpleList(title,sub,cols2,rows,rowf,obj,zeroBody){
+ var q=S.q.toLowerCase(),r=rows.slice();
+ if(S.data==="zero")r=[];
+ else if(q)r=r.filter(function(x){return JSON.stringify(x).toLowerCase().indexOf(q)>=0;});
+ if(S.data==="nomatch")r=[];
+ var h='<div class="pad phead"><div><h1>'+esc(title)+'</h1><p>'+esc(r.length?sub:"Nothing configured yet")+'</p></div>'+
+  '<div class="acts"><button class="btn">'+ic("i-dl")+'CSV</button>'+
+  '<button class="btn btn-primary">'+ic("i-plus")+'Add '+esc(obj)+'</button></div></div>'+
+  '<div class="strip"><span class="search">'+ic("i-search")+'<input id="q" value="'+esc(S.q)+'" placeholder="Search"></span>'+
+  '<span class="spacer"></span><button class="chip">'+ic("i-cols")+' Columns</button></div>';
+ if(!r.length)return h+(q||S.data==="nomatch"
+  ?'<div class="zero"><div class="zi">'+ic("i-search")+'</div><h3>Nothing matches “'+esc(q||"zz-no-match")+'”</h3>'+
+   '<p>Try a shorter term, or clear the search.</p><div class="za"><button class="btn" id="clrBtn">Clear search</button></div></div>'
+  :'<div class="zero"><div class="zi">'+ic("i-grid")+'</div><h3>Add your first '+esc(obj)+'</h3>'+
+   '<p>'+esc(zeroBody)+'</p><div class="za"><button class="btn btn-primary">'+ic("i-plus")+'Add '+esc(obj)+'</button></div></div>');
+ h+='<table><thead class="t103"><tr>'+cols2.map(function(c){return '<th>'+esc(c)+'</th>';}).join("")+'</tr></thead><tbody>'+
+  r.slice(0,50).map(function(x){return '<tr>'+rowf(x)+'</tr>';}).join("")+
+  '</tbody></table><div class="tfoot"><span>'+r.length+' shown</span></div>';
+ return h;
 }
 
 function signinPage(){
@@ -756,213 +635,412 @@ function signinPage(){
   '</div></div>';
 }
 
-/* ======================= render ======================= */
-var PAGES={dashboard:dashboard,assets:assetsPage,graph:graphPage,users:usersPage,devices:devicesPage,
-  rules:rulesPage,settings:settingsPage,company:companyPage,subroles:rolesPage,downloads:downloadsPage,support:supportPage};
+/* ===================== render ===================== */
 function pageHTML(){
- if(S.page==="signin")return signinPage();
-  if(PAGES[S.page])return PAGES[S.page]();
-  if(LISTS[S.page])return listPage(S.page);
-  var M={controllers:["Controllers","controller","A controller is the policy engine that decides whether a session is allowed. Most tenants run one per region."],
-   gateways:["Gateways","gateway","A gateway is the data-plane node your users connect through. Deploy one close to the applications it fronts."],
-   local:["Local profile","setting","Local accounts are created directly in this console rather than coming from a directory."],
-   ad:["Active Directory","directory","Connect an Active Directory forest and let it provision users and groups automatically."],
-   saml:["SAML","profile","Let users sign in with an external identity provider over SAML 2.0."],
-   oauth:["OAuth","profile","Let users sign in with an OAuth 2.0 provider such as Google or Azure."],
-   subscription:["Subscription","plan","Licence count, renewal date and usage history for this tenant."],
-   smtp:["Email settings","server","The SMTP server InstaSafe uses to send welcome emails, OTPs and alerts on your behalf."],
-   shifts:["Shift schedules","schedule","A shift schedule limits when a user or group may connect — nights, weekdays, a maintenance window."],
-   risk:["Risk profiles","risk profile","A risk profile watches for anomalies and applies an action automatically: email an admin, deny access, suspend the user."],
-   geo:["Geofences","geofence","A geofence is a mapped area. Combine it with geo binding to limit where a user may connect from."],
-   content:["Content filter","content filter","Block whole categories of destination rather than naming individual sites."],
-   domains:["Domain lists","domain list","A reusable list of domains you can point several access rules at."],
-   appsvc:["Application services","application service","A service is a protocol and port pairing — the transport half of an application definition."],
-   appgroups:["Application groups","application group","Bundle applications so an access rule can grant all of them at once."],
-   live:["Live users","",""],sessionlog:["Session log","",""],accesslog:["Access log","",""]};
-  var m=M[S.page];
-  if(!m)return genericEmpty("Not built","item","This page is not part of Version A.");
-  if(!m[1])return '<div class="pad phead"><div><h1>'+esc(m[0])+'</h1><p>Rendered through the shared log template</p></div>'+
-    '<div class="acts"><button class="btn">'+ic("i-dl")+'CSV</button></div></div>'+
-    strip(searchBox("Search "+m[0].toLowerCase())+'<button class="chip on">Range <b>Today</b></button><span class="spacer"></span>')+
-    zero("i-chart","This log uses the Event log layout",
-      "Every log and report in the console renders through one template. Open Monitoring → Event log to see it with rows.",
-      '<button class="btn" id="elBtn">Open Event log</button>');
-  return genericEmpty(m[0],m[1],m[2]);
+ switch(S.page){
+  case "signin":return signinPage();
+  case "dashboard":return dashboard();
+  case "setup":return setupPage(false);
+  case "approvals":return approvalsPage();
+  case "users":return usersPage();
+  case "onboard":return wizPage();
+  case "import":return importPage();
+  case "explorer":return explorerPage();
+  case "devices":return simpleList("Devices","775 total · "+pendingDevs().length+" pending · "+failingDevs().length+" failing posture",
+    ["Device","Operating system","Owner","MAC address","Posture","State"],DEV,function(d){
+     return '<td><b style="font-weight:450">'+esc(d.name)+'</b></td><td class="uname">'+esc(d.os)+'</td>'+
+      '<td class="uname">'+esc(d.owner)+'</td><td class="tech">'+esc(d.mac)+'</td>'+
+      '<td>'+(d.posture==="Failed"?pill("att","Failed",1):quiet("Passed"))+'</td>'+
+      '<td>'+(devState(d)==="Approved"?quiet("Approved"):pill("att","Pending",1))+'</td>';},"device",
+    "A device appears here the first time someone signs in with the agent installed.");
+  case "groups":return simpleList("Groups","46 groups",["Group","Members","Applications"],GROUPS,function(g){
+     return '<td><b style="font-weight:450">'+esc(g.name)+'</b></td><td class="tech">'+g.members+'</td>'+
+      '<td class="uname">'+g.apps.length+' applications</td>';},"group",
+    "Groups carry policy. Put people in one and the rules follow them.");
+  case "apps":return simpleList("Applications","53 applications",["Application","Type","Host","Port"],APPS,function(a){
+     return '<td><b style="font-weight:450">'+esc(a.name)+'</b></td><td class="uname">'+esc(a.type)+'</td>'+
+      '<td class="tech">'+esc(a.host)+'</td><td class="tech">'+a.port+'</td>';},"application",
+    "An application is the internal resource your people need to reach.");
+  case "rules":return simpleList("Access rules","57 rules · 48 allow · 6 deny · 3 bypass",
+    ["Rule","Source","Destination","Affects","Action"],RULES,function(r){
+     return '<td><b style="font-weight:450">'+esc(r.name)+'</b></td><td class="uname">'+esc(r.source)+'</td>'+
+      '<td class="uname">'+esc(r.dest)+'</td><td class="tech">'+r.users+' users</td>'+
+      '<td>'+(r.act==="Allow"?quiet("Allow"):pill("att",r.act,1))+'</td>';},"rule",
+    "Nobody can reach anything until a rule allows it.");
+  case "devchecks":return simpleList("Device checks","150 checks",["Rule","OS","Check","Expected"],
+    [{n:"Disk encrypted",o:"Windows",c:"BitLocker",v:"On"},{n:"Antivirus running",o:"Windows",c:"AntiVirusStatus",v:"Enabled"},
+     {n:"Screen lock",o:"macOS",c:"ScreenLock",v:"300"},{n:"OS patch level",o:"Windows",c:"Hotfix",v:"KB5031354"}],
+    function(c){return '<td><b style="font-weight:450">'+esc(c.n)+'</b></td><td class="uname">'+esc(c.o)+'</td>'+
+     '<td class="uname">'+esc(c.c)+'</td><td class="tech">'+esc(c.v)+'</td>';},"check",
+    "A device check is a posture condition a device must satisfy before it connects.");
+  case "requests":return '<div class="pad phead"><div><h1>Access requests</h1>'+
+    '<p>2 waiting · raised from the user portal</p></div></div>'+
+    '<table><thead class="t50"><tr><th>Requester</th><th>Application</th><th>Reason</th><th>Waiting</th><th></th></tr></thead><tbody>'+
+    [["Priya Bose","payroll-3","Joined Finance last week","2 d"],["Arjun Das","grafana-4","On call from Monday","4 h"]]
+    .map(function(r){return '<tr><td><div class="who"><span class="av">'+init2(r[0])+'</span><b>'+r[0]+'</b></div></td>'+
+     '<td class="uname">'+r[1]+'</td><td class="uname">'+r[2]+'</td><td class="tech">'+r[3]+'</td>'+
+     '<td style="text-align:right"><button class="btn btn-sm btn-primary">Grant</button></td></tr>';}).join("")+
+    '</tbody></table>';
+  case "eventlog":return simpleList("Logs & reports","794 events today",["Time","User","Event","Source IP"],
+    (function(){var a=[];for(var i=0;i<24;i++)a.push({t:"2026-09-20 "+String(9+(i%9)).padStart(2,"0")+":"+String((i*7)%60).padStart(2,"0"),
+     u:USERS[i%USERS.length].u,e:["signed in","access allowed","access denied","device registered"][i%4],
+     ip:"49.36."+(80+i%40)+"."+(11+(i*17)%200)});return a;})(),
+    function(e){return '<td class="tech">'+esc(e.t)+'</td><td class="uname">'+esc(e.u)+'</td>'+
+     '<td>'+esc(e.e)+'</td><td class="tech">'+esc(e.ip)+'</td>';},"report","");
+  case "filters":return simpleList("Filters","",["Name","URL","Match type"],[],function(){return"";},"filter",
+    "A filter matches destinations by address, category or file type. Use one as the destination of an access rule.");
+  case "authp":return simpleList("Auth profiles","5 profiles",["Profile","Type","Users"],
+    [{n:"Local",t:"Built in",u:412},{n:"corp-ad",t:"Active Directory",u:1109},{n:"azure-tenant",t:"Azure AD",u:284},
+     {n:"okta-saml",t:"SAML",u:15},{n:"legacy-ldap",t:"OpenLDAP",u:0}],
+    function(p){return '<td><b style="font-weight:450">'+esc(p.n)+'</b></td><td class="uname">'+esc(p.t)+'</td>'+
+     '<td class="tech">'+p.u+'</td>';},"profile","");
+  case "assets":return '<div class="pad phead"><div><h1>Asset inventory</h1><p>775 devices · 17 manufacturers</p></div></div>'+
+    '<div class="pad stats"><div class="stat"><div class="sl">Devices</div><div class="sv">775</div></div>'+
+    '<div class="stat"><div class="sl">Disk encrypted</div><div class="sv">712<i>&thinsp;/&thinsp;775</i></div><div class="sm">63 unencrypted</div></div>'+
+    '<div class="stat"><div class="sl">Average age</div><div class="sv">2.1<i>&thinsp;yrs</i></div></div>'+
+    '<div class="stat"><div class="sl">Out of support</div><div class="sv">28</div><div class="sm">past end-of-service</div></div></div>'+
+    '<div class="pad cols"><div class="col"><div class="chead"><h3>By manufacturer</h3></div>'+
+    bars([["Dell Inc.",219,100],["HP",143,65],["Apple",134,61],["LENOVO",56,26]])+'</div>'+
+    '<div class="col"><div class="chead"><h3>By asset age</h3></div>'+
+    bars([["Under 1 year",204,71],["1–2 years",286,100],["2–3 years",171,60],["Over 3 years",114,40]])+'</div></div>';
+  case "downloads":return simpleList("Downloads","Agent 4.8.2",["Platform","Package","Size"],
+    [{p:"Windows",f:"ISA-Agent-Setup-4.8.2.exe",s:"64.2 MB"},{p:"macOS",f:"ISA-Agent-4.8.2.pkg",s:"58.9 MB"},
+     {p:"Linux",f:"isa-agent_4.8.2_amd64.deb",s:"41.3 MB"}],
+    function(a){return '<td><b style="font-weight:450">'+esc(a.p)+'</b></td><td class="tech">'+esc(a.f)+'</td>'+
+     '<td class="tech">'+esc(a.s)+'</td>';},"package","");
+  case "setcompany":case "setidentity":case "setnotify":
+   var T={setcompany:["Company","Identity, branding and contacts"],
+          setidentity:["Identity settings","Password policy, MFA and session limits"],
+          setnotify:["Notifications","Who hears about provisioning and posture events"]}[S.page];
+   return '<div class="pad phead"><div><h1>'+T[0]+'</h1><p>'+T[1]+'</p></div>'+
+    '<div class="acts"><button class="btn btn-quiet">Discard</button><button class="btn btn-primary">Save changes</button></div></div>'+
+    '<div class="pad"><div class="formsec"><h3>Settings live in one place now</h3>'+
+    '<p class="d">The production console scatters configuration across General settings, User settings and Report settings, '+
+    'none of which is reachable from the others. Version B merges them into this one group.</p>'+
+    '<div class="frow"><div class="lb"><label>Example field</label><div class="h">Every field here carries one line of help. That was the 0-of-44 finding.</div></div>'+
+    '<div class="ctl"><input type="text" value="veno.instasafe.com"></div></div>'+
+    '<div class="frow"><div class="lb"><label>Another</label><div class="h">Long option lists are typeahead, never a 2,393-option select.</div></div>'+
+    '<div class="ctl"><div class="ta" data-ta="os"><input type="text" placeholder="Search operating systems" data-tainput="os" autocomplete="off"></div></div></div>'+
+    '</div></div>';
+  case "support":return '<div class="pad phead"><div><h1>Tech support</h1>'+
+   '<p>Grant InstaSafe engineers time-boxed access</p></div></div>'+
+   '<div class="zero"><div class="zi">'+ic("i-life")+'</div><h3>No support access granted</h3>'+
+   '<p>Nobody outside your organisation can see this tenant. Every grant expires on its own and is written to the event log.</p>'+
+   '<div class="za"><button class="btn btn-primary">'+ic("i-plus")+'Grant access</button></div></div>';
+ }
+ return '<div class="zero"><div class="zi">'+ic("i-grid")+'</div><h3>Not in this prototype</h3><p>—</p></div>';
 }
 function renderNav(){
-  var w=document.getElementById("nav");w.innerHTML="";
-  NAV.forEach(function(g){
-    var s=document.createElement("div");s.className="navsec";s.textContent=g.sec;w.appendChild(s);
-    g.items.forEach(function(it){
-      if(!it.kids){
-        var b=document.createElement("button");b.className="navitem";
-        b.innerHTML=ic(it.i)+"<span>"+esc(it.l)+"</span>"+(it.n?'<span class="cnt">'+it.n.toLocaleString()+'</span>':"");
-        if(S.page===it.id)b.setAttribute("aria-current","page");
-        b.onclick=function(){go(it.id);};w.appendChild(b);return;
-      }
-      var open=it.kids.some(function(k){return k[0]===S.page;})||lg("op:"+it.id,false);
-      var t=document.createElement("button");t.className="navitem";
-      t.setAttribute("aria-expanded",open?"true":"false");
-      t.innerHTML=ic(it.i)+"<span>"+esc(it.l)+"</span>"+'<svg class="car"><use href="#i-r"/></svg>';
-      var sub=document.createElement("div");sub.style.display=open?"block":"none";
-      t.onclick=function(){var o=t.getAttribute("aria-expanded")==="true";
-        t.setAttribute("aria-expanded",o?"false":"true");sub.style.display=o?"none":"block";ls("op:"+it.id,!o);};
-      w.appendChild(t);
-      it.kids.forEach(function(k){
-        var b2=document.createElement("button");b2.className="subitem";
-        b2.innerHTML="<span>"+esc(k[1])+"</span>"+(k[2]!==undefined?'<span class="cnt">'+k[2].toLocaleString()+'</span>':"");
-        if(S.page===k[0])b2.setAttribute("aria-current","page");
-        b2.onclick=function(){go(k[0]);};sub.appendChild(b2);});
-      w.appendChild(sub);
-    });
-  });
+ var w=document.getElementById("nav");w.innerHTML="";
+ NAV.forEach(function(g){
+  var s=document.createElement("div");s.className="navsec";s.textContent=g.sec;w.appendChild(s);
+  g.items.forEach(function(it){
+   var b=document.createElement("button");b.className="navitem";
+   var badge=it.attn?('<span class="attn">'+(it.id==="approvals"?(pendingDevs().length+failingDevs().length):it.attn)+'</span>')
+    :(it.n!==undefined?'<span class="cnt">'+it.n.toLocaleString()+'</span>':"");
+   b.innerHTML=ic(it.i)+"<span>"+esc(it.l)+"</span>"+badge;
+   if(S.page===it.id)b.setAttribute("aria-current","page");
+   b.onclick=function(){go(it.id);};w.appendChild(b);});
+ });
 }
-function go(id){S.page=id;S.q="";S.sel={};S.pageIdx=0;S.sheet=null;S.editing=null;
-  ls("page",id);document.getElementById("rail").classList.remove("on");render();syncRail();}
+function go(id){S.page=id;S.q="";S.sel={};S.sort=null;S.tab=id==="approvals"?"pending":"all";S.view="";
+ ls("page",id);document.getElementById("rail").classList.remove("on");closeLayer();render();syncRail();}
 
 function render(){
-  if(S.page==="signin")document.documentElement.setAttribute("data-signin","1");else document.documentElement.removeAttribute("data-signin");
-  renderNav();
-  document.getElementById("crumb").innerHTML=(CRUMB[S.page]||"").split("›").map(function(p,i,a){
-    return i===a.length-1?esc(p.trim()):esc(p.trim());}).join(' <b>›</b> ');
- var p=document.getElementById("page");
-  p.innerHTML=pageHTML();
-  var q=function(id){return document.getElementById(id);};
-  if(q("q")){q("q").oninput=function(e){S.q=e.target.value;S.pageIdx=0;S.data="normal";
-    var pos=e.target.selectionStart;render();var n=document.getElementById("q");
-    if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}};}
-  if(q("clrBtn"))q("clrBtn").onclick=function(){S.q="";S.data="normal";render();syncRail();};
-  if(q("addBtn"))q("addBtn").onclick=onAdd;
-  if(q("addBtn2"))q("addBtn2").onclick=onAdd;
-  if(q("dirBtn"))q("dirBtn").onclick=function(){go("ad");};
-  if(q("dlBtn"))q("dlBtn").onclick=function(){go("downloads");};
-  if(q("elBtn"))q("elBtn").onclick=function(){go("eventlog");};
-  if(q("qsBtn"))q("qsBtn").onclick=function(){toast("Setup checklist","Four steps remain: gateway, directory, applications, first rule.","att");};
-  if(q("apprBtn"))q("apprBtn").onclick=function(){
-    toast("6 devices approved","They can connect immediately. The action is in the event log.","ok");};
-  if(q("baDev"))q("baDev").onclick=function(){go("devices");};
-  if(q("baMfa"))q("baMfa").onclick=function(){go("users");};
-  if(q("baBoth"))q("baBoth").onclick=function(){go("devices");};
-  if(q("psz"))q("psz").onchange=function(e){S.pageSize=+e.target.value;S.pageIdx=0;render();};
-  if(q("pprev"))q("pprev").onclick=function(){S.pageIdx--;render();};
-  if(q("pnext"))q("pnext").onclick=function(){S.pageIdx++;render();};
-  if(q("delBtn"))q("delBtn").onclick=function(){
-    var ids=selIds();if(!ids.length)return;
-    var noun=S.page==="users"?"user":S.page==="devices"?"device":S.page==="rules"?"access rule":"record";
-    var names=ids.map(function(i){
-      var u=userList().filter(function(x){return x.id===i;})[0];if(u)return u.n||(u.first+" "+u.last);
-      var d=DEV.filter(function(x){return x.id===i;})[0];if(d)return d.name;
-      var r=RULES.filter(function(x){return x.id===i;})[0];if(r)return r.name;
-      return i;});
-    confirmDelete(noun,names,function(){
-      if(S.page==="users")doDelete(ids);
-      else{S.sel={};render();toast("Deleted",names.length+" "+noun+(names.length>1?"s":"")+" removed.","ok");}});};
-  if(q("allcb"))q("allcb").onchange=function(e){
-    p.querySelectorAll("[data-cb]").forEach(function(c){S.sel[c.getAttribute("data-cb")]=e.target.checked;});render();};
-  p.querySelectorAll("[data-cb]").forEach(function(c){
-    c.onchange=function(e){e.stopPropagation();S.sel[c.getAttribute("data-cb")]=c.checked;render();};});
-  p.querySelectorAll("[data-menu]").forEach(function(b){
-    b.onclick=function(e){e.stopPropagation();rowMenu(b,b.getAttribute("data-menu"));};});
-  p.querySelectorAll("[data-user]").forEach(function(tr){
-    tr.onclick=function(e){if(e.target.closest("input,button"))return;
-      var u=userList().filter(function(x){return x.id===tr.getAttribute("data-user");})[0];
-      if(u){S.editing=u;S.sheet="view";renderSheet();}};});
-  p.querySelectorAll("[data-sw]").forEach(function(b){
-    b.onclick=function(){var on=b.getAttribute("aria-checked")==="true";b.setAttribute("aria-checked",on?"false":"true");};});
-  if(document.getElementById("si_go"))document.getElementById("si_go").onclick=function(){go("dashboard");toast("Signed in","Welcome back, Debajyoti.","ok");};
+ renderNav();
+ document.getElementById("crumb").innerHTML=(CRUMB[S.page]||"").split("›").map(function(p){return esc(p.trim());}).join(' <b>›</b> ');
+ if(S.page==="signin")document.documentElement.setAttribute("data-signin","1");else document.documentElement.removeAttribute("data-signin");
+ var p=document.getElementById("page");p.innerHTML=pageHTML();
+ var q=function(i){return document.getElementById(i);};
+
+ if(q("q"))q("q").oninput=function(e){var pos=e.target.selectionStart;S.q=e.target.value;S.data="normal";
+  render();var n=q("q");if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}};
+ if(q("clrBtn"))q("clrBtn").onclick=function(){S.q="";S.data="normal";render();syncRail();};
+ p.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){go(b.getAttribute("data-go"));};});
+ p.querySelectorAll("[data-ftab]").forEach(function(b){b.onclick=function(){S.tab=b.getAttribute("data-ftab");S.sel={};render();};});
+ p.querySelectorAll("[data-sort]").forEach(function(t){t.onclick=function(){
+  var k=t.getAttribute("data-sort");
+  if(S.sort===k)S.dir=S.dir==="asc"?"desc":"asc";else{S.sort=k;S.dir="asc";}
+  render();};});
+ if(q("colBtn"))q("colBtn").onclick=function(e){e.stopPropagation();colMenu(q("colBtn"),S.page==="users"?"users":"devices");};
+ if(q("viewBtn"))q("viewBtn").onclick=function(e){e.stopPropagation();viewMenu(q("viewBtn"),S.page==="users"?"users":"devices");};
+ if(q("allcb"))q("allcb").onchange=function(e){p.querySelectorAll("[data-cb]").forEach(function(c){
+  S.sel[c.getAttribute("data-cb")]=e.target.checked;});render();};
+ p.querySelectorAll("[data-cb]").forEach(function(c){c.onchange=function(){S.sel[c.getAttribute("data-cb")]=c.checked;render();};});
+ if(q("delBtn"))q("delBtn").onclick=function(){
+  var ids=selIds();if(!ids.length)return;
+  var names=ids.map(function(i){var u=allUsers().filter(function(x){return x.id===i;})[0];
+   if(u)return u.n;var d=DEV.filter(function(x){return x.id===i;})[0];return d?d.name:i;});
+  confirmDelete(S.page==="users"?"user":"device",names,function(){
+   ids.forEach(function(i){if(String(i).charAt(0)==="u")S.hidden[i]=1;});ls("hidden",S.hidden);
+   var mine=ids.filter(function(i){return String(i).charAt(0)!=="u"&&String(i).charAt(0)!=="d";});
+   var fin=function(){S.sel={};render();toast("Deleted",names.length+" record"+(names.length>1?"s":"")+" removed.","ok");};
+   if(mine.length&&S.db)Promise.all(mine.map(function(i){return S.db.collection("tenant_users").doc(i).delete();})).then(fin).catch(fin);
+   else{S.added=S.added.filter(function(u){return mine.indexOf(u.id)<0;});ls("added",S.added);fin();}});};
+ p.querySelectorAll("[data-menu]").forEach(function(b){b.onclick=function(e){e.stopPropagation();rowMenu(b,b.getAttribute("data-menu"));};});
+ p.querySelectorAll("[data-user]").forEach(function(tr){tr.onclick=function(e){
+  if(e.target.closest("input,button"))return;
+  S.exp={uid:tr.getAttribute("data-user"),mode:"user"};go("explorer");};});
+
+ /* B1 */
+ p.querySelectorAll("[data-approve]").forEach(function(b){b.onclick=function(){
+  var id=b.getAttribute("data-approve");S.approved[id]=1;ls("approved",S.approved);
+  var d=DEV.filter(function(x){return x.id===id;})[0];
+  render();syncRail();toast("Approved",(d?d.name:"Device")+" can connect now.","ok");};});
+ p.querySelectorAll("[data-fix]").forEach(function(b){b.onclick=function(){
+  var d=DEV.filter(function(x){return x.id===b.getAttribute("data-fix");})[0];
+  toast("Message sent",(d?d.owner:"The owner")+" has been emailed the steps to fix “"+(d?d.failed:"")+"”.","att");};});
+ if(q("bulkApprove"))q("bulkApprove").onclick=function(){
+  var ids=selIds(),okN=0,skip=0;
+  ids.forEach(function(i){var d=DEV.filter(function(x){return x.id===i;})[0];
+   if(d&&d.posture==="Failed"){skip++;return;}S.approved[i]=1;okN++;});
+  ls("approved",S.approved);S.sel={};render();syncRail();
+  toast(okN+" approved",skip?skip+" skipped because posture is failing — approve those individually after the owner fixes them.":"They can all connect now.",skip?"att":"ok");};
+
+ /* B2 */
+ if(q("wNext"))q("wNext").onclick=wizNext;
+ if(q("wBack"))q("wBack").onclick=function(){readWiz();S.wiz.step--;saveWiz();render();};
+ if(q("wCreate"))q("wCreate").onclick=wizCreate;
+ if(q("wAnother"))q("wAnother").onclick=function(){wizInit();render();};
+ if(q("wExplore"))q("wExplore").onclick=function(){go("explorer");};
+ p.querySelectorAll("[data-step]").forEach(function(b){b.onclick=function(){
+  var i=+b.getAttribute("data-step");if(i<S.wiz.step){readWiz();S.wiz.step=i;saveWiz();render();}};});
+ if(q("newGrp"))q("newGrp").onclick=function(){inlineCreate("group");};
+ if(q("newApp"))q("newApp").onclick=function(){inlineCreate("application");};
+ p.querySelectorAll("[data-untag]").forEach(function(b){b.onclick=function(){
+  var v=b.getAttribute("data-untag").split(":"),arr=v[0]==="grp"?S.wiz.groups:S.wiz.apps;
+  var i=arr.indexOf(v[1]);if(i>=0)arr.splice(i,1);saveWiz();render();};});
+ wireTypeahead(p);
+
+ /* B3 / B4 */
+ if(q("offboard"))q("offboard").onclick=function(){
+  var u=allUsers().filter(function(x){return x.id===S.exp.uid;})[0]||allUsers()[0];offboardModal(u);};
+ p.querySelectorAll("[data-fix2]").forEach(function(b){b.onclick=function(){
+  var w=b.getAttribute("data-fix2");
+  if(w==="device")go("approvals");else if(w==="no-rule")go("rules");else go("users");};});
+ if(q("expq"))q("expq").onfocus=function(){this.select();};
+
+ /* F5 */
+ if(q("impPick"))q("impPick").onclick=function(){S.imp={stage:"dry"};render();
+  toast("Parsed 8 rows","Nothing has been written. Review the result and press Create.","att");};
+ if(q("impBack"))q("impBack").onclick=function(){S.imp={stage:"pick"};render();};
+ if(q("impGo"))q("impGo").onclick=function(){
+  var ok=IMPROWS.filter(function(r){return r.ok;}).length;
+  S.imp={stage:"pick"};go("users");toast(ok+" users created","3 rows were skipped. Fix them in the file and import again.","ok");};
+
+ if(q("goOnboard"))q("goOnboard").onclick=function(){if(!S.wiz||S.wiz.created)wizInit();go("onboard");};
+ if(q("goImport"))q("goImport").onclick=function(){S.imp={stage:"pick"};go("import");};
+ if(q("goSetup"))q("goSetup").onclick=function(){go("setup");};
+ if(document.getElementById("si_go"))document.getElementById("si_go").onclick=function(){go("dashboard");toast("Signed in","Welcome back, Debajyoti.","ok");};
  document.getElementById("main").scrollTop=0;
-  renderSheet();
-}
-function onAdd(){
-  if(S.page==="users"){resetForm(null);ERR={};S.sheet="add";S.tab=0;renderSheet();return;}
-  toast("Not in Version A","The "+(LISTS[S.page]?LISTS[S.page].obj:"add")+" form is unchanged from production and is out of scope for this reskin. The Users flow is fully working.","att");
 }
 
-/* ======================= state rail ======================= */
+/* ---- typeahead ---- */
+function wireTypeahead(root){
+ root.querySelectorAll("[data-tainput]").forEach(function(inp){
+  var kind=inp.getAttribute("data-tainput");
+  var src=kind==="grp"?GROUPS.map(function(g){return [g.id,g.name,g.members+" members"];})
+        :kind==="app"?APPS.map(function(a){return [a.id,a.name,a.type];})
+        :OSOPT.map(function(o,i){return ["os"+i,o,""];});
+  var box=inp.parentNode;
+  function close(){var l=box.querySelector(".talist");if(l)l.remove();}
+  inp.oninput=inp.onfocus=function(){
+   close();var q=inp.value.toLowerCase();
+   var hits=src.filter(function(x){return !q||x[1].toLowerCase().indexOf(q)>=0;});
+   var d=document.createElement("div");d.className="talist";
+   d.innerHTML=(hits.length?hits.slice(0,8).map(function(x){
+     return '<button data-pick="'+esc(x[0])+'">'+esc(x[1])+'<span class="s">'+esc(x[2])+'</span></button>';}).join("")
+    :'<div class="none">Nothing matches “'+esc(inp.value)+'”</div>')+
+    (hits.length>8?'<div class="tacount">'+hits.length.toLocaleString()+' matches · keep typing to narrow</div>':"");
+   box.appendChild(d);
+   d.querySelectorAll("[data-pick]").forEach(function(b){b.onclick=function(){
+    var id=b.getAttribute("data-pick");
+    if(kind==="grp"){if(S.wiz.groups.indexOf(id)<0)S.wiz.groups.push(id);saveWiz();render();}
+    else if(kind==="app"){if(S.wiz.apps.indexOf(id)<0)S.wiz.apps.push(id);saveWiz();render();}
+    else{inp.value=b.textContent.trim();close();}};});};
+  inp.onblur=function(){setTimeout(close,160);};
+ });
+}
+function inlineCreate(kind){
+ readWiz();
+ var l=document.getElementById("layer");
+ l.innerHTML='<div class="scrim" id="scrim"></div><div class="modal" role="dialog" aria-modal="true">'+
+  '<div class="modalb"><h3>New '+esc(kind)+'</h3>'+
+  '<p>This is created immediately and selected for you. Your place in the onboarding flow is kept.</p>'+
+  '<div style="margin-top:16px"><label style="font-size:12.5px;display:block;margin-bottom:5px">Name</label>'+
+  '<input id="icName" type="text" style="width:100%;height:32px;padding:0 10px;border-radius:6px;'+
+  'border:1px solid var(--rule-strong);background:var(--canvas);color:var(--ink)" placeholder="'+
+  (kind==="group"?"Finance (EMEA)":"payroll-uat")+'"></div>'+
+  '</div><div class="modalf"><button class="btn" id="icNo">Cancel</button>'+
+  '<button class="btn btn-primary" id="icYes">Create and select</button></div></div>';
+ document.getElementById("scrim").onclick=closeLayer;
+ document.getElementById("icNo").onclick=closeLayer;
+ document.getElementById("icName").focus();
+ document.getElementById("icYes").onclick=function(){
+  var nm=document.getElementById("icName").value.trim();
+  if(!nm){toast("Name it first","Give the "+kind+" a name a colleague would recognise.","bad");return;}
+  if(kind==="group"){var g={id:"gN"+Date.now(),name:nm,members:0,apps:[]};GROUPS.push(g);S.wiz.groups.push(g.id);}
+  else{var a={id:"aN"+Date.now(),name:nm,type:"WEB",host:"10.6.9.1",port:443};APPS.push(a);S.wiz.apps.push(a.id);}
+  saveWiz();closeLayer();render();toast(kind.charAt(0).toUpperCase()+kind.slice(1)+" created","“"+nm+"” was added and selected.","ok");};
+}
+function readWiz(){
+ var g=function(i){var e=document.getElementById(i);return e?e.value:undefined;};
+ if(S.wiz.step===0){
+  var a=g("w_first");if(a!==undefined)S.wiz.first=a;
+  var b=g("w_last");if(b!==undefined)S.wiz.last=b;
+  var c=g("w_email");if(c!==undefined)S.wiz.email=c;
+  var d=g("w_profile");if(d!==undefined)S.wiz.profile=d;}
+ saveWiz();
+}
+function wizNext(){
+ readWiz();var W=S.wiz;W.err={};
+ if(W.step===0){
+  if(!W.first.trim())W.err.first="Enter a first name.";
+  if(!W.email.trim())W.err.email="Enter a work email.";
+  else if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(W.email.trim()))W.err.email="That is not a valid email address.";
+  else if(allUsers().some(function(u){return (u.email||"").toLowerCase()===W.email.trim().toLowerCase();}))
+   W.err.email="Someone already uses that address.";
+  if(Object.keys(W.err).length){saveWiz();render();
+   toast("Check the form",W.err[Object.keys(W.err)[0]],"bad");return;}
+ }
+ W.step++;saveWiz();render();
+}
+function wizCreate(){
+ var W=S.wiz;
+ var rec={first:W.first.trim(),last:W.last.trim(),n:(W.first+" "+W.last).trim(),
+  u:(W.first+"."+W.last).toLowerCase().replace(/\s+/g,""),email:W.email.trim(),p:W.profile,
+  s:"Active",mfa:false,ip:"—",seen:"never",groups:W.groups.slice(),devices:0};
+ (function(){
+  if(S.db){rec.createdAt=Date.now();
+   return S.db.collection("tenant_users").add(rec).then(function(){return true;})
+    .catch(function(e){toast("Could not save",(e&&e.code)==="invalid_argument"
+     ?"You have view-only access to this prototype, so records cannot be saved."
+     :"Storage is unavailable right now.","bad");return false;});}
+  rec.id="l"+Date.now();rec.added=true;S.added=[rec].concat(S.added);ls("added",S.added);
+  return Promise.resolve(true);
+ })().then(function(ok){
+  if(!ok)return;
+  W.created=rec.n;W.step=3;saveWiz();render();syncRail();
+  toast("Created",rec.n+" and one access rule. "+(W.apps.length||0)+" applications reachable.","ok");});
+}
+
+/* ---- shared floating bits ---- */
+function confirmDelete(noun,names,onYes){
+ var l=document.getElementById("layer");
+ var title=names.length===1?"Delete "+noun+" “"+names[0]+"”?":"Delete "+names.length+" "+noun+"s?";
+ l.innerHTML='<div class="scrim" id="scrim"></div><div class="modal" role="dialog" aria-modal="true" aria-label="'+esc(title)+'">'+
+  '<div class="modalb"><h3>'+esc(title)+'</h3>'+
+  '<p>This cannot be undone. Access granted through this '+esc(noun)+' stops immediately.</p>'+
+  (names.length>1?'<div class="names">'+names.slice(0,8).map(function(n){return '<div>'+esc(n)+'</div>';}).join("")+
+   (names.length>8?'<div class="quiet">…and '+(names.length-8)+' more</div>':"")+'</div>':"")+
+  '</div><div class="modalf"><button class="btn" id="mNo">Cancel</button>'+
+  '<button class="btn btn-danger" id="mYes" style="border-color:var(--rule-strong)">'+
+  (names.length===1?"Delete "+esc(noun):"Delete "+names.length+" "+esc(noun)+"s")+'</button></div></div>';
+ document.getElementById("scrim").onclick=closeLayer;
+ document.getElementById("mNo").onclick=closeLayer;
+ document.getElementById("mYes").onclick=function(){closeLayer();onYes();};
+ document.getElementById("mNo").focus();
+}
+function rowMenu(btn,id){
+ var l=document.getElementById("layer"),r=btn.getBoundingClientRect();
+ var u=allUsers().filter(function(x){return x.id===id;})[0];
+ l.innerHTML='<div class="menu" style="top:'+(r.bottom+6)+'px;left:'+Math.max(8,r.right-200)+'px">'+
+  '<button data-m="explore">'+ic("i-compass")+'What can they reach?</button>'+
+  '<button data-m="edit">'+ic("i-edit")+'Edit</button>'+
+  '<hr><button data-m="off" class="dz">'+ic("i-exit")+'Offboard</button></div>';
+ var close=function(e){if(!e||!e.target.closest(".menu")){closeLayer();document.removeEventListener("mousedown",close);}};
+ setTimeout(function(){document.addEventListener("mousedown",close);},0);
+ l.querySelectorAll("[data-m]").forEach(function(b){b.onclick=function(){
+  var a=b.getAttribute("data-m");closeLayer();
+  if(a==="explore"){S.exp={uid:id,mode:"user"};go("explorer");}
+  else if(a==="off"&&u)offboardModal(u);
+  else toast("Not in this prototype","The edit sheet is unchanged from Version A.","att");};});
+}
+
+/* ===================== state rail ===================== */
 var R=document.documentElement;
-function chipRow(title,list,get,set){
-  return '<div class="srg"><div class="t">'+esc(title)+'</div><div class="opts">'+
-   list.map(function(o){return '<button class="opt" data-set="'+esc(o[0])+'" aria-pressed="'+(get()===o[0]?"true":"false")+'">'+esc(o[1])+'</button>';}).join("")+
-   '</div></div>';
-}
 function syncRail(){
-  var b=document.getElementById("sr2b");
-  var theme=R.getAttribute("data-theme")||"light",rail=R.getAttribute("data-rail")||"tint",
-      pal=R.getAttribute("data-palette")||"violet";
-  b.innerHTML=
-   '<div class="srg" data-g="theme"><div class="t">Theme</div><div class="opts">'+
-     [["light","Light"],["dark","Dark"]].map(function(o){return '<button class="opt" data-v="'+o[0]+'" aria-pressed="'+(theme===o[0]?"true":"false")+'">'+o[1]+'</button>';}).join("")+'</div></div>'+
-   '<div class="srg" data-g="rail"><div class="t">Navigation rail</div><div class="opts">'+
-     [["tint","Tint"],["dark","Dark"]].map(function(o){return '<button class="opt" data-v="'+o[0]+'" aria-pressed="'+(rail===o[0]?"true":"false")+'">'+o[1]+'</button>';}).join("")+'</div></div>'+
-   '<div class="srg" data-g="palette"><div class="t">Palette</div><div class="opts">'+
-     [["violet","Violet · coral"],["ember","Ember · house"]].map(function(o){return '<button class="opt" data-v="'+o[0]+'" aria-pressed="'+(pal===o[0]?"true":"false")+'">'+o[1]+'</button>';}).join("")+'</div>'+
-     '<div class="srnote" style="margin-top:9px"><b>Violet · coral</b> is Direction G: violet is interactive, coral is attention. <b>Ember · house</b> swaps in the InstaSafe <code>--db-*</code> black and orange tokens so the two can be compared on the same screens.</div></div>'+
-   '<div class="srg" data-g="page"><div class="t">Screen</div><div class="opts">'+
-     [["dashboard","Dashboard"],["assets","Asset inventory"],["users","Users"],["devices","Devices"],["rules","Access rules"],
-      ["usergroups","User groups"],["applications","Applications"],["devchecks","Device checks"],["eventlog","Event log"],
-      ["settings","User settings"],["company","Company details"],["subroles","Sub admin roles"],["downloads","Downloads"],
-      ["url","URL filter"],["signin","Sign in"],["blocked","Blocked users"],["support","Tech support"],["graph","Graph"]]
-     .map(function(o){return '<button class="opt" data-v="'+o[0]+'" aria-pressed="'+(S.page===o[0]?"true":"false")+'">'+o[1]+'</button>';}).join("")+'</div></div>'+
-   '<div class="srg" data-g="data"><div class="t">Data state</div><div class="opts">'+
-     [["normal","Populated"],["zero","Nothing configured"],["nomatch","Search finds nothing"]]
-     .map(function(o){return '<button class="opt" data-v="'+o[0]+'" aria-pressed="'+(S.data===o[0]?"true":"false")+'">'+o[1]+'</button>';}).join("")+'</div></div>'+
-   '<div class="srg" data-g="overlay"><div class="t">Overlay</div><div class="opts">'+
-     [["none","None"],["add","Add user"],["view","View user"],["invalid","Validation errors"],["confirm","Delete confirm"],
-      ["menu","Row menu"],["toast","Toasts"]]
-     .map(function(o){return '<button class="opt" data-v="'+o[0]+'">'+o[1]+'</button>';}).join("")+'</div></div>'+
-   '<div class="srg" style="border-bottom:0"><div class="t">Storage</div><div class="srnote">'+esc(storeMsg)+
-     '<div style="margin-top:9px"><button class="opt" id="rst">Reset added records</button></div></div></div>';
+ var b=document.getElementById("sr2b");
+ var theme=R.getAttribute("data-theme")||"light",rail=R.getAttribute("data-rail")||"tint",
+     pal=R.getAttribute("data-palette")||"violet";
+ function grp(title,kind,list,cur,note){
+  return '<div class="srg" data-g="'+kind+'"><div class="t">'+esc(title)+'</div><div class="opts">'+
+   list.map(function(o){return '<button class="opt" data-v="'+o[0]+'"'+(cur!==null?' aria-pressed="'+(cur===o[0]?"true":"false")+'"':'')+'>'+o[1]+'</button>';}).join("")+
+   '</div>'+(note?'<div class="srnote" style="margin-top:9px">'+note+'</div>':"")+'</div>';
+ }
+ b.innerHTML=
+  grp("Theme","theme",[["light","Light"],["dark","Dark"]],theme)+
+  grp("Navigation rail","rail",[["tint","Tint"],["dark","Dark"]],rail)+
+  grp("Palette","palette",[["violet","Violet · coral"],["ember","Ember · house"]],pal,
+    "<b>Ember</b> swaps in the InstaSafe <code>--db-*</code> tokens so both can be judged on the same screens.")+
+  grp("Version B waves","page",[["approvals","B1 · Approval queue"],["onboard","B2 · Onboard wizard"],
+    ["explorer","B3 · Access explorer"],["import","F5 · Import dry run"],["setup","B5 · First run"],
+    ["users","B0 · List template"]],S.page)+
+  grp("Other screens","page",[["dashboard","Dashboard"],["devices","Devices"],["rules","Access rules"],
+    ["apps","Applications"],["groups","Groups"],["requests","Access requests"],["eventlog","Logs"],
+    ["assets","Asset inventory"],["setcompany","Settings"],["filters","Empty list"],["signin","Sign in"]],S.page)+
+  grp("Data state","data",[["normal","Populated"],["zero","Empty tenant"],["nomatch","Search finds nothing"]],S.data)+
+  grp("Try","overlay",[["bulk","Bulk approve"],["invalid","Wizard validation"],["confirm","Delete confirm"],
+    ["offb","Offboard dialog"],["toast","Toasts"]],null)+
+  '<div class="srg"><div class="t">Storage</div><div class="srnote">'+esc(storeMsg)+
+   '<div style="margin-top:9px"><button class="opt" id="rst">Reset created records</button>'+
+   '<button class="opt" id="rstw" style="margin-left:5px">Clear wizard draft</button></div></div></div>'+
+  '<div class="srg" style="border-bottom:0"><div class="t">Decisions taken</div><div class="srnote">'+
+   '<b>MFA colour flipped.</b> The system says only <i>Enrolled</i> gets a green pill, but 49 of 60 users are enrolled — '+
+   'which fails the handoff\'s own check that pills stay under 60% of rows. <i>Not enrolled</i> now carries the mark instead.<br><br>'+
+   '<b>B3 built anyway.</b> The handoff blocks it on whether a policy-evaluation endpoint exists. A prototype is how you find out '+
+   'what that endpoint must return, so it is built and the dependency is stated on the screen.<br><br>'+
+   '<b>Wizard before rule builder.</b> §8.1 is unanswered; P1 is the likelier default for a mid-market tenant, so B2 leads.'+
+   '</div></div>';
 
-  b.querySelectorAll("[data-g]").forEach(function(g){
-    var kind=g.getAttribute("data-g");
-    g.querySelectorAll("[data-v]").forEach(function(btn){
-      btn.onclick=function(){
-        var v=btn.getAttribute("data-v");
-        if(kind==="theme"){R.setAttribute("data-theme",v);ls("theme",v);}
-        else if(kind==="rail"){R.setAttribute("data-rail",v);ls("rail",v);}
-        else if(kind==="palette"){R.setAttribute("data-palette",v);ls("palette",v);}
-        else if(kind==="page"){go(v);return;}
-        else if(kind==="data"){S.data=v;S.q="";S.sel={};S.pageIdx=0;render();}
-        else if(kind==="overlay"){
-          closeLayer();
-          if(v==="add"){if(S.page!=="users")S.page="users";resetForm(null);ERR={};S.sheet="add";S.tab=0;render();}
-          else if(v==="view"){S.page="users";var u=userList()[0];if(u){S.editing=u;S.sheet="view";}render();}
-          else if(v==="invalid"){S.page="users";resetForm(null);F.email="nope";F.pwd="abc";F.pwd2="xyz";
-            S.sheet="add";S.tab=0;render();setTimeout(saveUser,60);}
-          else if(v==="confirm"){S.page="users";render();
-            setTimeout(function(){confirmDelete("user",userList().slice(0,3).map(function(x){return x.n;}),function(){});},60);}
-          else if(v==="menu"){S.page="users";render();
-            setTimeout(function(){var b2=document.querySelector("[data-menu]");if(b2)rowMenu(b2,b2.getAttribute("data-menu"));},60);}
-          else if(v==="toast"){toast("User created","“Priya Nair” was added and can sign in immediately.","ok");
-            setTimeout(function(){toast("Gateway unreachable","mum-gw-01 did not answer the last health check.","bad");},350);
-            setTimeout(function(){toast("6 devices pending","The oldest has been waiting 6 days.","att");},700);}
-          else render();
-          syncRail();return;
-        }
-        syncRail();sync();
-      };});
-  });
-  var r=document.getElementById("rst");
-  if(r)r.onclick=function(){
-    S.hidden={};ls("hidden",{});
-    if(S.db)Promise.all(S.added.map(function(u){return S.db.collection("tenant_users").doc(u.id).delete();}))
-      .then(function(){toast("Reset","Added records cleared.","ok");}).catch(function(){});
-    else{S.added=[];ls("added",[]);render();toast("Reset","Added records cleared.","ok");}};
+ b.querySelectorAll("[data-g]").forEach(function(g){
+  var kind=g.getAttribute("data-g");
+  g.querySelectorAll("[data-v]").forEach(function(btn){btn.onclick=function(){
+   var v=btn.getAttribute("data-v");
+   if(kind==="theme"){R.setAttribute("data-theme",v);ls("theme",v);}
+   else if(kind==="rail"){R.setAttribute("data-rail",v);ls("rail",v);}
+   else if(kind==="palette"){R.setAttribute("data-palette",v);ls("palette",v);}
+   else if(kind==="page"){if(v==="onboard"&&(!S.wiz||S.wiz.created))wizInit();
+     if(v==="import")S.imp={stage:"pick"};go(v);return;}
+   else if(kind==="data"){S.data=v;S.q="";S.sel={};render();}
+   else if(kind==="overlay"){
+    closeLayer();
+    if(v==="bulk"){go("approvals");setTimeout(function(){
+      pendingDevs().slice(0,4).forEach(function(d){S.sel[d.id]=1;});
+      failingDevs().slice(0,2).forEach(function(d){S.sel[d.id]=1;});
+      S.tab="all";render();},40);}
+    else if(v==="invalid"){wizInit();S.wiz.email="nope";go("onboard");setTimeout(wizNext,60);}
+    else if(v==="confirm"){go("users");setTimeout(function(){
+      confirmDelete("user",allUsers().slice(0,3).map(function(x){return x.n;}),function(){});},60);}
+    else if(v==="offb"){go("explorer");setTimeout(function(){
+      var u=allUsers()[0];if(u)offboardModal(u);},60);}
+    else if(v==="toast"){toast("6 devices approved","They can connect immediately.","ok");
+      setTimeout(function(){toast("2 skipped","Posture is failing on those — the owners have been emailed.","att");},350);
+      setTimeout(function(){toast("Gateway unreachable","mum-gw-01 did not answer the last health check.","bad");},700);}
+    syncRail();return;}
+   syncRail();sync();};});
+ });
+ var r=document.getElementById("rst");
+ if(r)r.onclick=function(){S.hidden={};ls("hidden",{});S.approved={};ls("approved",{});
+  if(S.db)Promise.all(S.added.map(function(u){return S.db.collection("tenant_users").doc(u.id).delete();}))
+   .then(function(){toast("Reset","Created records cleared.","ok");}).catch(function(){});
+  else{S.added=[];ls("added",[]);render();toast("Reset","Created records cleared.","ok");}};
+ var rw=document.getElementById("rstw");
+ if(rw)rw.onclick=function(){S.wiz=null;ls("wizdraft",null);render();toast("Draft cleared","The onboarding wizard starts fresh.","ok");};
 }
 function sync(){
-  document.getElementById("themeLbl").textContent=R.getAttribute("data-theme")==="dark"?"Light":"Dark";
-  document.getElementById("railLbl").textContent=R.getAttribute("data-rail")==="dark"?"Tint rail":"Dark rail";
+ document.getElementById("themeLbl").textContent=R.getAttribute("data-theme")==="dark"?"Light":"Dark";
+ document.getElementById("railLbl").textContent=R.getAttribute("data-rail")==="dark"?"Tint rail":"Dark rail";
 }
-
-/* ======================= wiring ======================= */
 R.setAttribute("data-theme",lg("theme","light"));
 R.setAttribute("data-rail",lg("rail","tint"));
 R.setAttribute("data-palette",lg("palette","violet"));
 S.page=lg("page","dashboard");
+if(S.page==="onboard"&&!S.wiz)wizInit();
 document.getElementById("themeBtn").onclick=function(){
-  var n=R.getAttribute("data-theme")==="dark"?"light":"dark";R.setAttribute("data-theme",n);ls("theme",n);sync();syncRail();};
+ var n=R.getAttribute("data-theme")==="dark"?"light":"dark";R.setAttribute("data-theme",n);ls("theme",n);sync();syncRail();};
 document.getElementById("railBtn").onclick=function(){
-  var n=R.getAttribute("data-rail")==="dark"?"tint":"dark";R.setAttribute("data-rail",n);ls("rail",n);sync();syncRail();};
+ var n=R.getAttribute("data-rail")==="dark"?"tint":"dark";R.setAttribute("data-rail",n);ls("rail",n);sync();syncRail();};
 document.getElementById("fab").onclick=function(){document.getElementById("sr2").classList.add("on");};
 document.getElementById("sr2x").onclick=function(){document.getElementById("sr2").classList.remove("on");};
 document.getElementById("menuBtn").onclick=function(){document.getElementById("rail").classList.toggle("on");};
@@ -971,6 +1049,6 @@ document.getElementById("menuBtn").onclick=function(){document.getElementById("r
 (function(){var s=2*3600+43*60+22;setInterval(function(){s=Math.max(0,s-1);
  var e=document.getElementById("clock");if(!e)return;
  e.textContent=String(Math.floor(s/3600)).padStart(2,"0")+":"+String(Math.floor(s%3600/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");},1000);})();
-addEventListener("keydown",function(e){if(e.key==="Escape"){if(S.sheet){S.sheet=null;S.editing=null;render();}else closeLayer();}});
+addEventListener("keydown",function(e){if(e.key==="Escape")closeLayer();});
 sync();render();syncRail();
 })();
