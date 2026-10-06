@@ -577,9 +577,15 @@ async function seedTenant (tenant, body) {
       `select column_name from information_schema.columns where table_name = $1`, [table])
     const valid = new Set(cols.map(c => c.column_name))
 
-    // the column set is taken from the first row and reused, so every row in
-    // a chunk binds the same shape
-    let keys = Object.keys(rows[0]).map(toSnake).filter(c => valid.has(c))
+    /* The column set is the union across every row, not the keys of the
+       first one. Taking it from row 0 means any field that row happens to
+       omit binds null for the whole chunk - which against a NOT NULL column
+       fails the insert, and against a nullable one quietly writes nulls.
+       The admin row carries isAdmin and no other user did, and that alone
+       was enough to lose all 421 users with no error the client could see. */
+    const seen = new Set()
+    for (const row of rows) for (const k of Object.keys(row)) seen.add(toSnake(k))
+    let keys = [...seen].filter(c => valid.has(c))
     if (table === 'event_log') keys = keys.filter(k => k !== 'id')
     if (!keys.includes('tenant_id')) keys.push('tenant_id')
 

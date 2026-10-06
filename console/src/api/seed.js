@@ -74,6 +74,7 @@ export function seedUsers (count = 1820) {
       location: pick(CITIES)[0],
       lastSeenAt: status === 'pending' ? null : ago(r() * 45),
       createdAt: ago(60 + r() * 600),
+      isAdmin: false,
       deviceBinding: chance(0.8),
       deviceCheckEnabled: chance(0.7),
       geoFenceEnabled: chance(0.25),
