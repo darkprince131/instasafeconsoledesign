@@ -1,7 +1,20 @@
 # InstaSafe i365 — console redesign
 
-Redesign of the **i365 multi-tenant ZTNA administrator console**. Two tracks are built and
-live. This file is the standing context for any session opened in this folder.
+**The code is a git repo at `repo/`, pushed to
+https://github.com/darkprince131/instasafeconsoledesign — two branches:**
+
+| Branch | Version | What it is |
+|---|---|---|
+| `main` | **A** | Visual rebuild. Navigation, flows and field sets unchanged from the live console. |
+| `enhanced-ux` | **B** | Structural. Approval queue, onboarding wizard, access explorer, import dry-run, first-run checklist. |
+
+`repo/` is the source of truth for the console. Edit `repo/assets/css/console.css`,
+`repo/assets/js/console.js` or `repo/index.html`, commit on the right branch, push.
+`git diff main..enhanced-ux` shows exactly what the structural work changes.
+
+The single-file copies in `prototypes/` are the **artifact publishing format** only — they
+exist so the published claude.ai links keep working. The repo is canonical; if you stop
+using the artifact links, delete `prototypes/`.
 
 **Do not re-audit the console.** It has been captured, measured and written up. Every count
 below is extracted from the DOM of 502 snapshots, not estimated. Start from these documents.
@@ -215,7 +228,9 @@ To force a starting state, write a one-line redirect file that sets `localStorag
 ## 10. Where things are
 
 ```
-prototypes/     version-a.html · version-b.html · _archive/ (rejected card-based A)
+repo/           THE CODE — git, 2 branches, pushed to GitHub
+                  index.html · assets/css · assets/js · assets/img · docs/ · brand/
+prototypes/     single-file copies in artifact-publish format (not canonical)
 reports/        red-pen-on-i365.html · competitor-teardown.html · shots/ · rshots/
 audits/         audit.md · ux-inventory.md · velto-supplement.md ·
                 design-system-brief.md · capture-manifest.md
@@ -224,7 +239,11 @@ evidence/       capture/ — 502 DOM snapshots + 502 screenshots of the live ven
 brand/          logo source + extracted mark and lockup
 ```
 
-**Not copied here, left in place because of size:**
+**Deliberately not in the GitHub repo** (`.gitignore`): `evidence/` — 502 snapshots of a
+production tenant, 149 MB, and the repo is public. The reports in `reports/` are also held
+back: every screenshot in them shows the live veno console. Say the word to include either.
+
+**Not copied into this folder at all, because of size:**
 - `C:\Users\Darkprince131\Downloads\Jumpcloud` — 149 MHTML, 978 MB
 - `C:\Users\Darkprince131\Downloads\OpenVPN` — 79 MHTML, 39 MB
 - `C:\Instasafe Webdesign` — the marketing site, source of the `--db-*` house tokens
