@@ -489,6 +489,9 @@ async function insertRow (table, tenant, body) {
   const valid = new Set(cols.map(c => c.column_name))
 
   const record = { ...body, tenant_id: tenant }
+  // event_log.id is a bigserial the database assigns; a client-supplied
+  // text id is a type error rather than an override
+  if (table === 'event_log') delete record.id
   const keys = [], values = []
   for (const [k, v] of Object.entries(record)) {
     const col = k === 'tenant_id' ? k : toSnake(k)
@@ -544,7 +547,8 @@ async function seedTenant (tenant, body) {
 
     // the column set is taken from the first row and reused, so every row in
     // a chunk binds the same shape
-    const keys = Object.keys(rows[0]).map(toSnake).filter(c => valid.has(c))
+    let keys = Object.keys(rows[0]).map(toSnake).filter(c => valid.has(c))
+    if (table === 'event_log') keys = keys.filter(k => k !== 'id')
     if (!keys.includes('tenant_id')) keys.push('tenant_id')
 
     const CHUNK = 200
