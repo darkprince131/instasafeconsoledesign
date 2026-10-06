@@ -3,16 +3,23 @@
   publish = "."
   command = ""
 
-# Branch deploys give every branch its own URL on the same site:
-#   main          -> https://<site>.netlify.app
-#   enhanced-ux   -> https://enhanced-ux--<site>.netlify.app
-# Turn them on under Site configuration > Build & deploy > Branch deploys.
+# Two Netlify projects build from this one repo, each pinned to one branch:
+#   main        -> https://instasafe-console.netlify.app      (Version A, visual)
+#   enhanced-ux -> https://instasafe-console-ux.netlify.app   (Version B, structural)
+# The branch each project builds is set under
+# Site configuration > Build & deploy > Branches and deploy contexts.
 
 [[headers]]
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Audit docs stay reachable by link, out of search results. See robots.txt.
+[[headers]]
+  for = "/docs/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
 
 [[headers]]
   for = "/assets/*"
