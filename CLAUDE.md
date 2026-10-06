@@ -1,23 +1,79 @@
 # InstaSafe i365 — console redesign
 
-**The code is a git repo at `repo/`, pushed to
-https://github.com/darkprince131/instasafeconsoledesign — two branches:**
+## The live work is `console/` on branch `demo-console`
 
-| Branch | Version | What it is |
+A **working** console on the production front-end stack, deployed and running:
+
+**https://instasafe-console-demo.netlify.app**
+
+| | |
+|---|---|
+| Stack | Vue 3 · Bootstrap **5.3.8** (exact production match) · Font Awesome 7 · Vite |
+| Data | IndexedDB, seeded to production scale, per visitor, resettable |
+| Deploy | Netlify, branch `demo-console`, project `instasafe-console-demo` |
+| Run locally | `cd console && npm install && npm run dev` |
+
+**Laravel is not used.** Netlify cannot serve PHP. It costs nothing: the console's
+UI layer *is* Vue 3 + Bootstrap, and Blade is only the server shell that mounts it,
+so components port back into Blade views unchanged.
+
+### Read first
+- `console/SCOPE.md` — every capability, how real each can be offline (**R**/**S**/**D**), build order
+- `console/src/api/index.js` — the API contract; every method annotated with the HTTP call a real backend serves
+
+### The handoff design
+```
+src/api/index.js          the contract — components only ever call api.users.list()
+src/api/adapters/mock.js  what ships today: IndexedDB
+src/api/adapters/http.js  the stub devs fill in: axios → Laravel
+```
+Swapping backends is **one import line**. Nothing else changes.
+
+### What is genuinely real — verified in a browser, not asserted
+- **TOTP MFA.** RFC 6238 over Web Crypto, all 6 published test vectors pass. Google
+  Authenticator works against it; a wrong code is rejected. Proven on the live site.
+- **Policy engine.** Walks rules in priority order, reports which rule decided, which
+  were shadowed, and whether posture overrode an allow. Finance→Finance DB is allowed;
+  flip the device to jailbroken and the same pair is denied, citing the posture failure.
+- **Device binding.** Real browser fingerprint. Enrol twice and the second is recognised,
+  not duplicated.
+- **Audit trail.** Every action writes to the event log. Add a user, it is at the top.
+
+### Done / not done
+Phase 0 and most of 1–2 are built: shell, DataTable (carries 54 screens, adds sort +
+column chooser + selection-gated destructive actions), dashboard, users with add flow,
+device queue, posture evaluator, access rules, access explorer, controllers, live
+sessions, event log, Demo Inbox, sign-in with MFA.
+
+Not built: auth profiles ×8, SAML/OIDC mock IdP, IDAM, filters, most settings, RDP/SSH
+session surface, SIEM export, guided tours. Routes exist and say so honestly rather than
+faking it. See `console/SCOPE.md` for the phase each lands in.
+
+### Gotchas already hit — do not rediscover
+- Exactly **one** `netlify.toml`, at the repo root. With `base = "console"` Netlify also
+  reads `console/netlify.toml` and lets it win, which double-nests the paths. That was
+  two failed deploys.
+- `NODE_VERSION` must be **22**. Vite 7 needs `^20.19.0 || >=22.12.0`; a bare `"20"` is
+  not guaranteed to clear it.
+- IndexedDB cannot structured-clone a Vue reactive proxy. The mock adapter unwraps via
+  `plain()` — keep doing that for any new write path.
+- `qrcode`'s `toString` callback resolves asynchronously. Use `create()` and draw the SVG.
+
+---
+
+## Earlier work (still live, still valid)
+
+| Branch | Site | What |
 |---|---|---|
-| `main` | **A** | Visual rebuild. Navigation, flows and field sets unchanged from the live console. |
-| `enhanced-ux` | **B** | Structural. Approval queue, onboarding wizard, access explorer, import dry-run, first-run checklist. |
+| `main` | https://instasafe-console.netlify.app | Version A — static visual prototype |
+| `enhanced-ux` | https://instasafe-console-ux.netlify.app | Version B — static structural prototype |
 
-`repo/` is the source of truth for the console. Edit `repo/assets/css/console.css`,
-`repo/assets/js/console.js` or `repo/index.html`, commit on the right branch, push.
-`git diff main..enhanced-ux` shows exactly what the structural work changes.
+`production/` on those branches holds `i365.css` + `MIGRATION.md` — the design system as
+a drop-in layer for the existing Blade app, with a class map. Still the right answer if
+the team ever wants to reskin the live console in place rather than rebuild.
 
-The single-file copies in `prototypes/` are the **artifact publishing format** only — they
-exist so the published claude.ai links keep working. The repo is canonical; if you stop
-using the artifact links, delete `prototypes/`.
-
-**Do not re-audit the console.** It has been captured, measured and written up. Every count
-below is extracted from the DOM of 502 snapshots, not estimated. Start from these documents.
+**Do not re-audit the console.** It is captured, measured and written up in `docs/`.
+Every count there is extracted from the DOM of 502 snapshots, not estimated.
 
 ---
 
