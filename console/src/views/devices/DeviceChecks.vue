@@ -99,7 +99,7 @@ onMounted(load)
             <div style="flex:1;min-width:0">
               <div style="font-size:13px">{{ c.name }}</div>
               <div style="font-size:11.5px;color:var(--i-mute)">
-                expects <code class="i-tech">{{ c.key }}</code> = {{ c.expect }}
+                expects <code class="i-tech">{{ c.postureKey }}</code> = {{ c.expect }}
               </div>
             </div>
             <span class="i-pill" :class="SEV[c.severity] ? 'i-' + SEV[c.severity] : ''">

@@ -41,7 +41,7 @@ const columns = [
   { key: 'mfaEnrolled', label: 'MFA',
     cell: (v) => v ? 'Enrolled' : 'Not enrolled',
     pill: (v) => v ? null : 'att' },
-  { key: 'lastSeen', label: 'Last seen', cell: fmtAgo, dim: true },
+  { key: 'lastSeenAt', label: 'Last seen', cell: fmtAgo, dim: true },
   { key: 'status', label: 'Status',
     cell: (v) => v.charAt(0).toUpperCase() + v.slice(1), pill: statusPill }
 ]
@@ -101,7 +101,7 @@ async function save () {
   }
   saving.value = true
   try {
-    await api.users.create({ ...form.value, lastSeen: null })
+    await api.users.create({ ...form.value, lastSeenAt: null })
     sheetOpen.value = false
     toast(form.value.firstName + ' ' + form.value.lastName + ' added')
     refreshStats()

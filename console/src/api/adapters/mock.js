@@ -288,7 +288,7 @@ const handlers = {
       macAddress: '—', ipAddress: '—',
       status: 'pending', bound: false,
       city: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      lastSeen: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
       enrolledAt: new Date().toISOString(),
       posture: {
         diskEncryption: true, antivirus: true, firewall: true,
@@ -307,9 +307,12 @@ const handlers = {
     let checks = await db.all('deviceChecks')
     if (checkIds?.length) checks = checks.filter(c => checkIds.includes(c.id))
     const results = checks.filter(c => c.enabled).map(c => {
-      const actual = posture?.[c.key]
+      const actual = posture?.[c.postureKey]
       const pass = actual === c.expect
-      return { id: c.id, name: c.name, key: c.key, expected: c.expect, actual, pass, severity: c.severity }
+      return {
+        id: c.id, name: c.name, postureKey: c.postureKey,
+        expected: c.expect, actual, pass, severity: c.severity
+      }
     })
     const failed = results.filter(r => !r.pass)
     const blocking = failed.filter(r => r.severity === 'critical')

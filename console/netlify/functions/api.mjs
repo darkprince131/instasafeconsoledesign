@@ -88,6 +88,10 @@ async function ensureSchema () {
       department text, auth_profile text not null default 'Local',
       status text not null default 'pending',
       country_code text, mobile text, location text,
+      is_admin boolean not null default false,
+      -- group membership as an array rather than a join table: the demo only
+      -- ever reads it whole, and a join table here would buy nothing
+      groups text[] not null default '{}',
       mfa_enrolled boolean not null default false,
       mfa_secret text, mfa_pending_secret text,
       device_binding boolean not null default true,
@@ -258,6 +262,15 @@ async function ensureSchema () {
       key text not null, value jsonb not null,
       primary key (tenant_id, key)
     )`
+
+  /* `create table if not exists` does nothing to a table that already exists,
+     so columns added after a table has shipped need their own statement.
+     `add column if not exists` is idempotent, which keeps this safe to run on
+     every cold start. Append here rather than editing the create above —
+     editing it only helps databases that have not been created yet. */
+  await sql`alter table users add column if not exists is_admin boolean not null default false`
+  await sql`alter table users add column if not exists groups text[] not null default '{}'`
+
   migrated = true
 }
 

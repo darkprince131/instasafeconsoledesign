@@ -38,7 +38,7 @@ const columns = [
   { key: 'agentVersion', label: 'Agent', mono: true },
   { key: 'ipAddress', label: 'IP address', mono: true },
   { key: 'city', label: 'Location' },
-  { key: 'lastSeen', label: 'Last seen', cell: fmtAgo, dim: true },
+  { key: 'lastSeenAt', label: 'Last seen', cell: fmtAgo, dim: true },
   { key: 'status', label: 'Status',
     cell: (v) => v.charAt(0).toUpperCase() + v.slice(1), pill: statusPill }
 ]

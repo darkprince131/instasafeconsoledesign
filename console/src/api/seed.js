@@ -72,7 +72,7 @@ export function seedUsers (count = 1820) {
       countryCode: '91',
       mobile: `98${pad(Math.floor(r() * 99999999), 8)}`,
       location: pick(CITIES)[0],
-      lastSeen: status === 'pending' ? null : ago(r() * 45),
+      lastSeenAt: status === 'pending' ? null : ago(r() * 45),
       createdAt: ago(60 + r() * 600),
       deviceBinding: chance(0.8),
       deviceCheckEnabled: chance(0.7),
@@ -93,7 +93,7 @@ export function seedUsers (count = 1820) {
     groups: ['grp_0001'],
     countryCode: '91', mobile: '9800000000',
     location: 'Bengaluru',
-    lastSeen: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
     createdAt: ago(720),
     isAdmin: true,
     deviceBinding: true, deviceCheckEnabled: true,
@@ -145,7 +145,7 @@ export function seedDevices (users, count = 2140) {
       status,
       bound: status === 'approved' && chance(0.88),
       city, countryCode: cc, lat, lon,
-      lastSeen: status === 'pending' ? ago(r() * 14) : ago(r() * 30),
+      lastSeenAt: status === 'pending' ? ago(r() * 14) : ago(r() * 30),
       enrolledAt: ago(r() * 300),
       posture: {
         diskEncryption: chance(0.9),
@@ -299,17 +299,20 @@ export function seedDeviceChecks () {
     ['OS up to date','osUpToDate',true,'medium'],
     ['Screen lock enabled','screenLock',true,'medium'],
     ['Device not jailbroken','jailbroken',false,'critical']
-  ].map(([name, key, expect, severity], i) => ({
-    id: `dc_${pad(i + 1, 4)}`, name, key, expect, severity,
-    enabled: true, appliesTo: 'All devices', createdAt: ago(250)
+  ].map(([name, postureKey, expect, severity], i) => ({
+    /* postureKey, not key: it is the field inside devices.posture that this
+       check reads, and it maps to the posture_key column. Calling it "key"
+       meant the column mapper dropped it and the insert failed on NOT NULL. */
+    id: `dc_${pad(i + 1, 4)}`, name, postureKey, expect, severity,
+    enabled: true, createdAt: ago(250)
   }))
 }
 
 export function seedTimeSchedules () {
   return [
-    { id: 'ts_0001', name: 'Business hours', days: [1,2,3,4,5], start: '09:00', end: '18:00', timezone: 'Asia/Kolkata', createdAt: ago(300) },
-    { id: 'ts_0002', name: 'Extended hours', days: [1,2,3,4,5,6], start: '07:00', end: '22:00', timezone: 'Asia/Kolkata', createdAt: ago(300) },
-    { id: 'ts_0003', name: 'Always', days: [0,1,2,3,4,5,6], start: '00:00', end: '23:59', timezone: 'UTC', createdAt: ago(300) }
+    { id: 'ts_0001', name: 'Business hours', days: [1,2,3,4,5], startTime: '09:00', endTime: '18:00', timezone: 'Asia/Kolkata', createdAt: ago(300) },
+    { id: 'ts_0002', name: 'Extended hours', days: [1,2,3,4,5,6], startTime: '07:00', endTime: '22:00', timezone: 'Asia/Kolkata', createdAt: ago(300) },
+    { id: 'ts_0003', name: 'Always', days: [0,1,2,3,4,5,6], startTime: '00:00', endTime: '23:59', timezone: 'UTC', createdAt: ago(300) }
   ]
 }
 
@@ -340,7 +343,6 @@ export function seedEvents (users, count = 794) {
       id: `evt_${pad(count - i + 1, 6)}`,
       type, severity,
       actor: u.username,
-      actorId: u.id,
       message: describeEvent(type, u),
       ip: `49.${Math.floor(r() * 254)}.${Math.floor(r() * 254)}.${Math.floor(r() * 254)}`,
       city,

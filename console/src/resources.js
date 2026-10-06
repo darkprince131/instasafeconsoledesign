@@ -92,7 +92,7 @@ export const RESOURCES = {
       { key: 'username', label: 'User' },
       { key: 'os', label: 'Operating system' },
       { key: 'macAddress', label: 'MAC', mono: true },
-      { key: 'lastSeen', label: 'Last seen', cell: fmtAgo, dim: true },
+      { key: 'lastSeenAt', label: 'Last seen', cell: fmtAgo, dim: true },
       { key: 'status', label: 'Status', pill: statusPill }
     ]
   },
@@ -105,8 +105,8 @@ export const RESOURCES = {
     columns: [
       { key: 'name', label: 'Schedule', bold: true },
       { key: 'days', label: 'Days', cell: (v) => (v || []).map(d => 'SMTWTFS'[d]).join(' ') , mono: true },
-      { key: 'start', label: 'From', mono: true },
-      { key: 'end', label: 'To', mono: true },
+      { key: 'startTime', label: 'From', mono: true },
+      { key: 'endTime', label: 'To', mono: true },
       { key: 'timezone', label: 'Timezone' }
     ]
   },
@@ -165,7 +165,7 @@ export const RESOURCES = {
       { key: 'username', label: 'Username', bold: true },
       { key: 'email', label: 'Email', dim: true },
       { key: 'authProfile', label: 'Auth profile' },
-      { key: 'lastSeen', label: 'Last login', cell: fmtAgo },
+      { key: 'lastSeenAt', label: 'Last login', cell: fmtAgo },
       { key: 'status', label: 'Status', pill: statusPill }
     ]
   },
@@ -181,7 +181,7 @@ export const RESOURCES = {
       { key: 'username', label: 'Username', bold: true },
       { key: 'email', label: 'Email', dim: true },
       { key: 'department', label: 'Department' },
-      { key: 'lastSeen', label: 'Last seen', cell: fmtAgo, dim: true },
+      { key: 'lastSeenAt', label: 'Last seen', cell: fmtAgo, dim: true },
       { key: 'status', label: 'Status', pill: statusPill }
     ]
   }
