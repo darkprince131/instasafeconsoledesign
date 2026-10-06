@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
+    "@neondatabase/serverless": "^1.2.0",
     "bootstrap": "5.3.8",
     "pinia": "^3.0.1",
     "qrcode": "^1.5.4",

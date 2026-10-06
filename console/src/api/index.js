@@ -16,12 +16,21 @@
  */
 
 import { mockAdapter } from './adapters/mock.js'
+import { httpAdapter } from './adapters/http.js'
 
-// ---- swap this line to go live against a real backend -----------------
-const adapter = mockAdapter
-// import { httpAdapter } from './adapters/http.js'
-// const adapter = httpAdapter({ baseURL: '/api' })
-// -----------------------------------------------------------------------
+/* Which backend is live is a build-time environment variable, not an edit
+   here, so switching is a Netlify setting and a redeploy rather than a
+   commit - and rolling back is the same, instantly.
+
+     VITE_BACKEND=http   Neon Postgres via /api  (netlify/functions/api.mjs)
+     anything else       IndexedDB in the browser
+
+   Nothing below this line, and nothing in any component, knows which. */
+const adapter = import.meta.env.VITE_BACKEND === 'http'
+  ? httpAdapter({ baseURL: '/api' })
+  : mockAdapter
+
+export const BACKEND = import.meta.env.VITE_BACKEND === 'http' ? 'postgres' : 'browser'
 
 /**
  * Builds a standard CRUD surface over one collection.

@@ -9,10 +9,11 @@
 # version of this file with no build step.
 
 [build]
-  base    = "console"
-  command = "npm run build"
-  # publish is relative to `base`, so this is console/dist
-  publish = "dist"
+  base      = "console"
+  command   = "npm run build"
+  # publish and functions are relative to `base`
+  publish   = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   # Vite 7 requires ^20.19.0 || >=22.12.0. A bare "20" resolves to whatever
