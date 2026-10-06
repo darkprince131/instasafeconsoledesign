@@ -463,7 +463,12 @@ async function route (path, method, body, params, tenant) {
 // --------------------------------------------------------------- queries
 async function listRows (table, tenant, params) {
   const page = Math.max(1, Number(params.get('page') || 1))
-  const perPage = Math.min(500, Number(params.get('perPage') || 25))
+  /* perPage=0 means "all", which is what the dashboard asks for when it needs
+     to aggregate. `Number('0') || 25` quietly answered 25 instead, so the
+     charts were computed from the first 25 rows and mostly came out empty.
+     Capped so "all" can never become an unbounded scan. */
+  const raw = params.get('perPage')
+  const perPage = raw === '0' ? 5000 : Math.min(500, Number(raw || 25))
   const search = params.get('search') || ''
   const sort = params.get('sort') || ''
   const dir = params.get('dir') === 'desc' ? 'desc' : 'asc'
