@@ -35,6 +35,15 @@ const sql = neon(process.env.DATABASE_URL)
 const SECRET = process.env.TENANT_SECRET || 'dev-only-not-a-secret'
 
 const DEMO_TTL_DAYS = 7
+
+/* Every tenant-scoped table keyed on (tenant_id, id). `tenants` is excluded:
+   its id really is global. event_log is excluded: its id is a bigserial and
+   already unique on its own. */
+const PK_TABLES = [
+  'users', 'groups', 'devices', 'device_checks', 'applications', 'app_services',
+  'access_rules', 'controllers', 'gateways', 'auth_profiles', 'time_schedules',
+  'geo_fences', 'sessions', 'outbound'
+]
 const json = (body, status = 200, headers = {}) => new Response(
   JSON.stringify(body),
   { status, headers: { 'content-type': 'application/json', ...headers } }
@@ -271,6 +280,29 @@ async function ensureSchema () {
   await sql`alter table users add column if not exists is_admin boolean not null default false`
   await sql`alter table users add column if not exists groups text[] not null default '{}'`
 
+  /* The seed generates deterministic ids - usr_00001, app_0001, dc_0001 - so
+     every tenant produces the same set. With `id` as a global primary key the
+     first tenant claims them and every later tenant's insert is silently
+     dropped by ON CONFLICT DO NOTHING, which is exactly as bad as it sounds:
+     the second visitor gets an empty console and no error anywhere.
+
+     The key is the pair. Ids are only ever unique within a tenant, which is
+     what multi-tenancy means and what the production schema needs too. */
+  for (const t of PK_TABLES) {
+    await sql.query(`
+      do $$
+      begin
+        if exists (
+          select 1 from pg_constraint
+          where conname = '${t}_pkey'
+            and (select count(*) from unnest(conkey)) = 1
+        ) then
+          alter table ${t} drop constraint ${t}_pkey;
+          alter table ${t} add primary key (tenant_id, id);
+        end if;
+      end $$;`)
+  }
+
   migrated = true
 }
 
@@ -502,7 +534,7 @@ async function insertRow (table, tenant, body) {
   const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
   const rows = await sql.query(
     `insert into ${table} (${keys.join(', ')}) values (${placeholders})
-     on conflict (id) do nothing returning *`, values)
+     on conflict do nothing returning *`, values)
   return rowOut(rows[0]) || record
 }
 

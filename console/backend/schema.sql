@@ -22,6 +22,12 @@
 -- scoping your developers write for production is the scoping here.
 --
 -- Demo tenants expire; a real one never would. That is the only difference.
+--
+-- Note the primary keys: every tenant-scoped table is keyed on
+-- (tenant_id, id), not on id alone. Seeded ids are deterministic, so with a
+-- global key the first tenant claims them and every later tenant's insert is
+-- silently skipped. Ids are unique within a tenant, which is what
+-- multi-tenancy means.
 -- =====================================================================
 
 -- ---------------------------------------------------------------- tenants
@@ -40,7 +46,7 @@ create index if not exists tenants_expiry_idx on tenants (expires_at)
 
 -- ------------------------------------------------------------------ users
 create table if not exists users (
-  id            text primary key,
+  id            text,
   tenant_id     text not null references tenants(id) on delete cascade,
   first_name    text not null,
   last_name     text,
@@ -81,7 +87,7 @@ create index if not exists users_mfa_idx    on users (tenant_id, mfa_enrolled);
 
 -- ----------------------------------------------------------------- groups
 create table if not exists groups (
-  id             text primary key,
+  id             text,
   tenant_id      text not null references tenants(id) on delete cascade,
   name           text not null,
   auth_type      text not null default 'Local',
@@ -103,7 +109,7 @@ create index if not exists group_members_user_idx on group_members (user_id);
 
 -- ---------------------------------------------------------------- devices
 create table if not exists devices (
-  id            text primary key,
+  id            text,
   tenant_id     text not null references tenants(id) on delete cascade,
   user_id       text references users(id) on delete set null,
   name          text not null,
@@ -134,7 +140,7 @@ create index if not exists devices_user_idx   on devices (user_id);
 
 -- ---------------------------------------------------------- device checks
 create table if not exists device_checks (
-  id          text primary key,
+  id          text,
   tenant_id   text not null references tenants(id) on delete cascade,
   name        text not null,
   posture_key text not null,                   -- the key inside devices.posture
@@ -147,7 +153,7 @@ create table if not exists device_checks (
 
 -- ----------------------------------------------------------- applications
 create table if not exists applications (
-  id         text primary key,
+  id         text,
   tenant_id  text not null references tenants(id) on delete cascade,
   name       text not null,
   type       text not null check (type in ('web','rdp','ssh','vnc')),
@@ -167,7 +173,7 @@ create table if not exists applications (
 );
 
 create table if not exists app_services (
-  id         text primary key,
+  id         text,
   tenant_id  text not null references tenants(id) on delete cascade,
   name       text not null,
   protocol   text not null default 'tcp',
@@ -180,7 +186,7 @@ create table if not exists app_services (
 -- run. priority is therefore not decoration, and the unique constraint keeps
 -- two rules from claiming the same slot.
 create table if not exists access_rules (
-  id          text primary key,
+  id          text,
   tenant_id   text not null references tenants(id) on delete cascade,
   name        text not null,
   priority    integer not null,
@@ -199,7 +205,7 @@ create index if not exists access_rules_eval_idx
   on access_rules (tenant_id, enabled, priority);
 
 create table if not exists time_schedules (
-  id         text primary key,
+  id         text,
   tenant_id  text not null references tenants(id) on delete cascade,
   name       text not null,
   days       integer[] not null default '{1,2,3,4,5}',
@@ -211,7 +217,7 @@ create table if not exists time_schedules (
 
 -- ------------------------------------------------ controllers + gateways
 create table if not exists controllers (
-  id             text primary key,
+  id             text,
   tenant_id      text not null references tenants(id) on delete cascade,
   name           text not null,
   region         text,
@@ -225,7 +231,7 @@ create table if not exists controllers (
 );
 
 create table if not exists gateways (
-  id              text primary key,
+  id              text,
   tenant_id       text not null references tenants(id) on delete cascade,
   name            text not null,
   region          text,
@@ -240,7 +246,7 @@ create table if not exists gateways (
 
 -- ------------------------------------------------------------- sessions
 create table if not exists sessions (
-  id             text primary key,
+  id             text,
   tenant_id      text not null references tenants(id) on delete cascade,
   user_id        text references users(id) on delete set null,
   application_id text references applications(id) on delete set null,
@@ -280,7 +286,7 @@ create index if not exists event_log_type_idx   on event_log (tenant_id, type);
 -- SMS, email, push, SIEM payloads — lands here instead. In production this
 -- table is the send queue, which is the same shape.
 create table if not exists outbound (
-  id         text primary key,
+  id         text,
   tenant_id  text not null references tenants(id) on delete cascade,
   kind       text not null check (kind in ('sms','email','push','webhook','siem','report')),
   subject    text,
