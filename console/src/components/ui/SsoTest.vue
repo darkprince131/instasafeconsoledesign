@@ -133,8 +133,9 @@ async function runSaml () {
 
   const res = await (await fetch(url)).json()
   samlXml.value = res.xml
-  view.value = 'saml'
-  step('SAML Response received', 'base64, ' + res.samlResponse.length + ' bytes')
+  // deliberately does NOT switch tabs: the trace is the interesting part, and
+  // jumping to the XML mid-run means nobody ever reads the steps
+  step('SAML Response received', 'base64, ' + res.samlResponse.length + ' bytes · see the Assertion tab')
 
   // check the bits a service provider actually validates
   const nameId = res.xml.match(/<saml:NameID[^>]*>([^<]+)</)?.[1]
