@@ -112,6 +112,16 @@ Eight profile types, all with working add/edit/test.
 
 ---
 
+## Backend
+
+Live on **Neon Postgres**, not IndexedDB. `VITE_BACKEND=http` selects the
+adapter at build time; unset it and the whole app falls back to the browser
+store with no code change. Every table is scoped by `tenant_id` and keyed on
+`(tenant_id, id)`, and each visitor gets their own seeded tenant.
+
+See `backend/README.md` for the decision and `backend/schema.sql` for the
+schema as a migration plan.
+
 ## The Demo Inbox
 
 One drawer, reachable from anywhere, holding everything that would leave the
@@ -131,11 +141,11 @@ Each phase is shippable on its own and goes live as it lands.
 
 | Phase | What | Why this order |
 |---|---|---|
-| **0** | Shell, design system, router, DB, API layer, seed, event log, Demo Inbox | Everything else sits on it |
-| **1** | Sign-in, **real TOTP**, users, groups, sub-admins | The spine, and the single best live demo |
-| **2** | Devices, binding, posture checks, policy, geo-fence | Completes the ZTNA story |
-| **3** | Applications, services, groups, **RDP/SSH surface**, access rules + explorer | The differentiated part |
-| **4** | Auth profiles ×8, user providers, **SAML/OIDC with mock IdP** | The integration story |
+| **0** ✅ | Shell, design system, router, DB, API layer, seed, event log, Demo Inbox | Everything else sits on it |
+| **1** ✅ | Sign-in, **real TOTP**, users, groups | The spine, and the single best live demo |
+| **2** ✅ | Devices, binding, posture checks | Completes the ZTNA story |
+| **3** ✅ | Applications, **RDP/SSH surface**, access rules + explorer | The differentiated part |
+| **4** ✅ | Auth profiles ×8, **SAML/OIDC with mock IdP** | The integration story |
 | **5** | Reports, logs, SIEM, session recording, dashboards | Proof it is observable |
 | **6** | IDAM, filters, settings, remaining screens | Completeness |
 | **7** | Guided tours over the top | The self-serve layer |
