@@ -50,27 +50,46 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
     seeding = (async () => {
       const { seeded } = await request('/seeded')
       if (seeded) return
+
       const users = seed.seedUsers(SEED_SIZE.users)
       const groups = seed.seedGroups()
       const applications = seed.seedApplications()
-      const devices = seed.seedDevices(users, SEED_SIZE.devices)
-      await request('/seed', {
-        method: 'POST',
-        body: {
-          users, groups, applications, devices,
-          appServices: seed.seedAppServices(),
-          accessRules: seed.seedAccessRules(groups, applications),
-          controllers: seed.seedControllers(),
-          gateways: seed.seedGateways(),
-          authProfiles: seed.seedAuthProfiles(),
-          deviceChecks: seed.seedDeviceChecks(),
-          timeSchedules: seed.seedTimeSchedules(),
-          geoFences: seed.seedGeoFences(),
-          eventLog: seed.seedEvents(users, SEED_SIZE.events),
-          sessions: seed.seedSessions(users, applications)
-        }
-      })
+
+      /* One request per resource, not one request for everything.
+         A single payload meant a single function invocation doing twenty-odd
+         round trips to Neon, which runs past Netlify's ten-second limit - and
+         a timeout mid-seed leaves a tenant holding whatever happened to have
+         been written before the clock ran out. Resource by resource, each
+         call is small, and a failure is both visible and retryable. */
+      const batches = [
+        ['groups', groups],
+        ['applications', applications],
+        ['appServices', seed.seedAppServices()],
+        ['accessRules', seed.seedAccessRules(groups, applications)],
+        ['controllers', seed.seedControllers()],
+        ['gateways', seed.seedGateways()],
+        ['authProfiles', seed.seedAuthProfiles()],
+        ['deviceChecks', seed.seedDeviceChecks()],
+        ['timeSchedules', seed.seedTimeSchedules()],
+        ['geoFences', seed.seedGeoFences()],
+        ['users', users],
+        ['devices', seed.seedDevices(users, SEED_SIZE.devices)],
+        ['sessions', seed.seedSessions(users, applications)],
+        ['eventLog', seed.seedEvents(users, SEED_SIZE.events)]
+      ]
+      // the small reference tables go first, so a slow tail cannot leave the
+      // console without the rows every screen depends on
+      for (const [resource, rows] of batches) {
+        if (!rows?.length) continue
+        await request('/seed', { method: 'POST', body: { [resource]: rows } })
+      }
     })()
+    try {
+      await seeding
+    } catch (err) {
+      seeding = null          // let the next call retry rather than wedging
+      throw err
+    }
     return seeding
   }
 
