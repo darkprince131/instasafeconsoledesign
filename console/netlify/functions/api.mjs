@@ -21,6 +21,12 @@
 import { neon } from '@neondatabase/serverless'
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 
+/* Two call styles, and they are not interchangeable in @neondatabase/serverless v1:
+     sql`select ...`              tagged template, for static SQL
+     sql.query('select ...', [])  function call, for SQL built at runtime
+   The function-call form on `sql` itself was removed in v1 and throws. Every
+   query below whose text is assembled at runtime - because the table or the
+   sort column cannot be a bound parameter - uses sql.query. */
 const sql = neon(process.env.DATABASE_URL)
 
 /* Signing key for the tenant cookie. Set TENANT_SECRET in Netlify; the
@@ -298,17 +304,23 @@ export default async (req, context) => {
   try {
     await ensureSchema()
 
-    // every request is bound to a tenant; a new visitor gets a fresh one
+    /* Every request is bound to a tenant, but the row is only written when
+       the caller actually needs one. /health is reachable by uptime checks
+       and crawlers, and creating a tenant per cookieless hit would fill a
+       0.5 GB database with rows nobody asked for. */
     let tenant = parseTenantCookie(req)
-    if (!tenant) {
+    const anonymous = !tenant
+    if (anonymous) {
       tenant = 't_' + randomUUID().replace(/-/g, '').slice(0, 16)
       setCookie = tenantCookie(tenant)
+    }
+    if (!anonymous) {
+      await sql`update tenants set last_seen_at = now() where id = ${tenant}`
+    } else if (path !== 'health') {
       await sql`
         insert into tenants (id, name, is_demo, expires_at)
         values (${tenant}, 'Demo tenant', true, now() + interval '7 days')
         on conflict (id) do nothing`
-    } else {
-      await sql`update tenants set last_seen_at = now() where id = ${tenant}`
     }
 
     const body = req.method === 'GET' ? {} : await req.json().catch(() => ({}))
@@ -343,7 +355,7 @@ async function route (path, method, body, params, tenant) {
   }
 
   if (path === 'reset' && method === 'POST') {
-    for (const t of TABLES) await sql(`delete from ${t} where tenant_id = $1`, [tenant])
+    for (const t of TABLES) await sql.query(`delete from ${t} where tenant_id = $1`, [tenant])
     return { ok: true }
   }
 
@@ -386,17 +398,17 @@ async function route (path, method, body, params, tenant) {
 
   if (method === 'GET' && !id) return listRows(table, tenant, params)
   if (method === 'GET' && id) {
-    const rows = await sql(`select * from ${table} where tenant_id = $1 and id = $2`, [tenant, id])
+    const rows = await sql.query(`select * from ${table} where tenant_id = $1 and id = $2`, [tenant, id])
     return rowOut(rows[0]) || null
   }
   if (method === 'POST' && !id) return insertRow(table, tenant, body)
   if (method === 'PUT' && id) return updateRow(table, tenant, id, body)
   if (method === 'DELETE' && id) {
-    await sql(`delete from ${table} where tenant_id = $1 and id = $2`, [tenant, id])
+    await sql.query(`delete from ${table} where tenant_id = $1 and id = $2`, [tenant, id])
     return { ok: true }
   }
   if (method === 'POST' && id === 'bulk-delete') {
-    await sql(`delete from ${table} where tenant_id = $1 and id = any($2)`, [tenant, body.ids || []])
+    await sql.query(`delete from ${table} where tenant_id = $1 and id = any($2)`, [tenant, body.ids || []])
     return { ok: true, count: (body.ids || []).length }
   }
 
@@ -413,7 +425,7 @@ async function listRows (table, tenant, params) {
 
   // the sort column is validated against the table's real columns rather
   // than interpolated, because an ORDER BY cannot be parameterised
-  const cols = await sql(
+  const cols = await sql.query(
     `select column_name from information_schema.columns where table_name = $1`, [table])
   const valid = new Set(cols.map(c => c.column_name))
   const sortCol = valid.has(toSnake(sort)) ? toSnake(sort) : null
@@ -443,12 +455,12 @@ async function listRows (table, tenant, params) {
   }
 
   const whereSql = where.join(' and ')
-  const [{ count }] = await sql(
+  const [{ count }] = await sql.query(
     `select count(*)::int from ${table} where ${whereSql}`, args)
 
   const order = sortCol ? `order by ${sortCol} ${dir}` : ''
   args.push(perPage, (page - 1) * perPage)
-  const rows = await sql(
+  const rows = await sql.query(
     `select * from ${table} where ${whereSql} ${order} limit $${args.length - 1} offset $${args.length}`,
     args)
 
@@ -459,7 +471,7 @@ async function listRows (table, tenant, params) {
 }
 
 async function insertRow (table, tenant, body) {
-  const cols = await sql(
+  const cols = await sql.query(
     `select column_name from information_schema.columns where table_name = $1`, [table])
   const valid = new Set(cols.map(c => c.column_name))
 
@@ -472,14 +484,14 @@ async function insertRow (table, tenant, body) {
     values.push(v && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : v)
   }
   const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
-  const rows = await sql(
+  const rows = await sql.query(
     `insert into ${table} (${keys.join(', ')}) values (${placeholders})
      on conflict (id) do nothing returning *`, values)
   return rowOut(rows[0]) || record
 }
 
 async function updateRow (table, tenant, id, body) {
-  const cols = await sql(
+  const cols = await sql.query(
     `select column_name from information_schema.columns where table_name = $1`, [table])
   const valid = new Set(cols.map(c => c.column_name))
 
@@ -492,7 +504,7 @@ async function updateRow (table, tenant, id, body) {
   }
   if (!sets.length) return { ok: true }
   args.push(tenant, id)
-  const rows = await sql(
+  const rows = await sql.query(
     `update ${table} set ${sets.join(', ')}
      where tenant_id = $${args.length - 1} and id = $${args.length} returning *`, args)
   return rowOut(rows[0])
@@ -513,7 +525,7 @@ async function seedTenant (tenant, body) {
     const table = RESOURCE_TABLE[resource]
     if (!table || !Array.isArray(rows) || !rows.length) continue
 
-    const cols = await sql(
+    const cols = await sql.query(
       `select column_name from information_schema.columns where table_name = $1`, [table])
     const valid = new Set(cols.map(c => c.column_name))
 
@@ -539,7 +551,7 @@ async function seedTenant (tenant, body) {
         })
         return `(${ph.join(',')})`
       })
-      await sql(
+      await sql.query(
         `insert into ${table} (${keys.join(',')}) values ${tuples.join(',')}
          on conflict (id) do nothing`, args)
     }
