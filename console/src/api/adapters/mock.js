@@ -43,6 +43,7 @@ async function ensureSeeded () {
 async function reseed () {
   const users = seed.seedUsers()
   const groups = seed.seedGroups()
+  seed.linkUsersToGroups(users, groups)   // membership, so group rules can match
   const apps = seed.seedApplications()
   const devices = seed.seedDevices(users)
 

@@ -105,23 +105,47 @@ export function seedUsers (count = 1820) {
 
 // --------------------------------------------------------------- groups
 export function seedGroups () {
-  return [
-    ['grp_0001','Administrators','Local',4],
-    ['grp_0002','Engineering','Azure AD',412],
-    ['grp_0003','Finance','Azure AD',88],
-    ['grp_0004','Sales','Azure AD',260],
-    ['grp_0005','Contractors','Local',137],
-    ['grp_0006','Support','LDAP',94],
-    ['grp_0007','Field Engineers','RADIUS',58],
-    ['grp_0008','Executives','SAML',12]
-  ].map(([id, name, authType, members]) => ({
-    id, name, authType, members,
+  /* One group per department, plus the three cross-cutting ones. Every
+     department a user can be in has a group, so membership below is real
+     rather than relying on a group name happening to equal a department
+     name - which left `users.groups` empty and made every group-based access
+     rule match nothing. */
+  const rows = [
+    ['grp_0001', 'Administrators', 'Local'],
+    ['grp_0002', 'Engineering',    'Azure AD'],
+    ['grp_0003', 'Finance',        'Azure AD'],
+    ['grp_0004', 'Sales',          'Azure AD'],
+    ['grp_0005', 'Support',        'LDAP'],
+    ['grp_0006', 'HR',             'Azure AD'],
+    ['grp_0007', 'Operations',     'Azure AD'],
+    ['grp_0008', 'Legal',          'Local'],
+    ['grp_0009', 'Marketing',      'Azure AD'],
+    ['grp_0010', 'IT',             'Local'],
+    ['grp_0011', 'Security',       'Local'],
+    ['grp_0012', 'Contractors',    'Local'],
+    ['grp_0013', 'Executives',     'SAML']
+  ]
+  return rows.map(([id, name, authType]) => ({
+    id, name, authType,
+    members: 0,                       // filled in by seedUsers
     twoFactor: name !== 'Contractors',
-    deviceBinding: !['Contractors','Sales'].includes(name),
-    deviceChecks: ['Administrators','Engineering','Finance','Executives'].includes(name),
-    accessRules: Math.floor(r() * 6),
+    deviceBinding: !['Contractors', 'Sales'].includes(name),
+    deviceChecks: ['Administrators', 'Engineering', 'Finance', 'Executives', 'Security'].includes(name),
+    accessRules: 0,
     createdAt: ago(200 + r() * 400)
   }))
+}
+
+/** Puts every user in the group for their department. Mutates both. */
+export function linkUsersToGroups (users, groups) {
+  const byName = Object.fromEntries(groups.map(g => [g.name, g]))
+  for (const u of users) {
+    const g = byName[u.isAdmin ? 'Administrators' : u.department]
+    if (!g) continue
+    u.groups = [g.id]
+    g.members += 1
+  }
+  return { users, groups }
 }
 
 // -------------------------------------------------------------- devices
@@ -241,7 +265,11 @@ export function seedAccessRules (groups, apps) {
   rule('group', 'Contractors', 'application', 'Finance DB', 'deny')
   rule('group', 'Contractors', 'application', 'Domain Controller', 'deny')
   rule('group', 'Executives', 'application', 'Payroll Web', 'allow')
-  rule('group', 'Field Engineers', 'application', 'Jump Host', 'allow', { schedule: 'Business hours' })
+  rule('group', 'Operations', 'application', 'Jump Host', 'allow', { schedule: 'Business hours' })
+  rule('group', 'Security', 'application', 'Log Collector', 'allow')
+  rule('group', 'IT', 'application', 'Domain Controller', 'allow')
+  rule('group', 'Marketing', 'application', 'Design VM', 'allow')
+  rule('group', 'HR', 'application', 'Payroll Web', 'deny')
   // a deliberate shadowed rule, so the access explorer has something to find
   rule('group', 'Engineering', 'application', 'Jira', 'deny')
   return out

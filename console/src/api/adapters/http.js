@@ -54,6 +54,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
 
       const users = seed.seedUsers(SEED_SIZE.users)
       const groups = seed.seedGroups()
+      seed.linkUsersToGroups(users, groups)   // membership, so group rules can match
       const applications = seed.seedApplications()
 
       /* One request per resource, not one request for everything.
