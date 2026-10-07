@@ -379,9 +379,22 @@ const TABLES = new Set([
    JavaScript convention and Postgres keeps its own. */
 const toSnake = (s) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase())
 const toCamel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+/* Postgres `bigint` arrives over the wire as a STRING, because an int8 does
+   not fit a JavaScript number in the general case. Handed to arithmetic that
+   string concatenates instead of adding: bytesIn + bytesOut produced
+   "9000000030000000" per session, and summing a few hundred of those gave the
+   usage report a total of 2.69e+80 TB. It read as a rendering glitch; it was
+   a type. Byte counts here are far below 2^53, so a number is exact.
+
+   Only bigint columns are listed. Coercing anything that looks numeric would
+   eventually turn an id, a serial number or a phone number into a number and
+   lose its leading zeros. */
+const BIGINT_COLS = new Set(['bytes_in', 'bytes_out'])
+
 const rowOut = (row) => {
   if (!row) return row
-  const out = Object.fromEntries(Object.entries(row).map(([k, v]) => [toCamel(k), v]))
+  const out = Object.fromEntries(Object.entries(row).map(([k, v]) =>
+    [toCamel(k), BIGINT_COLS.has(k) && v !== null && v !== undefined ? Number(v) : v]))
   /* The shared `records` table keeps everything that is not a column in a
      jsonb body. Lifting it back out here means a screen reading a record sees
      a flat object and never has to know which of its fields happened to earn

@@ -149,11 +149,11 @@ const inWindow = computed(() =>
   allSessions.value.filter(x => new Date(x.startedAt).getTime() >= since.value))
 
 const topData = computed(() =>
-  top(inWindow.value, s => s.username, s => (s.bytesIn || 0) + (s.bytesOut || 0)))
+  top(inWindow.value, s => s.username, s => Number(s.bytesIn || 0) + Number(s.bytesOut || 0)))
 
 const topTime = computed(() =>
   top(inWindow.value, s => s.username,
-    s => s.durationMin || Math.max(1, Math.round((Date.now() - new Date(s.startedAt)) / 60000))))
+    s => Number(s.durationMin) || Math.max(1, Math.round((Date.now() - new Date(s.startedAt)) / 60000))))
 
 const topAnomalies = computed(() =>
   top(anomalyRows.value.filter(a => new Date(a.at).getTime() >= since.value),

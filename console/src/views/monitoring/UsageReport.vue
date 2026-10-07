@@ -59,7 +59,8 @@ const rows = computed(() => {
   for (const s of sessions.value) {
     const key = s[cfg.value.group] || '—'
     const minutes = Math.max(1, Math.round((Date.now() - new Date(s.startedAt)) / 60000))
-    const value = cfg.value.measure === 'bytes' ? (s.bytesIn || 0) + (s.bytesOut || 0)
+    // Number(): a bigint column reaching here as a string would concatenate
+    const value = cfg.value.measure === 'bytes' ? Number(s.bytesIn || 0) + Number(s.bytesOut || 0)
       : cfg.value.measure === 'minutes' ? minutes : 1
     by[key] = (by[key] || 0) + value
   }
