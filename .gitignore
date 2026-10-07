@@ -3,3 +3,6 @@ evidence/
 # Local render output
 *.local.png
 .build/
+
+# production JS pulled from veno for field extraction — not ours to redistribute
+veno-js/
