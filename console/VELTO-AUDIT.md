@@ -59,11 +59,10 @@ seed path did not. Now it does, and stamps `kind`.
 a SAML ACS URL. A public self-serve demo should not name a real customer
 tenant. Replaced with the demo's own host.
 
-## 4. `/software-packages` did not exist — PARTIALLY FIXED
+## 4. `/software-packages` did not exist — FIXED
 
-A real route in velto's Devices group, absent from my nav entirely. Nav entry
-added; it resolves to the explicit "Not built yet" state that names the route.
-**BLOCKED** on its column set — needs a velto capture.
+A real route in velto's Devices group, absent from my nav entirely. Built
+against the captured columns — see §11.
 
 ## 5. Dashboard — different shape, and missing real information — OPEN
 
@@ -122,28 +121,79 @@ four separate screens. Mine is one `Filters.vue` behind all four routes with a
 type selector. The consolidation is deliberate and the field sets match; worth
 restating so it is not later mistaken for an oversight.
 
-## 9. File-type category → extension cascade — BLOCKED
+## 9. The filter cascades — captured — FIXED
 
-Still unconfirmed, and still the thing most likely to be wrong in
-`filter-catalog.js`. `EXTENSIONS_BY_CATEGORY` is marked in that file as
-defaults, not captured values.
+Both were read off velto by driving the category select option by option and
+reading the dependent select each time.
 
-The velto session expired before it could be read. Both candidate endpoints
-returned `{"message":"Session has Expired","code":440}`:
+**File type.** The previous lists in `filter-catalog.js` were marked as
+defaults pending confirmation. They were wrong:
+
+| Category | Velto | What this file had |
+|---|---|---|
+| Executables | `.exe .bat .msi .com .scr` | 13 entries, no `.bat` |
+| Media Files | `.mp4 .mp3 .avi .mov .mkv` | 13 entries |
+| Documents | `.pdf .docx .pptx .xls .xlsx` | 13, including `.doc .docm .rtf` |
+| Compressed Files | `.zip .rar .7z .tar .gz .xz` | 10, including `.iso` |
+| Scripts | `.js .py .sh .rb .php` | 10, including `.bat .ps1 .cmd` |
+| Images | `.jpg .png .svg .bmp .webp` | 10 |
+
+Two things worth saying out loud. `.bat` is filed under **Executables**, not
+Scripts — this file had it in the wrong place, and a rule written against the
+wrong category would not have fired. And extensions are stored **with their
+leading dot**, which the chips and the matcher now both honour; the matcher
+had been stripping the dot from the subject while comparing against dotted
+values, so every file-type test would have returned no match.
+
+Also notable for what is **missing**: Documents offers no `.doc`, no `.rtf`
+and no macro-enabled `.docm`/`.xlsm` — the formats carrying most of the actual
+risk. Compressed Files offers no `.iso`. Both need Custom.
+
+**Content — a whole cascade this console did not have.** The content filter is
+not a six-way choice. The category only narrows which of **49 sub-categories**
+a rule may name, and the sub-category is what a destination is matched
+against. The list screen's third column is **Sub Categories**.
 
 ```
-/api/companyadmin/filetype-filter/filetype/types
-/api/companyadmin/content-filter/content/types
+Adult / Mature Content        12   Security Risk                  7
+Social / Lifestyle             8   General Interest - Business    6
+General Interest - Personal    9   Potentially Liable / Illegal   7
 ```
 
-Those paths are also unverified — 440 may be the generic fallback for an
-unknown route under `/api/companyadmin`. **To resolve:** log in to velto, open
-`/filetype-filter` → Add, and pick each category in turn while watching the
-extension control repopulate. The network tab names the real endpoint.
+Added: the cascade, the chips, the column, and the matcher, which had been
+comparing categories. The test probe now offers all 49, grouped by category.
+
+## 10. Velto's Custom file-type category cannot be filled in — NOT A BUG OF MINE
+
+Picking **Custom** removes the extensions control and shows nothing in its
+place — just Name, Category, Save and Reset. Yet a saved Custom record exists
+in the list carrying `.psd, .pdf`, so the values get in somehow, but not
+through this form.
+
+This console lets Custom take typed extensions, which is what the category is
+for. Worth raising with whoever owns the production form.
+
+## 11. `/software-packages` — BUILT
+
+Velto: `Name · Version · Platform · Publisher · Package · Status`, and the
+toolbar has **no Add, no CSV, no Delete** — the catalogue is reported by
+agents, not authored. `Package` is a winget-style identifier
+(`RiotGames.LeagueOfLegends.KR`), which is what the agent matches on.
+
+Velto's first page is Korean consumer software — 벅스, 네이버 웨일, League of
+Legends KR — which is a useful reminder that this screen is an observation of
+a real estate rather than a curated list. Seeded in that spirit: corporate
+tooling plus the remote-access and torrent clients that actually turn up, four
+of which carry a coral mark.
+
+Found building it: `statusPill` matched case-sensitively, so production's own
+casing — `Active`, `Pending-Approval` — fell through to null and rendered
+every state unmarked, including the ones the design spends colour on.
 
 ## Route coverage
 
-67 of velto's 68 nav destinations were already present. The only absence was
-`/software-packages`. Deliberate additions that velto has no equivalent for:
+67 of velto's 68 nav destinations were already present. The only absence,
+`/software-packages`, is now built. Deliberate additions that velto has no
+equivalent for:
 `/access-explorer`, `/reports/session-recording`, `/sub-admin/all`,
 `/sub-admin/roles`.
