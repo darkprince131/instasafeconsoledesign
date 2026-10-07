@@ -350,6 +350,30 @@ export function seedEvents (users, count = 794) {
       at: ago(r() * 30)
     })
   }
+  /* One deliberate impossible-travel pair.
+     The anomaly detector is real - it computes a haversine between the two
+     cities and fires above about 900 km/h - but a randomly generated log
+     almost never produces two sign-ins by the same user, far enough apart,
+     close enough together. Without this the best detection in the product
+     has nothing to demonstrate on, which is the same trap the session
+     controls fell into. The pair below is ~7,000 km in 2 hours. */
+  const traveller = users[3] || users[1]
+  const base = Date.now() - 5 * 3600_000
+  out.push({
+    id: 'evt_travel_1', type: 'auth.login.success', severity: 'info',
+    actor: traveller.username, actorId: traveller.id,
+    message: `${traveller.firstName} ${traveller.lastName} signed in`,
+    ip: '49.205.12.8', city: 'Bengaluru',
+    at: new Date(base).toISOString()
+  })
+  out.push({
+    id: 'evt_travel_2', type: 'auth.login.success', severity: 'info',
+    actor: traveller.username, actorId: traveller.id,
+    message: `${traveller.firstName} ${traveller.lastName} signed in`,
+    ip: '81.2.69.144', city: 'London',
+    at: new Date(base + 2 * 3600_000).toISOString()
+  })
+
   return out.sort((a, b) => b.at.localeCompare(a.at))
 }
 
