@@ -39,15 +39,21 @@ Swapping backends is **one import line**. Nothing else changes.
   not duplicated.
 - **Audit trail.** Every action writes to the event log. Add a user, it is at the top.
 
-### Done / not done
+### Done / not done — all seven phases are built
 Phase 0 and most of 1–2 are built: shell, DataTable (carries 54 screens, adds sort +
 column chooser + selection-gated destructive actions), dashboard, users with add flow,
 device queue, posture evaluator, access rules, access explorer, controllers, live
 sessions, event log, Demo Inbox, sign-in with MFA.
 
-Not built: auth profiles ×8, SAML/OIDC mock IdP, IDAM, filters, most settings, RDP/SSH
-session surface, SIEM export, guided tours. Routes exist and say so honestly rather than
-faking it. See `console/SCOPE.md` for the phase each lands in.
+All 67 navigation destinations resolve to something built. Phases 0–7 complete:
+the shell and list template, real TOTP, the device queue and posture evaluator,
+applications with the RDP/SSH session surface, the access explorer, eight auth profiles
+with a working mock IdP at `/idp`, SIEM export in four real wire formats, session
+recording playback, anomaly detection, filters with a live matcher, IDAM, settings,
+and five guided tours.
+
+**Not built:** the sign-in gate. Visitors land straight on the dashboard. `SignIn.vue`
+and real MFA both work, so wiring it is small — it was deliberately left until last.
 
 ### Test against the deployed site, not local preview
 `npm run dev` and `vite preview` run the **mock** adapter, because
