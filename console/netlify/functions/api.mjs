@@ -384,6 +384,7 @@ const RESOURCE_TABLE = {
   authDevices: 'records', devicePolicies: 'records', blockedApps: 'records',
   deviceUpdates: 'records', urlFilters: 'records', contentFilters: 'records',
   fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
+  riskProfiles: 'records', userProviders: 'records', downloads: 'records',
   accessLog: 'event_log'
 }
 
@@ -395,7 +396,8 @@ const RECORD_KINDS = {
   blockedApps: 'blocked-app', deviceUpdates: 'device-update',
   urlFilters: 'url-filter', contentFilters: 'content-filter',
   fileTypeFilters: 'filetype-filter', domainLists: 'domain-list',
-  idamServices: 'idam-service'
+  idamServices: 'idam-service', riskProfiles: 'risk-profile',
+  userProviders: 'user-provider', downloads: 'download'
 }
 
 // ------------------------------------------------------------- the handler

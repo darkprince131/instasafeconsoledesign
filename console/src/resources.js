@@ -185,6 +185,227 @@ export const RESOURCES = {
     ]
   },
 
+  '/profile/azuread': {
+    singular: 'provider',
+    formSubtitle: 'A provider pulls users in. An authentication profile decides how they sign in - the two are separate.',
+    form: [
+      { key: 'name', label: 'Connection name', required: true, placeholder: 'Corp Azure AD' },
+      { key: 'kind', label: 'Provider', options: ['Azure AD', 'Google Workspace', 'Okta', 'SCIM'] },
+      { key: 'tenantId', label: 'Directory / tenant ID', placeholder: '00000000-0000-0000-0000-000000000000' },
+      { key: 'clientId', label: 'Client ID' },
+      { key: 'syncGroups', label: 'Import group membership too', type: 'switch' },
+      { key: 'enabled', label: 'Sync is active', type: 'switch' }
+    ],
+    title: 'User providers',
+    subtitle: 'Where users are imported from. Importing somebody does not by itself let them sign in.',
+    resource: 'userProviders',
+    primaryAction: 'Add provider',
+    emptyTitle: 'No user providers',
+    emptyBody: 'Without one, users have to be created by hand or imported from CSV.',
+    columns: [
+      { key: 'name', label: 'Connection', bold: true },
+      { key: 'kind', label: 'Provider' },
+      { key: 'tenantId', label: 'Directory', mono: true },
+      { key: 'syncGroups', label: 'Groups', bool: true },
+      { key: 'enabled', label: 'Active', bool: true }
+    ]
+  },
+
+  '/profile/google': { alias: '/profile/azuread' },
+  '/profile/scim-import': { alias: '/profile/azuread' },
+  '/downloads/gateway-agents': { alias: '/downloads/user-agents' },
+
+  '/downloads/user-agents': {
+    title: 'User agents',
+    subtitle: 'The client people install. An out-of-date agent is the commonest cause of a posture failure.',
+    resource: 'deviceUpdates',
+    emptyTitle: 'No agent releases listed',
+    emptyBody: 'Add a release under Device updates and it appears here.',
+    columns: [
+      { key: 'platform', label: 'Platform', bold: true },
+      { key: 'version', label: 'Version', mono: true },
+      { key: 'mandatory', label: 'Mandatory', bool: true },
+      { key: 'notes', label: 'Release notes', dim: true }
+    ]
+  },
+
+  '/sub-admin/all': {
+    singular: 'sub admin',
+    formSubtitle: 'A sub admin signs into this console with a role that limits what they can touch.',
+    form: [
+      { key: 'name', label: 'Name', required: true, placeholder: 'Priya Nair' },
+      { key: 'email', label: 'Email', required: true, placeholder: 'priya@example.com' },
+      { key: 'role', label: 'Role', options: ['Read only', 'Helpdesk', 'Security analyst', 'Full admin'] },
+      { key: 'enabled', label: 'Account is active', type: 'switch' }
+    ],
+    title: 'Sub admins',
+    subtitle: 'People who administer this tenant, and how much of it they can reach.',
+    resource: 'subAdmins',
+    primaryAction: 'Add sub admin',
+    emptyTitle: 'No sub admins',
+    emptyBody: 'Only the primary administrator can sign in. Add one to delegate.',
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'email', label: 'Email', dim: true },
+      { key: 'role', label: 'Role' },
+      { key: 'enabled', label: 'Active', bool: true }
+    ]
+  },
+
+  '/sub-admin/roles': {
+    singular: 'role',
+    formSubtitle: 'A role is a set of permissions. The production form has 58 switches on one page with no grouping.',
+    form: [
+      { key: 'name', label: 'Role name', required: true, placeholder: 'Security analyst' },
+      { key: 'description', label: 'What this role is for', placeholder: 'Read logs and approve devices' },
+      { key: 'canManageUsers', label: 'Create and edit users', type: 'switch' },
+      { key: 'canApproveDevices', label: 'Approve devices', type: 'switch' },
+      { key: 'canEditRules', label: 'Edit access rules', type: 'switch' },
+      { key: 'canViewLogs', label: 'Read logs and reports', type: 'switch' },
+      { key: 'canEditSettings', label: 'Change tenant settings', type: 'switch' }
+    ],
+    title: 'Roles',
+    subtitle: 'What a sub admin is allowed to do.',
+    resource: 'roles',
+    primaryAction: 'Add role',
+    columns: [
+      { key: 'name', label: 'Role', bold: true },
+      { key: 'description', label: 'Purpose', dim: true },
+      { key: 'canManageUsers', label: 'Users', bool: true },
+      { key: 'canApproveDevices', label: 'Devices', bool: true },
+      { key: 'canEditRules', label: 'Rules', bool: true },
+      { key: 'canViewLogs', label: 'Logs', bool: true },
+      { key: 'canEditSettings', label: 'Settings', bool: true }
+    ]
+  },
+
+  '/application-groups': {
+    singular: 'application group',
+    formSubtitle: 'Group applications so one access rule can cover several.',
+    form: [
+      { key: 'name', label: 'Group name', required: true, placeholder: 'Finance systems' },
+      { key: 'description', label: 'Description', placeholder: 'Everything the finance team needs' }
+    ],
+    title: 'Application groups',
+    subtitle: 'A rule pointing at a group covers every application in it.',
+    resource: 'appGroups',
+    primaryAction: 'Add group',
+    columns: [
+      { key: 'name', label: 'Group', bold: true },
+      { key: 'description', label: 'Description', dim: true },
+      { key: 'createdAt', label: 'Created', cell: fmtDate, dim: true }
+    ]
+  },
+
+  '/device-policy': {
+    singular: 'device policy',
+    formSubtitle: 'A named bundle of device requirements that users and groups can be assigned.',
+    form: [
+      { key: 'name', label: 'Policy name', required: true, placeholder: 'Contractor laptops' },
+      { key: 'requireEncryption', label: 'Require disk encryption', type: 'switch' },
+      { key: 'requireAntivirus', label: 'Require antivirus', type: 'switch' },
+      { key: 'blockJailbroken', label: 'Block jailbroken devices', type: 'switch' },
+      { key: 'maxAgentAge', label: 'Maximum agent age in days', type: 'number', placeholder: '90' }
+    ],
+    title: 'Device policy',
+    subtitle: 'Requirements a device has to meet before its user can connect.',
+    resource: 'devicePolicies',
+    primaryAction: 'Add policy',
+    columns: [
+      { key: 'name', label: 'Policy', bold: true },
+      { key: 'requireEncryption', label: 'Encryption', bool: true },
+      { key: 'requireAntivirus', label: 'Antivirus', bool: true },
+      { key: 'blockJailbroken', label: 'Block jailbroken', bool: true },
+      { key: 'maxAgentAge', label: 'Max agent age', align: 'right', mono: true }
+    ]
+  },
+
+  '/app-blocker': {
+    singular: 'blocked application',
+    formSubtitle: 'Applications the agent prevents from running while a tunnel is up.',
+    form: [
+      { key: 'name', label: 'Application name', required: true, placeholder: 'uTorrent' },
+      { key: 'process', label: 'Process name', placeholder: 'utorrent.exe' },
+      { key: 'platform', label: 'Platform', options: ['Windows', 'macOS', 'Linux', 'All'] },
+      { key: 'enabled', label: 'Rule is enabled', type: 'switch' }
+    ],
+    title: 'Blocked apps',
+    subtitle: 'Stopped from running on a device while it is connected.',
+    resource: 'blockedApps',
+    primaryAction: 'Add blocked app',
+    emptyTitle: 'Nothing is blocked',
+    emptyBody: 'Add an application here to stop it running while a device is connected.',
+    columns: [
+      { key: 'name', label: 'Application', bold: true },
+      { key: 'process', label: 'Process', mono: true },
+      { key: 'platform', label: 'Platform' },
+      { key: 'enabled', label: 'Enabled', bool: true }
+    ]
+  },
+
+  '/device-updates': {
+    singular: 'agent release',
+    formSubtitle: 'Which agent build each platform should be running.',
+    form: [
+      { key: 'platform', label: 'Platform', required: true,
+        options: ['Windows', 'macOS', 'Linux', 'Android', 'iOS'] },
+      { key: 'version', label: 'Version', required: true, placeholder: '4.8.2' },
+      { key: 'mandatory', label: 'Mandatory — block older agents', type: 'switch' },
+      { key: 'notes', label: 'Release notes', placeholder: 'Fixes posture reporting on Windows 11 24H2' }
+    ],
+    title: 'Device updates',
+    subtitle: 'The agent version each platform is expected to run.',
+    resource: 'deviceUpdates',
+    primaryAction: 'Add release',
+    columns: [
+      { key: 'platform', label: 'Platform', bold: true },
+      { key: 'version', label: 'Version', mono: true },
+      { key: 'mandatory', label: 'Mandatory', bool: true },
+      { key: 'notes', label: 'Notes', dim: true }
+    ]
+  },
+
+  '/risk-profiles': {
+    singular: 'risk profile',
+    formSubtitle: 'A score built from device posture, location and time. Access rules can require a maximum.',
+    form: [
+      { key: 'name', label: 'Profile name', required: true, placeholder: 'Standard' },
+      { key: 'maxScore', label: 'Maximum allowed score', type: 'number', placeholder: '60' },
+      { key: 'weightPosture', label: 'Weight — device posture', type: 'number', placeholder: '50' },
+      { key: 'weightGeo', label: 'Weight — unusual location', type: 'number', placeholder: '30' },
+      { key: 'weightTime', label: 'Weight — outside hours', type: 'number', placeholder: '20' }
+    ],
+    title: 'Risk profiles',
+    subtitle: 'How a session is scored, and the score above which it is refused.',
+    resource: 'riskProfiles',
+    primaryAction: 'Add profile',
+    columns: [
+      { key: 'name', label: 'Profile', bold: true },
+      { key: 'maxScore', label: 'Max score', align: 'right', mono: true },
+      { key: 'weightPosture', label: 'Posture', align: 'right', mono: true },
+      { key: 'weightGeo', label: 'Location', align: 'right', mono: true },
+      { key: 'weightTime', label: 'Time', align: 'right', mono: true }
+    ]
+  },
+
+  '/asset-inventory': {
+    title: 'Asset inventory',
+    subtitle: 'Everything this tenant knows about, in one list.',
+    resource: 'devices',
+    columns: [
+      { key: 'name', label: 'Asset', bold: true },
+      { key: 'osFamily', label: 'Platform' },
+      { key: 'os', label: 'Operating system', dim: true },
+      { key: 'agentVersion', label: 'Agent', mono: true },
+      { key: 'ipAddress', label: 'Address', mono: true },
+      { key: 'city', label: 'Location' },
+      { key: 'status', label: 'Status',
+        cell: (v) => v.charAt(0).toUpperCase() + v.slice(1),
+        pill: (v) => v === 'approved' ? null : v === 'pending' ? 'att' : 'bad' }
+    ]
+  },
+
+
   '/reports/session-log': {
     title: 'Session log',
     subtitle: 'Every session that has been opened, including ones that have ended.',
@@ -255,6 +476,12 @@ export const RESOURCES = {
       { key: 'status', label: 'Status', pill: statusPill }
     ]
   }
+}
+
+/* A couple of routes are the same screen under another name in the nav.
+   Resolving aliases here keeps one definition rather than two that drift. */
+for (const [path, cfg] of Object.entries(RESOURCES)) {
+  if (cfg.alias) RESOURCES[path] = { ...RESOURCES[cfg.alias] }
 }
 
 export { fmtDate, fmtAgo, bytes, statusPill }

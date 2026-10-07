@@ -38,7 +38,32 @@ const bespoke = {
   '/reports/time-uses-log':            () => import('../views/monitoring/UsageReport.vue'),
   '/reports/gateway':                  () => import('../views/monitoring/UsageReport.vue'),
   '/reports/application-access-logs':  () => import('../views/monitoring/UsageReport.vue'),
-  '/reports/anomaly-logs':             () => import('../views/monitoring/AnomalyLogs.vue')
+  '/reports/anomaly-logs':             () => import('../views/monitoring/AnomalyLogs.vue'),
+
+  // filters: four routes, one component - same object, different matcher
+  '/url-filter':      () => import('../views/security/Filters.vue'),
+  '/content-filter':  () => import('../views/security/Filters.vue'),
+  '/filetype-filter': () => import('../views/security/Filters.vue'),
+  '/domainlists':     () => import('../views/security/Filters.vue'),
+
+  // IDAM: i365 as the provider. These describe the IdP running at /idp.
+  '/openid-idp':       () => import('../views/identity/IdamServices.vue'),
+  '/saml-idp':         () => import('../views/identity/IdamServices.vue'),
+  '/oauth2-service':   () => import('../views/identity/IdamServices.vue'),
+  '/scim-export':      () => import('../views/identity/IdamServices.vue'),
+  '/authserver/radius':() => import('../views/identity/IdamServices.vue'),
+
+  // settings: six routes of grouped fields saved as a blob
+  '/settings/company-details':      () => import('../views/settings/Settings.vue'),
+  '/settings/subscription-details': () => import('../views/settings/Settings.vue'),
+  '/sms-settings':                  () => import('../views/settings/Settings.vue'),
+  '/email-settings':                () => import('../views/settings/Settings.vue'),
+  '/user-settings':                 () => import('../views/settings/Settings.vue'),
+  '/settings/dns-wins':             () => import('../views/settings/Settings.vue'),
+
+  '/reports/network-test': () => import('../views/monitoring/NetworkTest.vue'),
+  '/tech-support':         () => import('../views/TechSupport.vue'),
+  '/graph':                () => import('../views/Graph.vue')
 }
 
 const routes = [
