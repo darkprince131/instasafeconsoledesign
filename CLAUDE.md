@@ -49,6 +49,20 @@ Not built: auth profiles ×8, SAML/OIDC mock IdP, IDAM, filters, most settings, 
 session surface, SIEM export, guided tours. Routes exist and say so honestly rather than
 faking it. See `console/SCOPE.md` for the phase each lands in.
 
+### Test against the deployed site, not local preview
+`npm run dev` and `vite preview` run the **mock** adapter, because
+`VITE_BACKEND=http` is only set on Netlify. So a bug that only exists on the
+HTTP path — a missing id, a column mismatch, a NOT NULL — passes locally and
+fails live. Two separate bugs shipped this way. For anything touching
+`src/api/adapters/http.js` or `netlify/functions/`, verify on
+`instasafe-console-demo.netlify.app`.
+
+### Interaction: editing is a row click
+The real console has **no per-row edit button anywhere**. The whole table is
+`cursor:pointer` and clicking a row opens the slide-in panel with that record
+loaded; the panel shows the same fields as add, plus Suspend / Save / Cancel.
+This console matches that. Do not add pencil icons.
+
 ### Gotchas already hit — do not rediscover
 - Exactly **one** `netlify.toml`, at the repo root. With `base = "console"` Netlify also
   reads `console/netlify.toml` and lets it win, which double-nests the paths. That was
@@ -58,6 +72,13 @@ faking it. See `console/SCOPE.md` for the phase each lands in.
 - IndexedDB cannot structured-clone a Vue reactive proxy. The mock adapter unwraps via
   `plain()` — keep doing that for any new write path.
 - `qrcode`'s `toString` callback resolves asynchronously. Use `create()` and draw the SVG.
+- Ids are assigned **server-side** in `insertRow`. The mock adapter invents them; the
+  HTTP adapter does not, so a create with no id hits a NOT NULL.
+- `/api/health` deliberately does not create a tenant row, so every other route
+  **upserts** it — otherwise a visitor whose first request was health holds a cookie
+  naming a row that does not exist, and the cookie is HttpOnly so they cannot clear it.
+- Seed rows must be uniform. The bulk inserter takes the union of keys across a chunk,
+  but a ragged batch still writes nulls for whatever a row omits.
 
 ---
 
