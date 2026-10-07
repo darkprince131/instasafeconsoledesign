@@ -50,8 +50,12 @@ onMounted(async () => {
   denied.value = Object.entries(byApp)
     .map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n).slice(0, 5)
 
+  allEvents.value = events
+  try { anomalyRows.value = (await api.anomalies.list({ perPage: 0 })).data } catch { anomalyRows.value = [] }
+
   // sessions per hour across the day, from the live session set
   const sessions = (await api.sessions.list({ perPage: 0 })).data
+  allSessions.value = sessions
   const buckets = Array(24).fill(0)
   for (const s of sessions) buckets[new Date(s.startedAt).getHours()]++
   hourly.value = buckets
@@ -82,6 +86,111 @@ const attention = computed(() => {
   }
   return out
 })
+
+/* ---- seats and renewal ------------------------------------------------- */
+/* Before the first load `stats` is {}, and a ratio over zero users printed
+   "NaN% of users connected" on the opening screen of the product. */
+const connectedPct = computed(() => {
+  const u = stats.value.users || 0
+  if (!u) return 'no users yet'
+  return `${Math.round((stats.value.sessionsLive / u) * 100)}% of users connected`
+})
+
+const seatsLeft = computed(() =>
+  Math.max(0, (stats.value.licences?.total || 0) - (stats.value.licences?.used || 0)))
+const seatPct = computed(() => {
+  const t = stats.value.licences?.total || 0
+  return t ? Math.min(100, Math.round((stats.value.licences.used / t) * 100)) : 0
+})
+const RENEWS_ON = new Date('2027-03-31T00:00:00Z')
+const renewal = computed(() => {
+  const days = Math.round((RENEWS_ON - Date.now()) / 86400000)
+  return {
+    label: RENEWS_ON.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    note: days > 0 ? `in ${days.toLocaleString()} days` : 'expired'
+  }
+})
+
+/* ---- the four analytics panels ----------------------------------------- */
+/**
+ * One period control for all four panels rather than four of them.
+ * Production puts Today/Week/Month on each panel separately, which lets the
+ * four drift out of sync and quietly invites you to compare a day against a
+ * month. They answer the same question about the same estate, so they move
+ * together.
+ */
+const period = ref('week')
+const PERIODS = [
+  { key: 'today', label: 'Today', days: 1 },
+  { key: 'week', label: 'Week', days: 7 },
+  { key: 'month', label: 'Month', days: 30 }
+]
+const periodDays = computed(() => PERIODS.find(p => p.key === period.value).days)
+const since = computed(() => Date.now() - periodDays.value * 86400000)
+
+const allSessions = ref([])
+const anomalyRows = ref([])
+const allEvents = ref([])
+
+/** Top N of a grouped total, which is what every one of these panels is. */
+function top (items, key, value, n = 5) {
+  const by = {}
+  for (const it of items) {
+    const k = key(it)
+    if (!k) continue
+    by[k] = (by[k] || 0) + value(it)
+  }
+  return Object.entries(by)
+    .map(([name, v]) => ({ name, v }))
+    .sort((a, b) => b.v - a.v).slice(0, n)
+}
+
+const inWindow = computed(() =>
+  allSessions.value.filter(x => new Date(x.startedAt).getTime() >= since.value))
+
+const topData = computed(() =>
+  top(inWindow.value, s => s.username, s => (s.bytesIn || 0) + (s.bytesOut || 0)))
+
+const topTime = computed(() =>
+  top(inWindow.value, s => s.username,
+    s => s.durationMin || Math.max(1, Math.round((Date.now() - new Date(s.startedAt)) / 60000))))
+
+const topAnomalies = computed(() =>
+  top(anomalyRows.value.filter(a => new Date(a.at).getTime() >= since.value),
+    a => a.kind, () => 1))
+
+const topBlocked = computed(() =>
+  top(allEvents.value.filter(e =>
+    e.type === 'access.denied' && new Date(e.at).getTime() >= since.value),
+  e => e.target, () => 1))
+
+const bytes = (n) => {
+  if (!n) return '0 B'
+  const u = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
+  return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${u[i]}`
+}
+const mins = (n) => n < 60 ? `${n} min` : `${Math.floor(n / 60)}h ${n % 60}m`
+
+/** The four panels, declared rather than repeated four times in markup. */
+const panels = computed(() => [
+  { title: 'Top data usage', meta: 'by user', rows: topData.value, fmt: bytes,
+    empty: 'No traffic recorded in this window.' },
+  { title: 'Top time usage', meta: 'by user', rows: topTime.value, fmt: mins,
+    empty: 'No sessions in this window.' },
+  /* Anomalies only exist once a scan has been run, so an empty panel here is
+     not "no news" - it is "nobody has looked". Saying which, and linking to
+     the screen that does it, is the difference between an empty state and a
+     dead one. */
+  { title: 'Anomalies', meta: 'by type', rows: topAnomalies.value, fmt: (v) => v.toLocaleString(),
+    empty: anomalyRows.value.length
+      ? 'Nothing anomalous in this window. That is the healthy state.'
+      : 'No scan has been run yet.',
+    to: anomalyRows.value.length ? null : '/reports/anomaly-logs',
+    toLabel: 'Run a scan' },
+  { title: 'Top blocked services', meta: 'by application', rows: topBlocked.value,
+    fmt: (v) => v.toLocaleString(), empty: 'Nothing was blocked in this window.' }
+])
 
 const maxOs = computed(() => Math.max(1, ...osBreakdown.value.map(o => o.n)))
 const maxDenied = computed(() => Math.max(1, ...denied.value.map(o => o.n)))
@@ -150,23 +259,76 @@ const num = (n) => (n ?? 0).toLocaleString()
     <section class="i-stats">
       <div class="i-stat">
         <div class="i-k">Online gateways</div>
-        <div class="i-v">{{ stats.gatewaysUp }}<small> / {{ stats.gateways }}</small></div>
+        <div class="i-v">{{ num(stats.gatewaysUp) }}<small> / {{ num(stats.gateways) }}</small></div>
         <div class="i-n">{{ stats.gatewaysUp === stats.gateways ? 'All reachable' : 'One degraded' }}</div>
       </div>
       <div class="i-stat">
         <div class="i-k">Live sessions</div>
         <div class="i-v">{{ num(stats.sessionsLive) }}</div>
-        <div class="i-n">{{ Math.round((stats.sessionsLive / stats.users) * 100) }}% of users connected</div>
+        <div class="i-n">{{ connectedPct }}</div>
       </div>
+      <!-- Seats. Production gives half its dashboard cards to subscription
+           state and this console had none of it: an admin who cannot see how
+           many seats are left cannot plan an onboarding. The bar earns its
+           place because the number alone does not say how close you are. -->
       <div class="i-stat">
-        <div class="i-k">Licences used</div>
+        <div class="i-k">User subscription</div>
         <div class="i-v">{{ num(stats.licences?.used) }}<small> / {{ num(stats.licences?.total) }}</small></div>
-        <div class="i-n">{{ num((stats.licences?.total || 0) - (stats.licences?.used || 0)) }} remaining</div>
+        <div class="i-seatbar" :title="`${seatPct}% of seats used`">
+          <span :style="{ width: seatPct + '%' }" :class="{ 'is-tight': seatPct >= 90 }" />
+        </div>
+        <div class="i-n">{{ num(seatsLeft) }} seats left</div>
       </div>
       <div class="i-stat">
-        <div class="i-k">Access rules</div>
-        <div class="i-v">{{ num(stats.rules) }}</div>
-        <div class="i-n">across {{ num(stats.applications) }} applications</div>
+        <div class="i-k">Subscription renews</div>
+        <div class="i-v i-vdate">{{ renewal.label }}</div>
+        <div class="i-n">{{ renewal.note }}</div>
+      </div>
+    </section>
+
+    <!-- The four reports production leads with, under one period control. -->
+    <section class="i-analytics">
+      <div class="i-ahead">
+        <h2>Usage and exceptions</h2>
+        <div class="i-seg" role="tablist" aria-label="Reporting period">
+          <button
+            v-for="p in PERIODS" :key="p.key"
+            role="tab" :aria-selected="period === p.key"
+            class="i-segb" :class="{ 'is-on': period === p.key }"
+            @click="period = p.key"
+          >{{ p.label }}</button>
+        </div>
+      </div>
+
+      <div class="i-agrid">
+        <div v-for="pn in panels" :key="pn.title" class="i-apanel">
+          <div class="i-chead">
+            <h3>{{ pn.title }}</h3>
+            <span class="i-meta">{{ pn.meta }}</span>
+          </div>
+
+          <div v-if="loading">
+            <div class="i-skel mb-2" v-for="n in 4" :key="n" />
+          </div>
+
+          <div v-else-if="pn.rows.length">
+            <div v-for="(row, i) in pn.rows" :key="row.name" class="i-barrow">
+              <span class="i-bl" :title="row.name">{{ row.name }}</span>
+              <span class="i-bartrack">
+                <span
+                  class="i-barfill"
+                  :style="{ width: (row.v / pn.rows[0].v * 100) + '%', opacity: i ? .5 : 1 }"
+                />
+              </span>
+              <span class="i-barval">{{ pn.fmt(row.v) }}</span>
+            </div>
+          </div>
+
+          <p v-else class="i-anote">
+            {{ pn.empty }}
+            <RouterLink v-if="pn.to" :to="pn.to" class="i-alink">{{ pn.toLabel }}</RouterLink>
+          </p>
+        </div>
       </div>
     </section>
 

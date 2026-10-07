@@ -186,14 +186,6 @@ onMounted(async () => {
       title="Access rules"
       subtitle="Evaluated top to bottom. The first rule that matches decides, and the rest never run."
     >
-      <template #actions>
-        <RouterLink class="i-btn" to="/access-explorer">
-          <i class="fa-solid fa-magnifying-glass-chart" aria-hidden="true" /> Test a rule
-        </RouterLink>
-        <button class="i-btn i-primary" @click="openAdd">
-          <i class="fa-solid fa-plus" aria-hidden="true" /> Add rule
-        </button>
-      </template>
     </PageHeader>
 
     <div class="i-strip">
@@ -202,6 +194,14 @@ onMounted(async () => {
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
           <input v-model="search" type="search" placeholder="Search rule, source or destination">
         </label>
+        <div class="i-tools">
+        <RouterLink class="i-btn" to="/access-explorer">
+          <i class="fa-solid fa-magnifying-glass-chart" aria-hidden="true" /> Test a rule
+        </RouterLink>
+        <button class="i-btn i-primary" @click="openAdd">
+          <i class="fa-solid fa-plus" aria-hidden="true" /> Add rule
+        </button>
+        </div>
       </div>
     </div>
 

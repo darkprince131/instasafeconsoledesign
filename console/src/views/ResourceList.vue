@@ -201,17 +201,32 @@ onMounted(load)
 
     <template v-else>
       <PageHeader :title="cfg.title" :subtitle="cfg.subtitle">
-        <template #actions>
-          <button class="i-btn">
-            <i class="fa-solid fa-download" aria-hidden="true" /> Export
+      </PageHeader>
+
+      <!-- Search leads, the actions sit against it, the filters follow.
+           The page header above carries the title and one line of context and
+           nothing else: a title competing with two buttons is a title that
+           stops being read. -->
+      <div class="i-strip">
+        <label class="i-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
+          <input v-model="search" type="search" :placeholder="`Search ${cfg.title.toLowerCase()}`">
+          <button
+            v-if="search" type="button" class="i-sclear"
+            aria-label="Clear search" @click.prevent="search = ''"
+          ><i class="fa-solid fa-xmark" aria-hidden="true" /></button>
+        </label>
+
+        <div class="i-tools">
+          <button class="i-btn" title="Download this list as CSV">
+            <i class="fa-solid fa-download" aria-hidden="true" />
+            <span class="d-none d-sm-inline">Export</span>
           </button>
           <button v-if="cfg.primaryAction && editable" class="i-btn i-primary" @click="openAdd">
             <i class="fa-solid fa-plus" aria-hidden="true" /> {{ cfg.primaryAction }}
           </button>
-        </template>
-      </PageHeader>
+        </div>
 
-      <div class="i-strip">
         <div v-if="chips.length" class="i-ftabs">
           <button
             v-for="c in chips" :key="c.key"
@@ -219,13 +234,6 @@ onMounted(load)
             :aria-pressed="activeFilter === c.key"
             @click="activeFilter = c.key"
           >{{ c.label }}</button>
-        </div>
-
-        <div class="i-right">
-          <label class="i-search">
-            <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
-            <input v-model="search" type="search" :placeholder="`Search ${cfg.title.toLowerCase()}`">
-          </label>
         </div>
       </div>
 

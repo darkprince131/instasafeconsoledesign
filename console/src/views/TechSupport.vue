@@ -11,7 +11,7 @@ const diag = ref(null)
 onMounted(async () => {
   const s = await api.stats()
   diag.value = {
-    tenant: 'veno',
+    tenant: 'demo',
     consoleVersion: '3.4.1',
     users: s.users,
     devices: s.devices,

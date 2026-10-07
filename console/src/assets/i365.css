@@ -76,8 +76,25 @@
   --i-gut:34px;           /* page gutter; rows bleed to it */
   --i-row-h:52px;
 
-  --i-sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  --i-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --i-sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --i-mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  /* Type scale. Named sizes rather than literals scattered across 90
+     selectors, which is how the old file ended up with 12, 12.5, 13 and 14
+     all doing the job of "body". */
+  --i-t-title:25px;     /* page title - the heaviest thing on screen, and not bold */
+  --i-t-section:15px;   /* panel and section headings */
+  --i-t-body:13px;      /* rows, controls, most of the interface */
+  --i-t-meta:12px;      /* secondary lines under a body line */
+  --i-t-micro:11px;     /* counts, timestamps, column heads */
+
+  /* Tracking is a function of size: Geist needs tightening at display sizes
+     and opening up at micro sizes, which is the opposite of applying one
+     letter-spacing everywhere. */
+  --i-tr-title:-.021em;
+  --i-tr-section:-.013em;
+  --i-tr-body:-.004em;
+  --i-tr-micro:.055em;
 
   --i-sb:rgba(31,32,35,.17); --i-sb-hi:rgba(31,32,35,.34);
   --i-rail-sb:rgba(31,32,35,.15); --i-rail-sb-hi:rgba(31,32,35,.3);
@@ -138,11 +155,17 @@ html[data-i-rail="dark"]{
 [hidden]{ display:none !important; }
 .i-app{
   font-family:var(--i-sans);
-  font-size:13px;
+  font-size:var(--i-t-body);
   line-height:1.55;
+  letter-spacing:var(--i-tr-body);
   color:var(--i-ink);
   background:var(--i-canvas);
   -webkit-font-smoothing:antialiased;
+  /* Figures line up in a column whatever the digits. A list of 2,140 devices
+     over 1,820 users is unreadable when the 1s are narrow, and this console
+     is mostly columns of numbers. */
+  font-variant-numeric:tabular-nums;
+  font-optical-sizing:auto;
   font-feature-settings:"cv05","ss01";
 }
 .i-app :focus-visible{
@@ -200,7 +223,7 @@ html[data-i-rail="dark"]{
    set live, so it reads in both themes. The official lockup, unaltered, is
    used on the sign-in screen where it sits on white at size. */
 .i-brand .i-wm{
-  font-weight:600; font-size:14px; letter-spacing:-.014em; color:var(--i-rail-ink);
+  font-weight:550; font-size:14px; letter-spacing:var(--i-tr-section); color:var(--i-rail-ink);
 }
 .i-brand .i-tenant{
   margin-left:auto; font-size:11px; color:var(--i-rail-mute);
@@ -218,7 +241,7 @@ html[data-i-rail="dark"]{
    and carry no icon; they are signposts, not destinations. */
 .i-navsec{
   padding:16px 8px 5px; font-size:10px; font-weight:500;
-  letter-spacing:.09em; text-transform:uppercase; color:var(--i-rail-mute);
+  letter-spacing:var(--i-tr-micro); text-transform:uppercase; color:var(--i-rail-mute);
 }
 .i-navsec:first-child{ padding-top:6px; }
 .i-navitem{
@@ -242,7 +265,7 @@ html[data-i-rail="dark"]{
 .i-navitem[aria-expanded="true"] .i-caret{ transform:rotate(90deg); }
 .i-subitem{
   display:block; padding:6px 9px 6px 35px; border-radius:var(--i-r-ctl);
-  color:var(--i-rail-dim); font-size:12.5px; text-decoration:none;
+  color:var(--i-rail-dim); font-size:var(--i-t-meta); text-decoration:none;
 }
 .i-subitem:hover{ background:var(--i-rail-hover); color:var(--i-rail-ink); }
 .i-subitem[aria-current="page"],
@@ -255,12 +278,12 @@ html[data-i-rail="dark"]{
 .i-av{
   width:26px; height:26px; flex:none; border-radius:99px;
   background:var(--i-v50); color:var(--i-v700);
-  display:grid; place-items:center; font-size:10.5px; font-weight:600;
+  display:grid; place-items:center; font-size:var(--i-t-micro); font-weight:600;
 }
 html[data-i-rail="dark"] .i-av,
 html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i-rail-ink); }
 .i-railfoot .i-uname{
-  font-size:12.5px; color:var(--i-rail-ink);
+  font-size:var(--i-t-meta); color:var(--i-rail-ink);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
@@ -277,21 +300,88 @@ html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i
   padding:0 var(--i-gut); background:var(--i-canvas);
   border-bottom:1px solid var(--i-rule);
 }
-.i-crumb{ font-size:12.5px; color:var(--i-mute); display:flex; align-items:center; gap:6px; }
+.i-crumb{ font-size:var(--i-t-meta); color:var(--i-mute); display:flex; align-items:center; gap:6px; }
 .i-crumb a{ color:var(--i-mute); text-decoration:none; }
 .i-crumb a:hover{ color:var(--i-ink); }
 .i-crumb strong{ color:var(--i-ink); font-weight:450; }
-.i-tgroup{ margin-left:auto; display:flex; align-items:center; gap:4px; }
+.i-tgroup{ display:flex; align-items:center; gap:3px; flex:none; }
+.i-tsep{
+  width:1px; height:18px; margin:0 5px; background:var(--i-rule); flex:none;
+}
+
+/* ---- global search in the topbar ---- */
+/* The bar is the widest thing in the chrome on purpose. It is the only
+   control that reaches all 68 destinations, and sizing it like the buttons
+   next to it would say it matters as much as the theme toggle. */
+.i-cmd{ position:relative; flex:1; min-width:0; max-width:560px; margin:0 auto; }
+.i-cmdbar{
+  display:flex; align-items:center; gap:9px; height:34px; padding:0 11px;
+  border:1px solid var(--i-rule-strong); border-radius:var(--i-r-ctl);
+  background:var(--i-tint); cursor:text;
+  transition:border-color .16s ease, background .16s ease;
+}
+.i-cmdbar:hover{ border-color:var(--i-dim); }
+.i-cmdbar.is-open,
+.i-cmdbar:focus-within{
+  background:var(--i-canvas); border-color:var(--i-v600);
+  box-shadow:0 0 0 3px var(--i-v50);
+}
+.i-cmdbar > i{ color:var(--i-mute); font-size:12px; flex:none; }
+.i-cmdbar input{
+  border:0; outline:0; background:transparent; flex:1; min-width:0;
+  font:inherit; font-size:var(--i-t-meta); color:var(--i-ink);
+}
+.i-cmdbar input::placeholder{ color:var(--i-mute); }
+.i-cmdbar input::-webkit-search-cancel-button{ -webkit-appearance:none; }
+.i-kbd{
+  flex:none; font-family:var(--i-mono); font-size:10px; line-height:1;
+  padding:3.5px 5px; color:var(--i-mute);
+  border:1px solid var(--i-rule-strong); border-radius:4px;
+  background:var(--i-canvas);
+}
+
+.i-cmdpop{
+  position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:60;
+  padding:5px; border:1px solid var(--i-rule-strong);
+  border-radius:var(--i-r-float); background:var(--i-canvas);
+  box-shadow:var(--i-float-lg);
+  max-height:min(62vh,440px); overflow:auto;
+}
+html[data-i-theme="dark"] .i-cmdpop{ box-shadow:none; outline:1px solid rgba(255,255,255,.09); }
+.i-cmdrow{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:7px 9px; border:0; border-radius:5px; background:transparent;
+  font:inherit; text-align:left; cursor:pointer; color:var(--i-ink);
+}
+.i-cmdrow.is-active{ background:var(--i-v50); }
+.i-cmdicon{ width:15px; text-align:center; color:var(--i-mute); font-size:12px; flex:none; }
+.i-cmdrow.is-active .i-cmdicon{ color:var(--i-v700); }
+.i-cmdtext{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.i-cmdt{ font-size:var(--i-t-meta); line-height:1.35; }
+.i-cmds{
+  font-size:var(--i-t-micro); color:var(--i-mute); line-height:1.35;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.i-cmdkind{
+  flex:none; font-size:10px; letter-spacing:var(--i-tr-micro);
+  text-transform:uppercase; color:var(--i-mute);
+}
+.i-cmdnote{ margin:0; padding:12px 10px; font-size:var(--i-t-meta); color:var(--i-mute); }
+
+@media (max-width:767.98px){ .i-cmd{ margin-left:0; } .i-kbd{ display:none; } }
 .i-tbtn{
   display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 9px;
   border:0; border-radius:var(--i-r-ctl); background:transparent;
   color:var(--i-dim); font:inherit; font-size:12px; cursor:pointer;
 }
 .i-tbtn:hover{ background:var(--i-tint); color:var(--i-ink); }
+.i-tbtn:active{ transform:translateY(1px); }
+.i-tbtn.i-icon{ width:30px; padding:0; justify-content:center; }
+.i-tbtn:focus-visible{ outline:2px solid var(--i-v600); outline-offset:1px; }
 .i-tbtn svg{ width:15px; height:15px; }
 /* the session timer is a machine string and reads better in mono */
 .i-sessclock{
-  font-family:var(--i-mono); font-size:11.5px; color:var(--i-mute);
+  font-family:var(--i-mono); font-size:var(--i-t-micro); color:var(--i-mute);
   padding-right:6px; font-variant-numeric:tabular-nums;
 }
 .i-page{ padding:26px var(--i-gut) 72px; flex:1; min-width:0; }
@@ -304,10 +394,10 @@ html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i
   margin:0 0 22px; flex-wrap:wrap;
 }
 .i-phead h1{
-  margin:0; font-size:25px; font-weight:450;
-  letter-spacing:-.024em; line-height:1.15; color:var(--i-ink);
+  margin:0; font-size:var(--i-t-title); font-weight:450;
+  letter-spacing:var(--i-tr-title); line-height:1.15; color:var(--i-ink);
 }
-.i-phead .i-sub{ margin:5px 0 0; font-size:12.5px; color:var(--i-mute); }
+.i-phead .i-sub{ margin:5px 0 0; font-size:var(--i-t-meta); color:var(--i-mute); }
 .i-phead .i-acts{ margin-left:auto; display:flex; align-items:center; gap:8px; }
 
 /* The attention band answers "what needs me?" before the page answers
@@ -317,8 +407,8 @@ html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i
   display:flex; align-items:center; gap:24px; flex-wrap:wrap;
   padding:16px 0 20px; border-bottom:1px solid var(--i-rule); margin-bottom:22px;
 }
-.i-band .i-bt{ font-size:16px; font-weight:450; letter-spacing:-.014em; display:flex; align-items:center; gap:9px; }
-.i-band .i-bs{ margin:3px 0 0 19px; font-size:12.5px; color:var(--i-mute); }
+.i-band .i-bt{ font-size:var(--i-t-section); font-weight:450; letter-spacing:var(--i-tr-section); display:flex; align-items:center; gap:9px; }
+.i-band .i-bs{ margin:3px 0 0 19px; font-size:var(--i-t-meta); color:var(--i-mute); }
 .i-fdot{
   width:7px; height:7px; border-radius:99px; background:var(--i-c500);
   flex:none; outline:4px solid var(--i-c50);
@@ -326,8 +416,8 @@ html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i
 .i-bandacts{ margin-left:auto; display:flex; align-items:center; gap:26px; }
 .i-ba{ display:flex; align-items:baseline; gap:9px; }
 .i-ba .i-n{ font-size:21px; font-weight:400; color:var(--i-c600); font-variant-numeric:tabular-nums; }
-.i-ba .i-l{ font-size:12.5px; color:var(--i-ink); }
-.i-ba .i-l small{ display:block; font-size:11.5px; color:var(--i-mute); }
+.i-ba .i-l{ font-size:var(--i-t-meta); color:var(--i-ink); }
+.i-ba .i-l small{ display:block; font-size:var(--i-t-micro); color:var(--i-mute); }
 
 /* ================== 5 · metrics + bars ================== */
 /* Separation is a rule and space, never a card. Value first, label above it
@@ -339,13 +429,13 @@ html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i
 }
 .i-stat{ padding:var(--i-s5) var(--i-s6) var(--i-s5) 0; border-right:1px solid var(--i-rule); }
 .i-stat:last-child{ border-right:0; }
-.i-stat .i-k{ font-size:11.5px; color:var(--i-mute); margin-bottom:4px; }
+.i-stat .i-k{ font-size:var(--i-t-micro); color:var(--i-mute); margin-bottom:4px; }
 .i-stat .i-v{
   font-size:25px; font-weight:400; letter-spacing:-.022em;
   color:var(--i-ink); font-variant-numeric:tabular-nums; line-height:1.1;
 }
 .i-stat .i-v small{ font-size:15px; color:var(--i-mute); font-weight:400; }
-.i-stat .i-n{ margin-top:5px; font-size:11.5px; color:var(--i-mute); }
+.i-stat .i-n{ margin-top:5px; font-size:var(--i-t-micro); color:var(--i-mute); }
 
 .i-cols{
   display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
@@ -359,43 +449,84 @@ html[data-i-theme="dark"] .i-av{ background:rgba(255,255,255,.08); color:var(--i
 .i-col:last-child{ border-right:0; padding-right:0; }
 .i-chead{ display:flex; align-items:baseline; gap:var(--i-s3); margin-bottom:var(--i-s4); }
 .i-chead h2{ margin:0; font-size:13px; font-weight:500; letter-spacing:-.006em; color:var(--i-ink); }
-.i-chead .i-meta{ margin-left:auto; font-size:11.5px; color:var(--i-mute); }
+.i-chead .i-meta{ margin-left:auto; font-size:var(--i-t-micro); color:var(--i-mute); }
 
 /* An inline bar row beats a pie: it is sortable, labelled, and reads at a
    glance. The four dashboard pies each had a single 100% slice. */
-.i-barrow{ display:grid; grid-template-columns:110px 1fr 46px; align-items:center; gap:14px; padding:6px 0; }
-.i-barrow .i-bl{ font-size:12.5px; color:var(--i-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.i-barrow{ display:grid; grid-template-columns:minmax(0,120px) 1fr auto; align-items:center; gap:14px; padding:6px 0; }
+.i-barrow .i-bl{ font-size:var(--i-t-meta); color:var(--i-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .i-bartrack{ height:7px; border-radius:99px; background:var(--i-g100); overflow:hidden; }
 html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
-.i-barfill{ height:100%; border-radius:99px; background:var(--i-v500); }
-.i-barval{ text-align:right; font-size:12.5px; color:var(--i-ink); font-variant-numeric:tabular-nums; }
+/* `display:block` is doing real work here.
+   The track is a grid item and gets blockified for free, but the fill is a
+   plain span inside it - inline, so height and width were both ignored and
+   every bar in the console rendered as an empty groove. The charts looked
+   like they had no data rather than like they were broken, which is why it
+   survived. */
+.i-barfill{
+  display:block; height:100%; border-radius:99px; background:var(--i-v500);
+  transition:width .35s cubic-bezier(.16,1,.3,1);
+}
+.i-barval{
+  text-align:right; font-size:var(--i-t-meta); color:var(--i-ink);
+  font-variant-numeric:tabular-nums; white-space:nowrap; min-width:56px;
+}
 
 /* ================== 6 · table ================== */
 /* The list template renders 54 screens, so this is the highest-leverage
    component in the product. No container, no card, no border box: rows bleed
    to the page gutter and the rules between them do the separating. */
+/* One toolbar row, not two.
+   Search, the filter chips and the page's actions were spread over the page
+   header and a strip beneath it, which left search boxed into 260px at the
+   far right - the narrowest control on a screen whose whole job is finding a
+   row among two thousand. Here it leads the row, grows into whatever space
+   is going, and the actions sit directly against it. */
 .i-strip{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:10px 0; margin-bottom:2px;
+  padding:4px 0 12px; margin-bottom:2px;
 }
-.i-strip .i-right{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+/* Search + actions is one group and leads the row; the filter chips drop to
+   their own line beneath. `.i-right` keeps its name because nine screens use
+   it, but it is no longer pushed right - the search was being squeezed to its
+   260px floor at the far edge of a 1,400px screen. */
+.i-strip .i-right{
+  order:-1; margin-left:0; display:flex; align-items:center; gap:8px;
+  flex:1 1 420px; min-width:0;
+}
+.i-strip .i-right.ms-auto{ margin-left:0 !important; }
+.i-strip .i-ftabs{ order:1; flex-basis:100%; }
+/* a screen with no chips keeps everything on one line */
+.i-strip .i-ftabs:only-child{ flex-basis:auto; }
 .i-search{
-  display:flex; align-items:center; gap:7px; height:32px; padding:0 10px;
-  min-width:260px; border:1px solid var(--i-rule-strong);
+  display:flex; align-items:center; gap:8px; height:34px; padding:0 11px;
+  flex:1 1 420px; min-width:240px; max-width:700px;
+  border:1px solid var(--i-rule-strong);
   border-radius:var(--i-r-ctl); background:var(--i-canvas);
+  transition:border-color .16s ease;
 }
+.i-search:hover{ border-color:var(--i-dim); }
+/* the actions butt up against the search rather than floating away from it */
+.i-tools{ display:flex; align-items:center; gap:6px; flex:none; }
 .i-search svg{ width:14px; height:14px; color:var(--i-mute); flex:none; }
 .i-search input{
   border:0; outline:0; background:transparent; flex:1; min-width:0;
-  font:inherit; font-size:12.5px; color:var(--i-ink);
+  font:inherit; font-size:var(--i-t-meta); color:var(--i-ink);
 }
 .i-search input::placeholder{ color:var(--i-mute); }
 .i-search:focus-within{ border-color:var(--i-v600); box-shadow:0 0 0 3px var(--i-v50); }
+.i-search input::-webkit-search-cancel-button{ -webkit-appearance:none; }
+.i-sclear{
+  flex:none; display:grid; place-items:center; width:19px; height:19px;
+  border:0; border-radius:50%; background:transparent;
+  color:var(--i-mute); font-size:10px; cursor:pointer;
+}
+.i-sclear:hover{ background:var(--i-tint); color:var(--i-ink); }
 
 .i-table{ width:100%; border-collapse:collapse; }
 .i-table th{
-  text-align:left; padding:9px 14px; font-size:10.5px; font-weight:500;
-  letter-spacing:.07em; text-transform:uppercase;
+  text-align:left; padding:9px 14px; font-size:var(--i-t-micro); font-weight:500;
+  letter-spacing:var(--i-tr-micro); text-transform:uppercase;
   /* --i-mute measures 3.00:1 on white; at 10.5px uppercase that fails. --i-dim is 6.29:1 */
   color:var(--i-dim);
   border-bottom:1px solid var(--i-rule-strong); white-space:nowrap;
@@ -436,7 +567,7 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 
 .i-tfoot{
   display:flex; align-items:center; gap:12px;
-  padding:14px 0; border-top:1px solid var(--i-rule); font-size:12.5px; color:var(--i-mute);
+  padding:14px 0; border-top:1px solid var(--i-rule); font-size:var(--i-t-meta); color:var(--i-mute);
 }
 .i-tfoot .i-right{ margin-left:auto; display:flex; align-items:center; gap:6px; }
 .i-pbtn{
@@ -452,7 +583,7 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 .i-selnote{
   display:flex; align-items:center; gap:12px;
   padding:9px 14px; margin:0 calc(var(--i-gut) * -1); padding-left:var(--i-gut);
-  background:var(--i-v50); color:var(--i-v700); font-size:12.5px;
+  background:var(--i-v50); color:var(--i-v700); font-size:var(--i-t-meta);
 }
 .i-selnote .i-right{ margin-left:auto; display:flex; gap:8px; }
 
@@ -464,7 +595,7 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
   border:1px solid var(--i-rule-strong); border-radius:var(--i-r-float); color:var(--i-mute);
 }
 .i-zero h3{ margin:0 0 6px; font-size:15.5px; font-weight:450; letter-spacing:-.012em; color:var(--i-ink); }
-.i-zero p{ margin:0 auto; max-width:390px; font-size:12.5px; color:var(--i-mute); }
+.i-zero p{ margin:0 auto; max-width:390px; font-size:var(--i-t-meta); color:var(--i-mute); }
 .i-zero .i-za{ margin-top:18px; }
 
 /* ================== 7 · side panel ================== */
@@ -487,7 +618,7 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
   padding:20px 22px 16px; border-bottom:1px solid var(--i-rule);
 }
 .i-sheeth h2{ margin:0; font-size:17px; font-weight:450; letter-spacing:-.016em; }
-.i-sheeth .i-sub{ margin:4px 0 0; font-size:12.5px; color:var(--i-mute); }
+.i-sheeth .i-sub{ margin:4px 0 0; font-size:var(--i-t-meta); color:var(--i-mute); }
 .i-sheetb{ flex:1; min-height:0; overflow-y:auto; padding:20px 22px 28px; }
 .i-sheetf{
   flex:none; display:flex; align-items:center; gap:8px;
@@ -511,7 +642,7 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 }
 .i-modalb{ padding:24px 24px 4px; }
 .i-modalb h2{ margin:0 0 7px; font-size:16px; font-weight:450; letter-spacing:-.012em; }
-.i-modalb p{ margin:0; font-size:12.5px; color:var(--i-dim); }
+.i-modalb p{ margin:0; font-size:var(--i-t-meta); color:var(--i-dim); }
 .i-modalb .i-named{ color:var(--i-ink); font-weight:500; }
 .i-modalf{ display:flex; justify-content:flex-end; gap:8px; padding:18px 24px 20px; }
 
@@ -523,7 +654,7 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
   display:flex; align-items:center; gap:10px;
   padding:11px 14px; min-width:260px; max-width:400px;
   border-radius:var(--i-r-float); background:var(--i-canvas);
-  box-shadow:var(--i-float); font-size:12.5px; color:var(--i-ink);
+  box-shadow:var(--i-float); font-size:var(--i-t-meta); color:var(--i-ink);
 }
 .i-toast .i-td{ width:7px; height:7px; border-radius:99px; flex:none; background:var(--i-ok); }
 .i-toast.i-bad .i-td{ background:var(--i-bad); }
@@ -544,17 +675,17 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 .i-frow > .i-field > .i-sw{ margin-top:2px; }
 .i-field{ min-width:0; }
 .i-field > label{
-  display:block; margin-bottom:5px; font-size:12.5px; font-weight:450; color:var(--i-dim);
+  display:block; margin-bottom:5px; font-size:var(--i-t-meta); font-weight:450; color:var(--i-dim);
 }
 .i-field > label .i-req{ color:var(--i-bad); margin-left:2px; }
-.i-hint{ margin:5px 0 0; font-size:11.5px; color:var(--i-mute); }
-.i-err{ margin:5px 0 0; font-size:11.5px; color:var(--i-bad); }
+.i-hint{ margin:5px 0 0; font-size:var(--i-t-micro); color:var(--i-mute); }
+.i-err{ margin:5px 0 0; font-size:var(--i-t-micro); color:var(--i-bad); }
 
 .i-ctl{
   width:100%; height:32px; padding:0 10px;
   border:1px solid var(--i-rule-strong); border-radius:var(--i-r-ctl);
   background:var(--i-canvas); color:var(--i-ink);
-  font:inherit; font-size:12.5px;
+  font:inherit; font-size:var(--i-t-meta);
 }
 textarea.i-ctl{ height:auto; min-height:76px; padding:7px 10px; resize:vertical; }
 select.i-ctl{
@@ -579,7 +710,7 @@ select.i-ctl{
 .i-sw,
 .i-field > label.i-sw{
   display:inline-flex; align-items:center; gap:9px;
-  cursor:pointer; font-size:12.5px; font-weight:400;
+  cursor:pointer; font-size:var(--i-t-meta); font-weight:400;
   color:var(--i-ink); margin-bottom:0;
   /* contains the visually hidden input */
   position:relative;
@@ -612,7 +743,7 @@ html[data-i-theme="dark"] .i-sw .i-track{ background:rgba(255,255,255,.16); }
   display:inline-flex; align-items:center; justify-content:center; gap:7px;
   min-height:32px; padding:0 13px; border-radius:var(--i-r-ctl);
   border:1px solid var(--i-rule-strong); background:var(--i-canvas); color:var(--i-ink);
-  font:inherit; font-size:12.5px; font-weight:450; line-height:1;
+  font:inherit; font-size:var(--i-t-meta); font-weight:450; line-height:1;
   cursor:pointer; white-space:nowrap;
   transition:background-color .12s,border-color .12s,color .12s;
 }
@@ -657,10 +788,10 @@ html[data-i-theme="dark"] .i-btn.i-primary:hover{ filter:brightness(1.08); backg
    difference between 15 coloured marks and 80. */
 .i-pill{
   display:inline-flex; align-items:center; gap:6px;
-  font-size:12.5px; color:var(--i-dim);
+  font-size:var(--i-t-meta); color:var(--i-dim);
 }
 .i-pill.i-att,.i-pill.i-bad{
-  padding:3px 9px; border-radius:99px; font-size:11.5px; font-weight:450;
+  padding:3px 9px; border-radius:99px; font-size:var(--i-t-micro); font-weight:450;
 }
 .i-pill.i-att{ background:var(--i-c50); color:var(--i-c600); border:1px solid var(--i-c-line); }
 .i-pill.i-bad{ background:var(--i-bad-bg); color:var(--i-bad); border:1px solid transparent; }
@@ -676,7 +807,7 @@ html[data-i-theme="dark"] .i-btn.i-primary:hover{ filter:brightness(1.08); backg
 .i-menu button{
   display:flex; align-items:center; gap:9px; width:100%;
   padding:7px 9px; border:0; border-radius:5px; background:transparent;
-  color:var(--i-ink); font:inherit; font-size:12.5px; text-align:left; cursor:pointer;
+  color:var(--i-ink); font:inherit; font-size:var(--i-t-meta); text-align:left; cursor:pointer;
 }
 .i-menu button:hover{ background:var(--i-tint); }
 .i-menu button.i-danger{ color:var(--i-bad); }
@@ -698,3 +829,63 @@ html[data-i-theme="dark"] .i-btn.i-primary:hover{ filter:brightness(1.08); backg
 @media (prefers-reduced-motion:reduce){
   .i-app *{ transition:none !important; animation-duration:.01ms !important; }
 }
+
+/* ================== 14 · dashboard analytics ================== */
+/* Four reports, one period control, no boxes.
+   Production stacks four pie charts here, each of which in the captured
+   tenant was a single 100% slice. A labelled bar reads at a glance, sorts by
+   definition, and still works when there is one data point. */
+.i-analytics{ margin:var(--i-s7) 0 0; }
+.i-ahead{
+  display:flex; align-items:center; gap:var(--i-s4);
+  padding-bottom:var(--i-s3); border-bottom:1px solid var(--i-rule);
+}
+.i-ahead h2{
+  margin:0; font-size:var(--i-t-section); font-weight:450;
+  letter-spacing:var(--i-tr-section); color:var(--i-ink);
+}
+
+/* the period control: a segmented switch, not three loose buttons */
+.i-seg{
+  margin-left:auto; display:inline-flex; padding:2px; gap:2px;
+  background:var(--i-tint); border-radius:var(--i-r-ctl);
+}
+.i-segb{
+  border:0; background:transparent; border-radius:4px;
+  padding:4px 11px; font:inherit; font-size:var(--i-t-micro);
+  color:var(--i-dim); cursor:pointer; transition:color .14s ease, background .14s ease;
+}
+.i-segb:hover{ color:var(--i-ink); }
+.i-segb.is-on{ background:var(--i-canvas); color:var(--i-ink); font-weight:500; }
+html[data-i-theme="dark"] .i-segb.is-on{ background:var(--i-raise,#232329); }
+.i-segb:focus-visible{ outline:2px solid var(--i-v600); outline-offset:1px; }
+
+.i-agrid{
+  display:grid; gap:var(--i-s6) var(--i-s7);
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  padding-top:var(--i-s5);
+}
+@media (max-width:991.98px){ .i-agrid{ grid-template-columns:1fr; } }
+.i-apanel{ min-width:0; }
+.i-apanel h3{
+  margin:0; font-size:var(--i-t-body); font-weight:500;
+  letter-spacing:var(--i-tr-body); color:var(--i-ink);
+}
+.i-anote{
+  margin:0; padding:var(--i-s5) 0; font-size:var(--i-t-meta); color:var(--i-mute);
+}
+
+/* seat meter on the subscription stat */
+.i-seatbar{
+  height:4px; margin:7px 0 6px; border-radius:2px;
+  background:var(--i-tint); overflow:hidden;
+}
+.i-seatbar > span{
+  display:block; height:100%; border-radius:2px;
+  background:var(--i-v500); transition:width .3s cubic-bezier(.16,1,.3,1);
+}
+/* running out of seats is an exception, so it takes the attention colour */
+.i-seatbar > span.is-tight{ background:var(--i-c600); }
+.i-stat .i-vdate{ font-size:19px; letter-spacing:var(--i-tr-section); }
+.i-alink{ color:var(--i-v700); text-decoration:none; margin-left:4px; }
+.i-alink:hover{ text-decoration:underline; }

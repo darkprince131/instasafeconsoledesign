@@ -45,7 +45,7 @@ function badge (key) {
                 fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>
       </span>
       <span class="i-wm">InstaSafe</span>
-      <span class="i-tenant">veno</span>
+      <span class="i-tenant">demo</span>
     </div>
 
     <div class="i-navwrap">

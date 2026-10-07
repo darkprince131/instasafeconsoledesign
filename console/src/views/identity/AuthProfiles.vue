@@ -215,11 +215,6 @@ onMounted(load)
       title="Authentication profiles"
       subtitle="Eight ways people can prove who they are. Each type takes its own fields, and each can be tested before anyone depends on it."
     >
-      <template #actions>
-        <button class="i-btn i-primary" @click="openAdd">
-          <i class="fa-solid fa-plus" aria-hidden="true" /> Add profile
-        </button>
-      </template>
     </PageHeader>
 
     <div class="i-strip">
@@ -228,6 +223,11 @@ onMounted(load)
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
           <input v-model="search" type="search" placeholder="Search profile or host">
         </label>
+        <div class="i-tools">
+        <button class="i-btn i-primary" @click="openAdd">
+          <i class="fa-solid fa-plus" aria-hidden="true" /> Add profile
+        </button>
+        </div>
       </div>
     </div>
 

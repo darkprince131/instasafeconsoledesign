@@ -68,12 +68,6 @@ onMounted(load)
       title="Event logs"
       subtitle="Everything that happened, including everything you have done in this demo."
     >
-      <template #actions>
-        <RouterLink class="i-btn" to="/profile/export-log">
-          <i class="fa-solid fa-shield-halved" aria-hidden="true" /> SIEM export
-        </RouterLink>
-        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export CSV</button>
-      </template>
     </PageHeader>
 
     <div class="i-strip">
@@ -89,6 +83,12 @@ onMounted(load)
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
           <input v-model="search" type="search" placeholder="Search event, actor or IP">
         </label>
+        <div class="i-tools">
+        <RouterLink class="i-btn" to="/profile/export-log">
+          <i class="fa-solid fa-shield-halved" aria-hidden="true" /> SIEM export
+        </RouterLink>
+        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export CSV</button>
+        </div>
       </div>
     </div>
 

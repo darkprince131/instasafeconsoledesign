@@ -60,7 +60,7 @@ export const CHECK_VALUE_HELP = {
   RegistryKeyExists:    ['Registry path', 'HKLM\\SOFTWARE\\Corp\\Managed'],
   SEPLastAVUpdate:      ['Maximum age in days', '3'],
   ServicePack:          ['Service pack level', 'SP1'],
-  TenantId:             ['Tenant identifier', 'veno']
+  TenantId:             ['Tenant identifier', 'acme-demo']
 }
 
 /** Blocked apps only offers these two, per the captured select. */

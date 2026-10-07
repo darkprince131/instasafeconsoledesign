@@ -61,7 +61,7 @@ async function reseed () {
   await db.putMany('geoFences', seed.seedGeoFences())
   await db.putMany('lockouts', seed.seedLockouts())
   await db.putMany('softwarePackages', seed.seedSoftwarePackages())
-  await db.putMany('eventLog', seed.seedEvents(users))
+  await db.putMany('eventLog', seed.seedEvents(users, 794, apps))
   await db.putMany('sessions', seed.seedSessions(users, apps))
 
   localStorage.setItem(SEED_FLAG, new Date().toISOString())

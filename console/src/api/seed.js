@@ -356,7 +356,7 @@ export function seedGeoFences () {
   }))
 }
 
-export function seedEvents (users, count = 794) {
+export function seedEvents (users, count = 794, apps = []) {
   const kinds = [
     ['auth.login.success','info'], ['auth.login.failed','warning'],
     ['auth.mfa.success','info'], ['auth.mfa.failed','warning'],
@@ -374,6 +374,11 @@ export function seedEvents (users, count = 794) {
       id: `evt_${pad(count - i + 1, 6)}`,
       type, severity,
       actor: u.username,
+      /* The resource the event is about. A denial that does not name what was
+         denied cannot be reported on, and "Top blocked services" is exactly
+         that report. */
+      target: apps.length && (type === 'access.denied' || type === 'access.granted')
+        ? pick(apps).name : null,
       message: describeEvent(type, u),
       ip: `49.${Math.floor(r() * 254)}.${Math.floor(r() * 254)}.${Math.floor(r() * 254)}`,
       city,
@@ -428,23 +433,43 @@ function describeEvent (type, u) {
   }[type] || type
 }
 
+/**
+ * Sessions: the live ones, and the history behind them.
+ *
+ * This used to produce 318 sessions all started within the last ten hours,
+ * which made every usage report and every Today/Week/Month toggle return the
+ * identical answer — the period control was decoration. A console that
+ * reports on usage needs usage to have happened.
+ *
+ * So: 318 active sessions from the last ten hours, and ~940 ended ones spread
+ * over thirty days carrying a real duration. Live sessions filters on
+ * `status: 'active'` and is unaffected.
+ */
 export function seedSessions (users, apps) {
-  return Array.from({ length: 318 }, (_, i) => {
+  const mk = (i, daysAgo, active) => {
     const u = users[1 + Math.floor(r() * (users.length - 1))]
     const a = pick(apps)
     const [city] = pick(CITIES)
+    const startedAt = ago(daysAgo)
+    // a working session, not a round number: 3 minutes to about 5 hours
+    const durationMin = active ? null : Math.max(3, Math.round(r() * r() * 310) + 3)
     return {
       id: `ses_${pad(i + 1, 5)}`,
       userId: u.id, username: u.username,
       applicationId: a.id, application: a.name, type: a.type,
-      gateway: pick(['gw-mum-01','gw-blr-01','gw-lon-01','gw-sin-01']),
+      gateway: pick(['gw-mum-01', 'gw-blr-01', 'gw-lon-01', 'gw-sin-01']),
       city,
-      startedAt: ago(r() * 0.4),
+      startedAt,
+      endedAt: active ? null : new Date(new Date(startedAt).getTime() + durationMin * 60000).toISOString(),
+      durationMin,
       bytesIn: Math.floor(r() * 90_000_000),
       bytesOut: Math.floor(r() * 30_000_000),
-      status: 'active'
+      status: active ? 'active' : 'ended'
     }
-  })
+  }
+  const live = Array.from({ length: 318 }, (_, i) => mk(i, r() * 0.4, true))
+  const past = Array.from({ length: 940 }, (_, i) => mk(318 + i, r() * 30, false))
+  return [...live, ...past]
 }
 
 /**

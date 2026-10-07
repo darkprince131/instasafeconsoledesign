@@ -180,12 +180,6 @@ onMounted(async () => {
       title="Applications"
       subtitle="What people connect to. RDP, SSH and VNC applications can be launched from here."
     >
-      <template #actions>
-        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
-        <button class="i-btn i-primary" @click="openAdd">
-          <i class="fa-solid fa-plus" aria-hidden="true" /> Add application
-        </button>
-      </template>
     </PageHeader>
 
     <div class="i-strip">
@@ -203,6 +197,12 @@ onMounted(async () => {
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
           <input v-model="search" type="search" placeholder="Search application, host or owner">
         </label>
+        <div class="i-tools">
+        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+        <button class="i-btn i-primary" @click="openAdd">
+          <i class="fa-solid fa-plus" aria-hidden="true" /> Add application
+        </button>
+        </div>
       </div>
     </div>
 

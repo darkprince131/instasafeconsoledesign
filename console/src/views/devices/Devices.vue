@@ -123,13 +123,6 @@ onMounted(async () => {
       title="Devices"
       subtitle="Every endpoint that has tried to connect. Approving a device binds it to its user."
     >
-      <template #actions>
-        <button class="i-btn" :disabled="binding" @click="bindThisBrowser">
-          <i class="fa-solid fa-fingerprint" aria-hidden="true" />
-          {{ binding ? 'Enrolling…' : 'Enrol this browser' }}
-        </button>
-        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
-      </template>
     </PageHeader>
 
     <section v-if="counts.pending" class="i-band">
@@ -164,6 +157,13 @@ onMounted(async () => {
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
           <input v-model="search" type="search" placeholder="Search device, user, IP or MAC">
         </label>
+        <div class="i-tools">
+        <button class="i-btn" :disabled="binding" @click="bindThisBrowser">
+          <i class="fa-solid fa-fingerprint" aria-hidden="true" />
+          {{ binding ? 'Enrolling…' : 'Enrol this browser' }}
+        </button>
+        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+        </div>
       </div>
     </div>
 

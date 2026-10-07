@@ -334,6 +334,18 @@ async function ensureSchema () {
 
      The key is the pair. Ids are only ever unique within a tenant, which is
      what multi-tenancy means and what the production schema needs too. */
+  /* Columns added after a tenant's tables already existed.
+     `create table if not exists` does nothing to an existing table, so a new
+     field needs its own ALTER or it is simply absent - and the generic
+     inserter drops any field without a column, silently, with a 200. That is
+     how a seeded value disappears between the browser and the database. */
+  for (const [table, col, type] of [
+    ['sessions', 'duration_min', 'integer'],
+    ['event_log', 'target', 'text']
+  ]) {
+    await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
+  }
+
   for (const t of PK_TABLES) {
     await sql.query(`
       do $$

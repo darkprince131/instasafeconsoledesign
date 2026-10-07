@@ -79,7 +79,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['users', users],
         ['devices', seed.seedDevices(users, SEED_SIZE.devices)],
         ['sessions', seed.seedSessions(users, applications)],
-        ['eventLog', seed.seedEvents(users, SEED_SIZE.events)]
+        ['eventLog', seed.seedEvents(users, SEED_SIZE.events, applications)]
       ]
       // the small reference tables go first, so a slow tail cannot leave the
       // console without the rows every screen depends on

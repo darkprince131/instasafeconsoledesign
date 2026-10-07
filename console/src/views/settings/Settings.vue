@@ -29,7 +29,7 @@ const PAGES = {
     sections: [
       ['Organisation', [
         ['companyName', 'Company name', 'text', 'InstaSafe Demo Ltd'],
-        ['tenantId', 'Tenant identifier', 'text', 'veno', 'Appears in every portal URL. Changing it breaks saved links.'],
+        ['tenantId', 'Tenant identifier', 'text', 'demo', 'Appears in every portal URL. Changing it breaks saved links.'],
         ['industry', 'Industry', 'select', 'Technology', '', ['Technology','Finance','Healthcare','Manufacturing','Retail','Government','Education']],
         ['employees', 'Employees', 'number', '1800'],
         ['country', 'Country', 'text', 'India']
