@@ -185,6 +185,49 @@ export const RESOURCES = {
     ]
   },
 
+  '/reports/session-log': {
+    title: 'Session log',
+    subtitle: 'Every session that has been opened, including ones that have ended.',
+    resource: 'sessions',
+    columns: [
+      { key: 'username', label: 'User', bold: true },
+      { key: 'application', label: 'Application' },
+      { key: 'type', label: 'Type', upper: true },
+      { key: 'gateway', label: 'Gateway', mono: true },
+      { key: 'city', label: 'Location' },
+      { key: 'startedAt', label: 'Started', cell: fmtAgo, dim: true },
+      { key: 'bytesIn', label: 'In', cell: bytes, mono: true, align: 'right' },
+      { key: 'bytesOut', label: 'Out', cell: bytes, mono: true, align: 'right' },
+      { key: 'status', label: 'Status', pill: (v) => v === 'active' ? null : 'att' }
+    ]
+  },
+
+  '/report-subscriptions': {
+    singular: 'subscription',
+    formSubtitle: 'Scheduled reports are delivered by mail. In the demo they arrive in the Demo Inbox.',
+    form: [
+      { key: 'name', label: 'Subscription name', required: true, placeholder: 'Weekly access summary' },
+      { key: 'report', label: 'Report',
+        options: ['Access logs', 'Event logs', 'Data usage', 'Time usage', 'User last login'] },
+      { key: 'cadence', label: 'Cadence', options: ['Daily', 'Weekly', 'Monthly'] },
+      { key: 'recipients', label: 'Recipients', placeholder: 'security@example.com' },
+      { key: 'enabled', label: 'Subscription is active', type: 'switch' }
+    ],
+    title: 'Report subscriptions',
+    subtitle: 'Reports that go out on a schedule without anyone opening the console.',
+    resource: 'reportSubscriptions',
+    primaryAction: 'Add subscription',
+    emptyTitle: 'No scheduled reports',
+    emptyBody: 'A subscription mails a report on a cadence, so nobody has to remember to run it.',
+    columns: [
+      { key: 'name', label: 'Subscription', bold: true },
+      { key: 'report', label: 'Report' },
+      { key: 'cadence', label: 'Cadence' },
+      { key: 'recipients', label: 'Recipients', dim: true },
+      { key: 'enabled', label: 'Active', bool: true }
+    ]
+  },
+
   '/reports/user-last-login': {
     title: 'User last login',
     resource: 'users',

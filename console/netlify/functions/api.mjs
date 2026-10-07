@@ -265,6 +265,50 @@ async function ensureSchema () {
       read boolean not null default false,
       at timestamptz not null default now()
     )`
+  /* The long tail. These screens vary only in their columns, so rather than
+     fifteen near-identical tables they share one with a `kind` discriminator
+     and a jsonb body. A production schema would split the ones that grow
+     relationships - sub-admin roles especially - but for records that are
+     only ever listed, filtered and edited whole, this is the honest shape
+     and not a shortcut. */
+  await sql`
+    create table if not exists records (
+      id text not null,
+      tenant_id text not null references tenants(id) on delete cascade,
+      kind text not null,
+      name text,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      primary key (tenant_id, id)
+    )`
+  await sql`create index if not exists records_kind_idx on records (tenant_id, kind)`
+
+  await sql`
+    create table if not exists anomalies (
+      id text not null,
+      tenant_id text not null references tenants(id) on delete cascade,
+      kind text not null,
+      actor text,
+      detail text,
+      severity text not null default 'medium',
+      at timestamptz not null default now(),
+      primary key (tenant_id, id)
+    )`
+  await sql`create index if not exists anomalies_recent_idx on anomalies (tenant_id, at desc)`
+
+  await sql`
+    create table if not exists report_subscriptions (
+      id text not null,
+      tenant_id text not null references tenants(id) on delete cascade,
+      name text not null,
+      report text,
+      cadence text not null default 'Weekly',
+      recipients text,
+      enabled boolean not null default true,
+      created_at timestamptz not null default now(),
+      primary key (tenant_id, id)
+    )`
+
   await sql`
     create table if not exists settings (
       tenant_id text not null references tenants(id) on delete cascade,
@@ -313,7 +357,8 @@ async function ensureSchema () {
 const TABLES = new Set([
   'users', 'groups', 'devices', 'device_checks', 'applications', 'app_services',
   'access_rules', 'controllers', 'gateways', 'auth_profiles', 'time_schedules',
-  'geo_fences', 'sessions', 'event_log', 'outbound'
+  'geo_fences', 'sessions', 'event_log', 'outbound',
+  'anomalies', 'report_subscriptions', 'records'
 ])
 
 /* camelCase on the wire, snake_case in the database — the app keeps the
@@ -330,7 +375,27 @@ const RESOURCE_TABLE = {
   controllers: 'controllers', gateways: 'gateways',
   authProfiles: 'auth_profiles', timeSchedules: 'time_schedules',
   geoFences: 'geo_fences', sessions: 'sessions',
-  eventLog: 'event_log', inbox: 'outbound'
+  eventLog: 'event_log', inbox: 'outbound',
+  anomalies: 'anomalies', reportSubscriptions: 'report_subscriptions',
+  /* Everything below shares the `records` table. Without an entry here the
+     route 404s silently and the screen renders empty with no error - which is
+     exactly how several screens would have shipped looking broken. */
+  subAdmins: 'records', roles: 'records', appGroups: 'records',
+  authDevices: 'records', devicePolicies: 'records', blockedApps: 'records',
+  deviceUpdates: 'records', urlFilters: 'records', contentFilters: 'records',
+  fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
+  accessLog: 'event_log'
+}
+
+/* Resources sharing `records` are scoped by kind, so one screen's rows never
+   leak into another's. */
+const RECORD_KINDS = {
+  subAdmins: 'sub-admin', roles: 'role', appGroups: 'app-group',
+  authDevices: 'auth-device', devicePolicies: 'device-policy',
+  blockedApps: 'blocked-app', deviceUpdates: 'device-update',
+  urlFilters: 'url-filter', contentFilters: 'content-filter',
+  fileTypeFilters: 'filetype-filter', domainLists: 'domain-list',
+  idamServices: 'idam-service'
 }
 
 // ------------------------------------------------------------- the handler
@@ -443,12 +508,15 @@ async function route (path, method, body, params, tenant) {
     return { error: `Unknown resource "${resource}"` }
   }
 
-  if (method === 'GET' && !id) return listRows(table, tenant, params)
+  if (method === 'GET' && !id) return listRows(table, tenant, params, RECORD_KINDS[resource])
   if (method === 'GET' && id) {
     const rows = await sql.query(`select * from ${table} where tenant_id = $1 and id = $2`, [tenant, id])
     return rowOut(rows[0]) || null
   }
-  if (method === 'POST' && !id) return insertRow(table, tenant, body)
+  if (method === 'POST' && !id) {
+    const kind = RECORD_KINDS[resource]
+    return insertRow(table, tenant, kind ? { ...body, kind } : body)
+  }
   if (method === 'PUT' && id) return updateRow(table, tenant, id, body)
   if (method === 'DELETE' && id) {
     await sql.query(`delete from ${table} where tenant_id = $1 and id = $2`, [tenant, id])
@@ -463,7 +531,7 @@ async function route (path, method, body, params, tenant) {
 }
 
 // --------------------------------------------------------------- queries
-async function listRows (table, tenant, params) {
+async function listRows (table, tenant, params, kind) {
   const page = Math.max(1, Number(params.get('page') || 1))
   /* perPage=0 means "all", which is what the dashboard asks for when it needs
      to aggregate. `Number('0') || 25` quietly answered 25 instead, so the
@@ -484,6 +552,8 @@ async function listRows (table, tenant, params) {
 
   const where = ['tenant_id = $1']
   const args = [tenant]
+
+  if (kind) { args.push(kind); where.push(`kind = $${args.length}`) }
 
   if (search) {
     const textCols = cols
