@@ -26,6 +26,7 @@ const toast = inject('toast', () => {})
 const refreshStats = inject('refreshStats', () => {})
 
 const rows = ref([])
+const error = ref('')
 const total = ref(0)
 const loading = ref(true)
 const page = ref(1)
@@ -95,23 +96,41 @@ const chips = computed(() => {
   return [{ key: 'all', label: 'All' }, ...f.options.map(o => ({ key: o, label: o }))]
 })
 
+/**
+ * A failed list has to say so.
+ *
+ * This was unguarded, so a rejected list() left `loading` true and the screen
+ * showed its loading skeleton for ever — indistinguishable from a slow query,
+ * with the real error only in the console. Adding a store to the local
+ * database without bumping its version produced exactly that: a permanent
+ * skeleton over a NotFoundError nobody would see. Carrying 54 screens means
+ * the quiet version of this failure would have been quiet on all of them.
+ */
 async function load () {
   if (!cfg.value) { loading.value = false; return }
   loading.value = true
+  error.value = ''
   const filters = { ...(cfg.value.baseFilter || {}) }
   const f = cfg.value.filters?.[0]
   if (f && activeFilter.value !== 'all') filters[f.key] = activeFilter.value
 
-  const res = await api[cfg.value.resource].list({
-    page: page.value, perPage: perPage.value,
-    sort: sort.value, dir: dir.value,
-    search: search.value,
-    searchFields: cfg.value.searchFields,
-    filters
-  })
-  rows.value = res.data
-  total.value = res.total
-  loading.value = false
+  try {
+    const res = await api[cfg.value.resource].list({
+      page: page.value, perPage: perPage.value,
+      sort: sort.value, dir: dir.value,
+      search: search.value,
+      searchFields: cfg.value.searchFields,
+      filters
+    })
+    rows.value = res.data
+    total.value = res.total
+  } catch (e) {
+    rows.value = []
+    total.value = 0
+    error.value = e?.message || 'The request failed.'
+  } finally {
+    loading.value = false
+  }
 }
 
 function onSort (key, d) { sort.value = key; dir.value = d; page.value = 1; load() }
@@ -234,6 +253,15 @@ onMounted(load)
 
         <template #empty>
           <EmptyState
+            v-if="error"
+            icon="fa-triangle-exclamation"
+            title="This list could not be loaded"
+            :body="error"
+            action-label="Try again"
+            @action="load"
+          />
+          <EmptyState
+            v-else
             :icon="search ? 'fa-magnifying-glass' : 'fa-inbox'"
             :title="search ? `Nothing matches “${search}”` : (cfg.emptyTitle || `No ${cfg.title.toLowerCase()} yet`)"
             :body="search

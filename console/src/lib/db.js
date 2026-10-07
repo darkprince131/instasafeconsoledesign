@@ -10,11 +10,15 @@
  */
 
 const DB_NAME = 'i365-console'
-const DB_VERSION = 1
+/* Bumped when STORES gains a collection. An existing visitor's database was
+   created at the old version, so without a bump `onupgradeneeded` never runs
+   and the new store simply is not there — which surfaces as
+   NotFoundError on the first list() against it. */
+const DB_VERSION = 2
 
 /** Every collection the console needs. Mirrors the eventual table list. */
 export const STORES = [
-  'users', 'groups', 'devices', 'authDevices', 'deviceChecks', 'devicePolicies',
+  'users', 'groups', 'lockouts', 'devices', 'authDevices', 'deviceChecks', 'devicePolicies',
   'geoFences', 'blockedApps', 'deviceUpdates',
   'applications', 'appServices', 'appGroups', 'accessRules',
   'controllers', 'gateways',
