@@ -359,13 +359,15 @@ export default async (req, context) => {
       tenant = 't_' + randomUUID().replace(/-/g, '').slice(0, 16)
       setCookie = tenantCookie(tenant)
     }
-    if (!anonymous) {
-      await sql`update tenants set last_seen_at = now() where id = ${tenant}`
-    } else if (path !== 'health') {
+    /* Upsert rather than insert-if-anonymous. A visitor whose first request
+       was /health holds a cookie naming a tenant that was deliberately never
+       written, and every later write then fails the foreign key. Touching the
+       row on any non-health request is idempotent and closes that hole. */
+    if (path !== 'health') {
       await sql`
         insert into tenants (id, name, is_demo, expires_at)
         values (${tenant}, 'Demo tenant', true, now() + interval '7 days')
-        on conflict (id) do nothing`
+        on conflict (id) do update set last_seen_at = now()`
     }
 
     const body = req.method === 'GET' ? {} : await req.json().catch(() => ({}))
