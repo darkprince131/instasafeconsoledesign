@@ -365,8 +365,19 @@ const TABLES = new Set([
    JavaScript convention and Postgres keeps its own. */
 const toSnake = (s) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase())
 const toCamel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
-const rowOut = (row) => row && Object.fromEntries(
-  Object.entries(row).map(([k, v]) => [toCamel(k), v]))
+const rowOut = (row) => {
+  if (!row) return row
+  const out = Object.fromEntries(Object.entries(row).map(([k, v]) => [toCamel(k), v]))
+  /* The shared `records` table keeps everything that is not a column in a
+     jsonb body. Lifting it back out here means a screen reading a record sees
+     a flat object and never has to know which of its fields happened to earn
+     a column. */
+  if (out.data && typeof out.data === 'object') {
+    Object.assign(out, out.data)
+    delete out.data
+  }
+  return out
+}
 
 const RESOURCE_TABLE = {
   users: 'users', groups: 'groups', devices: 'devices',
@@ -566,6 +577,10 @@ async function listRows (table, tenant, params, kind) {
       args.push(`%${search}%`)
       return `${c}::text ilike $${args.length}`
     })
+    if (valid.has('data')) {
+      args.push(`%${search}%`)
+      parts.push(`data::text ilike $${args.length}`)
+    }
     if (parts.length) where.push(`(${parts.join(' or ')})`)
   }
 
@@ -573,9 +588,16 @@ async function listRows (table, tenant, params, kind) {
   for (const [k, v] of params.entries()) {
     if (!k.startsWith('f.')) continue
     const col = toSnake(k.slice(2))
-    if (!valid.has(col) || v === '' || v === 'all') continue
-    args.push(v === 'true' ? true : v === 'false' ? false : v)
-    where.push(`${col} = $${args.length}`)
+    if (v === '' || v === 'all') continue
+    if (valid.has(col)) {
+      args.push(v === 'true' ? true : v === 'false' ? false : v)
+      where.push(`${col} = $${args.length}`)
+    } else if (valid.has('data')) {
+      args.push(toCamel(k.slice(2)))
+      const keyArg = args.length
+      args.push(String(v))
+      where.push(`data ->> $${keyArg} = $${args.length}`)
+    }
   }
 
   const whereSql = where.join(' and ')
@@ -616,6 +638,22 @@ async function insertRow (table, tenant, body) {
     keys.push(col)
     values.push(v && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : v)
   }
+  /* Fields with no column of their own are kept in `data` rather than
+     dropped. Dropping them is what made a filter save its name and lose its
+     pattern, its priority and its action - silently, with a 200. */
+  if (valid.has('data')) {
+    const extra = {}
+    for (const [k, v] of Object.entries(record)) {
+      const col = k === 'tenant_id' ? k : toSnake(k)
+      if (!valid.has(col)) extra[toCamel(k)] = v
+    }
+    if (Object.keys(extra).length) {
+      const i = keys.indexOf('data')
+      if (i >= 0) values[i] = JSON.stringify({ ...(JSON.parse(values[i] || '{}')), ...extra })
+      else { keys.push('data'); values.push(JSON.stringify(extra)) }
+    }
+  }
+
   const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
   const rows = await sql.query(
     `insert into ${table} (${keys.join(', ')}) values (${placeholders})
@@ -635,6 +673,20 @@ async function updateRow (table, tenant, id, body) {
     args.push(v && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : v)
     sets.push(`${col} = $${args.length}`)
   }
+  /* Same on update: merge anything without a column into the existing body
+     rather than discarding it. */
+  if (valid.has('data')) {
+    const extra = {}
+    for (const [k, v] of Object.entries(body)) {
+      const col = toSnake(k)
+      if (!valid.has(col) && col !== 'id' && col !== 'tenant_id') extra[toCamel(k)] = v
+    }
+    if (Object.keys(extra).length) {
+      args.push(JSON.stringify(extra))
+      sets.push(`data = coalesce(data, '{}'::jsonb) || $${args.length}::jsonb`)
+    }
+  }
+
   if (!sets.length) return { ok: true }
   args.push(tenant, id)
   const rows = await sql.query(
