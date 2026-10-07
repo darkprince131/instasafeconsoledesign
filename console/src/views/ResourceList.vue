@@ -6,6 +6,7 @@ import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
+import Sheet from '../components/ui/Sheet.vue'
 
 /**
  * The generic list screen, driven by a config object from resources.js.
@@ -36,6 +37,53 @@ const activeFilter = ref('all')
 const selectedIds = ref([])
 const confirmOpen = ref(false)
 const table = ref(null)
+const sheetOpen = ref(false)
+const saving = ref(false)
+const editingId = ref(null)
+const form = ref({})
+
+/* A screen can be edited as soon as resources.js gives it a `form`. Without
+   one the rows stay read-only rather than opening an empty panel that saves
+   nothing - which is worse than no edit at all. */
+const editable = computed(() => Array.isArray(cfg.value?.form) && cfg.value.form.length > 0)
+
+function blankForm () {
+  const out = {}
+  for (const f of cfg.value?.form || []) out[f.key] = f.type === 'switch' ? false : ''
+  return out
+}
+
+function openAdd () {
+  form.value = blankForm()
+  editingId.value = null
+  sheetOpen.value = true
+}
+
+function openEdit (row) {
+  if (!editable.value) return
+  form.value = { ...blankForm(), ...row }
+  editingId.value = row.id
+  sheetOpen.value = true
+}
+
+async function saveForm () {
+  const required = (cfg.value.form || []).filter(f => f.required && !form.value[f.key])
+  if (required.length) { toast(required[0].label + ' is required', 'bad'); return }
+  saving.value = true
+  try {
+    if (editingId.value) {
+      await api[cfg.value.resource].update(editingId.value, { ...form.value })
+      toast('Saved')
+    } else {
+      await api[cfg.value.resource].create({ ...form.value })
+      toast('Created')
+    }
+    sheetOpen.value = false
+    refreshStats(); load()
+  } catch (e) {
+    toast('Could not save: ' + (e?.message || 'unknown error'), 'bad')
+  } finally { saving.value = false }
+}
 
 const cfg = computed(() => props.config)
 const title = computed(() => cfg.value?.title || r.meta?.label || 'Screen')
@@ -123,7 +171,7 @@ onMounted(load)
           <button class="i-btn">
             <i class="fa-solid fa-download" aria-hidden="true" /> Export
           </button>
-          <button v-if="cfg.primaryAction" class="i-btn i-primary">
+          <button v-if="cfg.primaryAction && editable" class="i-btn i-primary" @click="openAdd">
             <i class="fa-solid fa-plus" aria-hidden="true" /> {{ cfg.primaryAction }}
           </button>
         </template>
@@ -160,6 +208,7 @@ onMounted(load)
         @sort="onSort"
         @selection="selectedIds = $event"
         @row-action="onRowAction"
+        @row-click="openEdit"
       >
         <template #bulk>
           <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
@@ -178,6 +227,43 @@ onMounted(load)
         </template>
       </DataTable>
     </template>
+
+    <Sheet
+      v-if="editable"
+      v-model:open="sheetOpen"
+      :title="(editingId ? 'Edit ' : 'Add ') + (cfg.singular || 'record')"
+      :subtitle="cfg.formSubtitle || ''"
+    >
+      <div class="i-formsec">
+        <div v-for="f in cfg.form" :key="f.key" class="i-frow" style="grid-template-columns:1fr">
+          <div class="i-field">
+            <label v-if="f.type !== 'switch'" :for="'rf_' + f.key">
+              {{ f.label }}<span v-if="f.required" class="i-req">*</span>
+            </label>
+            <label v-if="f.type === 'switch'" class="i-sw">
+              <input type="checkbox" v-model="form[f.key]"><span class="i-track" />{{ f.label }}
+            </label>
+            <select v-else-if="f.options" :id="'rf_' + f.key" class="i-ctl" v-model="form[f.key]">
+              <option value="">Select…</option>
+              <option v-for="o in f.options" :key="o">{{ o }}</option>
+            </select>
+            <input
+              v-else :id="'rf_' + f.key" class="i-ctl"
+              :type="f.type || 'text'" v-model="form[f.key]" :placeholder="f.placeholder || ''"
+            >
+            <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
+        <div class="i-right">
+          <button class="i-btn i-primary" :disabled="saving" @click="saveForm">
+            {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Create') }}
+          </button>
+        </div>
+      </template>
+    </Sheet>
 
     <ConfirmModal
       v-model:open="confirmOpen"

@@ -36,6 +36,16 @@ const statusPill = (v) => ({
 
 export const RESOURCES = {
   '/usergroups': {
+    singular: 'group',
+    formSubtitle: 'Policy set here is inherited by every member.',
+    form: [
+      { key: 'name', label: 'Group name', required: true, placeholder: 'Finance' },
+      { key: 'authType', label: 'Authentication type',
+        options: ['Local', 'Azure AD', 'RADIUS', 'LDAP', 'SAML', 'Google'] },
+      { key: 'twoFactor', label: 'Require two-factor', type: 'switch' },
+      { key: 'deviceBinding', label: 'Bind members to their first device', type: 'switch' },
+      { key: 'deviceChecks', label: 'Run device posture checks', type: 'switch' }
+    ],
     title: 'User groups',
     subtitle: 'Groups carry policy. A user inherits every rule attached to every group they are in.',
     resource: 'groups',
@@ -53,6 +63,13 @@ export const RESOURCES = {
   },
 
   '/application-services': {
+    singular: 'service',
+    formSubtitle: 'A protocol and port that applications and rules can point at.',
+    form: [
+      { key: 'name', label: 'Service name', required: true, placeholder: 'HTTPS' },
+      { key: 'protocol', label: 'Protocol', options: ['tcp', 'udp', 'icmp'] },
+      { key: 'port', label: 'Port', type: 'number', required: true, placeholder: '443' }
+    ],
     title: 'Application services',
     subtitle: 'Protocol and port definitions that applications reference.',
     resource: 'appServices',
@@ -66,6 +83,14 @@ export const RESOURCES = {
   },
 
   '/gateways': {
+    singular: 'gateway',
+    formSubtitle: 'Where traffic enters. A gateway has to be reachable before a rule using it can work.',
+    form: [
+      { key: 'name', label: 'Gateway name', required: true, placeholder: 'gw-mum-02' },
+      { key: 'region', label: 'Region', placeholder: 'Mumbai' },
+      { key: 'ip', label: 'Public IP', placeholder: '103.21.44.13' },
+      { key: 'version', label: 'Agent version', placeholder: '3.4.1' }
+    ],
     title: 'Gateways',
     subtitle: 'The data plane. Traffic reaches applications through these.',
     resource: 'gateways',
@@ -98,6 +123,15 @@ export const RESOURCES = {
   },
 
   '/time-schedules': {
+    singular: 'schedule',
+    formSubtitle: 'Access rules can reference a schedule; outside it they do not match.',
+    form: [
+      { key: 'name', label: 'Schedule name', required: true, placeholder: 'Business hours' },
+      { key: 'startTime', label: 'From', placeholder: '09:00' },
+      { key: 'endTime', label: 'To', placeholder: '18:00' },
+      { key: 'timezone', label: 'Timezone',
+        options: ['Asia/Kolkata', 'UTC', 'Europe/London', 'America/New_York'] }
+    ],
     title: 'Time schedules',
     subtitle: 'Access windows. Referenced by access rules, and genuinely enforced at evaluation.',
     resource: 'timeSchedules',
@@ -112,6 +146,16 @@ export const RESOURCES = {
   },
 
   '/geo-fences': {
+    singular: 'geo-fence',
+    formSubtitle: 'A circle on the map. A sign-in from outside it is evaluated against the action.',
+    form: [
+      { key: 'name', label: 'Fence name', required: true, placeholder: 'Pune office' },
+      { key: 'city', label: 'City', placeholder: 'Pune' },
+      { key: 'countryCode', label: 'Country code', placeholder: 'IN' },
+      { key: 'radiusKm', label: 'Radius in km', type: 'number', placeholder: '25' },
+      { key: 'action', label: 'Action', options: ['allow', 'deny'] },
+      { key: 'enabled', label: 'Fence is enabled', type: 'switch' }
+    ],
     title: 'Geo-fences',
     subtitle: 'Locations access is allowed from. A simulated client position is evaluated against these.',
     resource: 'geoFences',

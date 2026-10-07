@@ -19,6 +19,7 @@ const selectedIds = ref([]); const table = ref(null)
 const confirmOpen = ref(false)
 const sheetOpen = ref(false)
 const saving = ref(false)
+const editingId = ref(null)
 const form = ref(blank())
 
 function blank () {
@@ -81,11 +82,27 @@ watch(search, () => {
 watch([page, perPage, filter], load)
 
 function onSort (k, d) { sort.value = k; dir.value = d; page.value = 1; load() }
-function openAdd () { form.value = blank(); sheetOpen.value = true }
+function openAdd () { form.value = blank(); editingId.value = null; sheetOpen.value = true }
+
+/* Production opens the edit panel when you click the row - there are no
+   per-row buttons at all - so the same gesture works here. */
+function openEdit (row) {
+  form.value = { ...blank(), ...row }
+  editingId.value = row.id
+  sheetOpen.value = true
+}
+
+async function suspendOne () {
+  await api.users.suspend(editingId.value)
+  form.value.status = 'suspended'
+  toast(form.value.firstName + ' suspended')
+  refreshStats(); load()
+}
 
 /* Username is derived until the admin overrides it. One less thing to type,
    and it removes the commonest cause of a failed save. */
 watch(() => [form.value.firstName, form.value.lastName], () => {
+  if (editingId.value) return        // never silently rename an existing account
   const f = form.value.firstName.trim().toLowerCase()
   const l = form.value.lastName.trim().toLowerCase()
   if (f || l) {
@@ -101,9 +118,14 @@ async function save () {
   }
   saving.value = true
   try {
-    await api.users.create({ ...form.value, lastSeenAt: null })
+    if (editingId.value) {
+      await api.users.update(editingId.value, { ...form.value })
+      toast(form.value.firstName + ' ' + form.value.lastName + ' updated')
+    } else {
+      await api.users.create({ ...form.value, lastSeenAt: null })
+      toast(form.value.firstName + ' ' + form.value.lastName + ' added')
+    }
     sheetOpen.value = false
-    toast(form.value.firstName + ' ' + form.value.lastName + ' added')
     refreshStats()
     page.value = 1
     load()
@@ -182,7 +204,7 @@ onMounted(load)
     <DataTable
       ref="table" :columns="columns" :rows="rows" :total="total" :loading="loading"
       v-model:page="page" v-model:perPage="perPage" :sort="sort" :dir="dir"
-      @sort="onSort" @selection="selectedIds = $event"
+      @sort="onSort" @selection="selectedIds = $event" @row-click="openEdit"
     >
       <template #bulk>
         <button class="i-btn i-sm" @click="suspendSelected">Suspend</button>
@@ -197,7 +219,11 @@ onMounted(load)
       </template>
     </DataTable>
 
-    <Sheet v-model:open="sheetOpen" title="Add user" subtitle="They receive an activation mail once saved.">
+    <Sheet
+      v-model:open="sheetOpen"
+      :title="editingId ? 'Edit user' : 'Add user'"
+      :subtitle="editingId ? 'Changes apply at their next sign-in.' : 'They receive an activation mail once saved.'"
+    >
       <div class="i-formsec">
         <h3>Identity</h3>
         <p class="i-secsub">How this person signs in.</p>
@@ -278,9 +304,13 @@ onMounted(load)
 
       <template #footer>
         <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
+        <button
+          v-if="editingId && form.status !== 'suspended'"
+          class="i-btn i-danger" @click="suspendOne"
+        >Suspend</button>
         <div class="i-right">
           <button class="i-btn i-primary" :disabled="saving" @click="save">
-            {{ saving ? 'Saving…' : 'Save user' }}
+            {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Save user') }}
           </button>
         </div>
       </template>

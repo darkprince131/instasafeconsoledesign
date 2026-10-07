@@ -30,6 +30,7 @@ const selectedIds = ref([]); const table = ref(null)
 const confirmOpen = ref(false)
 const sheetOpen = ref(false)
 const saving = ref(false)
+const editingId = ref(null)
 const form = ref(blank())
 const sessionOpen = ref(false)
 const sessionApp = ref(null)
@@ -52,6 +53,7 @@ const isRemote = computed(() => ['rdp', 'ssh', 'vnc'].includes(form.value.type))
 
 /** Port follows the type until it is edited by hand. */
 watch(() => form.value.type, (t) => {
+  if (editingId.value) return       // editing: leave the saved values alone
   const d = { web: 443, rdp: 3389, ssh: 22, vnc: 5900 }[t]
   if (d) form.value.port = d
   if (!isRemote.value) {
@@ -98,7 +100,13 @@ watch(search, () => { clearTimeout(timer); timer = setTimeout(() => { page.value
 watch([page, perPage, filter], load)
 function onSort (k, d) { sort.value = k; dir.value = d; page.value = 1; load() }
 
-function openAdd () { form.value = blank(); sheetOpen.value = true }
+function openAdd () { form.value = blank(); editingId.value = null; sheetOpen.value = true }
+
+function openEdit (row) {
+  form.value = { ...blank(), ...row }
+  editingId.value = row.id
+  sheetOpen.value = true
+}
 
 async function save () {
   if (!form.value.name || !form.value.host) {
@@ -106,9 +114,14 @@ async function save () {
   }
   saving.value = true
   try {
-    await api.applications.create({ ...form.value })
+    if (editingId.value) {
+      await api.applications.update(editingId.value, { ...form.value })
+      toast(form.value.name + ' updated')
+    } else {
+      await api.applications.create({ ...form.value })
+      toast(form.value.name + ' added')
+    }
     sheetOpen.value = false
-    toast(form.value.name + ' added')
     refreshStats(); page.value = 1; load()
   } catch (err) {
     toast('Could not save: ' + (err?.message || 'unknown error'), 'bad')
@@ -185,7 +198,8 @@ onMounted(load)
       ref="table" :columns="columns" :rows="rows" :total="total" :loading="loading"
       v-model:page="page" v-model:perPage="perPage" :sort="sort" :dir="dir"
       :row-action="{ label: 'Connect', when: (r) => ['rdp','ssh','vnc'].includes(r.type) }"
-      @sort="onSort" @selection="selectedIds = $event" @row-action="connect"
+      @sort="onSort" @selection="selectedIds = $event"
+      @row-action="connect" @row-click="openEdit"
     >
       <template #bulk>
         <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
@@ -202,7 +216,11 @@ onMounted(load)
     </DataTable>
 
     <!-- add: the form changes shape by type, as production does -->
-    <Sheet v-model:open="sheetOpen" title="Add application" subtitle="Access rules point at this once it exists.">
+    <Sheet
+      v-model:open="sheetOpen"
+      :title="editingId ? 'Edit application' : 'Add application'"
+      subtitle="Access rules point at this once it exists."
+    >
       <div class="i-formsec">
         <h3>Type</h3>
         <p class="i-secsub">Decides which fields matter and which session controls apply.</p>
@@ -277,7 +295,7 @@ onMounted(load)
         <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
         <div class="i-right">
           <button class="i-btn i-primary" :disabled="saving" @click="save">
-            {{ saving ? 'Saving…' : 'Save application' }}
+            {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Save application') }}
           </button>
         </div>
       </template>

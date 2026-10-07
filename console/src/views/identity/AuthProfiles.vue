@@ -33,6 +33,7 @@ const search = ref(''); const selectedIds = ref([]); const table = ref(null)
 const confirmOpen = ref(false)
 const sheetOpen = ref(false)
 const saving = ref(false)
+const editingId = ref(null)
 const form = ref(blank())
 const ssoOpen = ref(false)
 const ssoProfile = ref(null)
@@ -121,9 +122,16 @@ watch(search, () => { clearTimeout(timer); timer = setTimeout(() => { page.value
 watch([page, perPage], load)
 function onSort (k, d) { sort.value = k; dir.value = d; page.value = 1; load() }
 
-function openAdd () { form.value = blank(); sheetOpen.value = true }
+function openAdd () { form.value = blank(); editingId.value = null; sheetOpen.value = true }
+
+function openEdit (row) {
+  form.value = { ...blank(), ...row }
+  editingId.value = row.id
+  sheetOpen.value = true
+}
 
 watch(() => form.value.type, (t) => {
+  if (editingId.value) return
   const d = { 'active-directory': 389, ldap: 636, radius: 1812 }[t]
   form.value.port = d ?? null
   if (!form.value.name) form.value.name = TYPES[t]?.label || ''
@@ -133,9 +141,14 @@ async function save () {
   if (!form.value.name) { toast('Give the profile a name', 'bad'); return }
   saving.value = true
   try {
-    await api.authProfiles.create({ ...form.value })
+    if (editingId.value) {
+      await api.authProfiles.update(editingId.value, { ...form.value })
+      toast(form.value.name + ' updated')
+    } else {
+      await api.authProfiles.create({ ...form.value })
+      toast(form.value.name + ' added')
+    }
     sheetOpen.value = false
-    toast(form.value.name + ' added')
     load()
   } catch (e) {
     toast('Could not save: ' + (e?.message || 'unknown error'), 'bad')
@@ -222,7 +235,8 @@ onMounted(load)
       ref="table" :columns="columns" :rows="rows" :total="total" :loading="loading"
       v-model:page="page" v-model:perPage="perPage" :sort="sort" :dir="dir"
       :row-action="{ label: 'Test' }"
-      @sort="onSort" @selection="selectedIds = $event" @row-action="test"
+      @sort="onSort" @selection="selectedIds = $event"
+      @row-action="test" @row-click="openEdit"
     >
       <template #bulk>
         <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
@@ -260,7 +274,7 @@ onMounted(load)
     <!-- add: the form changes shape per type -->
     <Sheet
       v-model:open="sheetOpen"
-      title="Add authentication profile"
+      :title="editingId ? 'Edit authentication profile' : 'Add authentication profile'"
       :subtitle="TYPES[form.type]?.label"
       width="620px"
     >
@@ -319,7 +333,7 @@ onMounted(load)
         <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
         <div class="i-right">
           <button class="i-btn i-primary" :disabled="saving" @click="save">
-            {{ saving ? 'Saving…' : 'Save profile' }}
+            {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Save profile') }}
           </button>
         </div>
       </template>
