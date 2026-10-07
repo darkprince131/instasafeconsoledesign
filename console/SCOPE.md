@@ -147,7 +147,7 @@ Each phase is shippable on its own and goes live as it lands.
 | **3** ✅ | Applications, **RDP/SSH surface**, access rules + explorer | The differentiated part |
 | **4** ✅ | Auth profiles ×8, **SAML/OIDC with mock IdP** | The integration story |
 | **5** ✅ | Reports, logs, **SIEM export**, session recording, anomalies | Proof it is observable |
-| **6** | IDAM, filters, settings, remaining screens | Completeness |
+| **6** ✅ | IDAM, filters, settings, remaining screens | Completeness — all 67 destinations built |
 | **7** | Guided tours over the top | The self-serve layer |
 
 ---
