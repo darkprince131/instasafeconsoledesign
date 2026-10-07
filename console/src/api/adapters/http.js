@@ -81,11 +81,22 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['sessions', seed.seedSessions(users, applications)],
         ['eventLog', seed.seedEvents(users, SEED_SIZE.events, applications)]
       ]
-      // the small reference tables go first, so a slow tail cannot leave the
-      // console without the rows every screen depends on
+      /* The small reference tables go first, so a slow tail cannot leave the
+         console without the rows every screen depends on.
+
+         Each resource is then posted in slices rather than whole. Posting
+         1,821 users in one request ran the function past its time limit
+         partway through the server's own 200-row chunks, and because those
+         inserts are not in a transaction the rows already written stayed:
+         every visitor got exactly 421 users, deterministically, with a
+         successful-looking seed and no error anywhere. A slice that fails now
+         fails on its own and is small enough to finish. */
+      const SLICE = 300
       for (const [resource, rows] of batches) {
         if (!rows?.length) continue
-        await request('/seed', { method: 'POST', body: { [resource]: rows } })
+        for (let i = 0; i < rows.length; i += SLICE) {
+          await request('/seed', { method: 'POST', body: { [resource]: rows.slice(i, i + SLICE) } })
+        }
       }
     })()
     try {
