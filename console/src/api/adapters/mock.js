@@ -59,6 +59,7 @@ async function reseed () {
   await db.putMany('deviceChecks', seed.seedDeviceChecks())
   await db.putMany('timeSchedules', seed.seedTimeSchedules())
   await db.putMany('geoFences', seed.seedGeoFences())
+  await db.putMany('lockouts', seed.seedLockouts())
   await db.putMany('eventLog', seed.seedEvents(users))
   await db.putMany('sessions', seed.seedSessions(users, apps))
 

@@ -71,7 +71,7 @@ function onCode (e) {
 
           <template v-if="step === 'credentials'">
             <h1>Sign in</h1>
-            <p class="i-sub mb-4">veno.instasafe.com</p>
+            <p class="i-sub mb-4">i365 demo tenant</p>
 
             <form @submit.prevent="submit">
               <div class="i-field mb-3">

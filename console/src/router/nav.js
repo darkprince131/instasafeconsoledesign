@@ -91,6 +91,7 @@ export const NAV = [
         children: [
           { label: 'Devices',           to: '/devices', badgeKey: 'devicesPending' },
           { label: 'Auth devices',      to: '/auth-devices' },
+          { label: 'Software packages', to: '/software-packages' },
           { label: 'Device policy',     to: '/device-policy' },
           { label: 'Device checks',     to: '/device-checks' },
           { label: 'Geo-fences',        to: '/geo-fences' },

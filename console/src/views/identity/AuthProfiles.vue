@@ -69,7 +69,7 @@ const TYPES = {
   saml:               { label: 'SAML 2.0', icon: 'fa-right-to-bracket', fields: [
     ['entityId', 'IdP entity ID', 'https://idp.example.com/metadata'],
     ['ssoUrl', 'Single sign-on URL', 'https://idp.example.com/sso'],
-    ['acsUrl', 'Assertion consumer service (ours)', 'https://veno.instasafe.com/saml/acs'],
+    ['acsUrl', 'Assertion consumer service (ours)', 'https://instasafe-console-demo.netlify.app/saml/acs'],
     ['audience', 'Audience / SP entity ID', 'i365-console'],
     ['certificate', 'IdP signing certificate', '-----BEGIN CERTIFICATE-----', 'textarea']
   ]},

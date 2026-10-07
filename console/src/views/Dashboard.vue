@@ -93,7 +93,7 @@ const num = (n) => (n ?? 0).toLocaleString()
   <div class="i-page">
     <PageHeader
       title="Dashboard"
-      :subtitle="`veno.instasafe.com · ${num(stats.users)} users · ${num(stats.devices)} devices · ${num(stats.gateways)} gateways`"
+      :subtitle="`Demo tenant · ${num(stats.users)} users · ${num(stats.devices)} devices · ${num(stats.gateways)} gateways`"
     >
       <template #actions>
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>

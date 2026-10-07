@@ -84,6 +84,9 @@ export const api = {
   },
 
   groups: resource('groups'),
+  /** Rate-limiter lockouts behind /limit-exceeders. Unblock is a delete:
+      removing the lockout row is exactly what lifting it means. */
+  lockouts: resource('lockouts'),
   subAdmins: resource('subAdmins'),
   roles: resource('roles'),
 

@@ -446,3 +446,31 @@ export function seedSessions (users, apps) {
     }
   })
 }
+
+/**
+ * Rate-limiter lockouts for /limit-exceeders.
+ *
+ * Velto's own list is empty, which is the healthy state and also a dead
+ * screen to look at, so a handful are seeded: two still in force and one
+ * already expired, because an expired row that still sits in the table is
+ * the case the column rendering has to get right.
+ *
+ * `username` is nullable on purpose. A lockout is keyed on the source
+ * address, and the commonest real one is someone spraying usernames that do
+ * not exist — there is no account to name.
+ */
+export function seedLockouts () {
+  const now = Date.now()
+  const mins = (n) => new Date(now + n * 60000).toISOString()
+  return [
+    { id: 'lck_0001', name: '203.0.113.47', ip: '203.0.113.47',
+      username: 'rohan.mehta', attempts: 6,
+      blockedAt: new Date(now - 4 * 60000).toISOString(), blockedUntil: mins(26) },
+    { id: 'lck_0002', name: '198.51.100.12', ip: '198.51.100.12',
+      username: null, attempts: 41,
+      blockedAt: new Date(now - 18 * 60000).toISOString(), blockedUntil: mins(12) },
+    { id: 'lck_0003', name: '192.0.2.88', ip: '192.0.2.88',
+      username: 'laura.dubois', attempts: 5,
+      blockedAt: new Date(now - 95 * 60000).toISOString(), blockedUntil: mins(-35) }
+  ]
+}

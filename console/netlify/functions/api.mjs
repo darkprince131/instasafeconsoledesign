@@ -393,7 +393,7 @@ const RESOURCE_TABLE = {
   /* Everything below shares the `records` table. Without an entry here the
      route 404s silently and the screen renders empty with no error - which is
      exactly how several screens would have shipped looking broken. */
-  subAdmins: 'records', roles: 'records', appGroups: 'records',
+  subAdmins: 'records', roles: 'records', appGroups: 'records', lockouts: 'records',
   authDevices: 'records', devicePolicies: 'records', blockedApps: 'records',
   deviceUpdates: 'records', urlFilters: 'records', contentFilters: 'records',
   fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
@@ -404,7 +404,7 @@ const RESOURCE_TABLE = {
 /* Resources sharing `records` are scoped by kind, so one screen's rows never
    leak into another's. */
 const RECORD_KINDS = {
-  subAdmins: 'sub-admin', roles: 'role', appGroups: 'app-group',
+  subAdmins: 'sub-admin', roles: 'role', appGroups: 'app-group', lockouts: 'lockout',
   authDevices: 'auth-device', devicePolicies: 'device-policy',
   blockedApps: 'blocked-app', deviceUpdates: 'device-update',
   urlFilters: 'url-filter', contentFilters: 'content-filter',
@@ -708,9 +708,22 @@ async function updateRow (table, tenant, id, body) {
  */
 async function seedTenant (tenant, body) {
   const counts = {}
-  for (const [resource, rows] of Object.entries(body)) {
+  for (const [resource, rowsIn] of Object.entries(body)) {
     const table = RESOURCE_TABLE[resource]
-    if (!table || !Array.isArray(rows) || !rows.length) continue
+    if (!table || !Array.isArray(rowsIn) || !rowsIn.length) continue
+
+    /* Resources sharing `records` have no columns of their own, so seeding
+       them through the generic path would keep `id` and `name` and throw
+       every other field away - the same silent loss that made a filter save
+       its name and lose its pattern. insertRow already packs the remainder
+       into `data`; the seed path has to do it too, and stamp the kind, or a
+       seeded screen comes up with rows that are all but empty. */
+    const rows = table === 'records'
+      ? rowsIn.map(row => {
+          const { id, name, kind, ...rest } = row
+          return { id, name, kind: kind || RECORD_KINDS[resource] || resource, data: rest }
+        })
+      : rowsIn
 
     const cols = await sql.query(
       `select column_name from information_schema.columns where table_name = $1`, [table])

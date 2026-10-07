@@ -126,12 +126,27 @@ watch(() => props.config, () => {
   page.value = 1; search.value = ''; sort.value = ''; activeFilter.value = 'all'; load()
 })
 
+/**
+ * The bulk action is not always Delete.
+ *
+ * Blocked Users is the case that proved it: production's only action there is
+ * **Unblock**, which removes a lockout rather than destroying a record, and
+ * calling that "Delete" misdescribes it badly enough to stop an admin using
+ * it. A screen can therefore name its own bulk action; everything else keeps
+ * Delete and reads the same as before.
+ */
+const bulk = computed(() => ({
+  label: 'Delete', past: 'deleted', noun: 'record',
+  tone: 'bad', body: 'will be removed. This cannot be undone.',
+  ...(cfg.value?.bulkAction || {})
+}))
+
 async function removeSelected () {
   const ids = selectedIds.value
   await api[cfg.value.resource].removeMany(ids)
   confirmOpen.value = false
   table.value?.clearSelection()
-  toast(`${ids.length} ${ids.length === 1 ? 'record' : 'records'} deleted`)
+  toast(`${ids.length} ${ids.length === 1 ? bulk.value.noun : bulk.value.noun + 's'} ${bulk.value.past}`)
   refreshStats()
   load()
 }
@@ -211,7 +226,10 @@ onMounted(load)
         @row-click="openEdit"
       >
         <template #bulk>
-          <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
+          <button
+            class="i-btn i-sm" :class="bulk.tone === 'bad' ? 'i-danger' : 'i-primary'"
+            @click="confirmOpen = true"
+          >{{ bulk.label }}</button>
         </template>
 
         <template #empty>
@@ -267,11 +285,11 @@ onMounted(load)
 
     <ConfirmModal
       v-model:open="confirmOpen"
-      :title="`Delete ${selectedIds.length} ${selectedIds.length === 1 ? 'record' : 'records'}?`"
-      :confirm-label="`Delete ${selectedIds.length}`"
+      :title="`${bulk.label} ${selectedIds.length} ${selectedIds.length === 1 ? bulk.noun : bulk.noun + 's'}?`"
+      :confirm-label="`${bulk.label} ${selectedIds.length}`"
       @confirm="removeSelected"
     >
-      <strong class="i-named">{{ confirmBody }}</strong> will be removed. This cannot be undone.
+      <strong class="i-named">{{ confirmBody }}</strong> {{ bulk.body }}
     </ConfirmModal>
   </div>
 </template>

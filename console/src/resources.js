@@ -27,6 +27,23 @@ const bytes = (n) => {
   return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${u[i]}`
 }
 
+/**
+ * A lockout expiry, rendered as the time left rather than a timestamp.
+ *
+ * Production prints the raw datetime, which makes the admin do arithmetic to
+ * answer the only question they have: is this still in force, and for how
+ * much longer. An expired row is the normal case on a screen nobody watches,
+ * so it says so plainly instead of looking identical to a live block.
+ */
+const fmtUntil = (v) => {
+  if (!v) return dash
+  const s = (new Date(v) - Date.now()) / 1000
+  if (s <= 0) return 'expired'
+  if (s < 60) return `${Math.ceil(s)}s left`
+  if (s < 3600) return `${Math.ceil(s / 60)} min left`
+  return `${Math.round(s / 3600)} h left`
+}
+
 /** Status → pill style. Returning null means "expected, render quietly". */
 const statusPill = (v) => ({
   active: null, approved: null, running: null, up: null, configured: null, enabled: null,
@@ -461,19 +478,40 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Blocked Users — and the assumption that was wrong about it.
+   *
+   * This screen was built as `users` filtered to `status: suspended`, on the
+   * reasonable-sounding guess that "blocked" meant a disabled account. It does
+   * not. Production's columns are **IP · Username · Blocked At · Blocked
+   * Until** and its only action is **Unblock**: these are source-address
+   * lockouts written by the rate limiter after repeated failed sign-ins, and
+   * they expire by themselves. The route name `/limit-exceeders` says so.
+   *
+   * The difference matters. A suspended account is a decision an admin made
+   * and has to undo; a lockout is a transient automatic block that an admin
+   * usually only needs to lift early — for the person who fat-fingered their
+   * password from a conference wifi and cannot wait out the timer. Modelling
+   * it as account status put a destructive Delete where Unblock belongs and
+   * hid the one fact the admin actually needs, which is when it lifts.
+   */
   '/limit-exceeders': {
     title: 'Blocked users',
-    subtitle: 'Accounts locked out after repeated failed sign-ins.',
-    resource: 'users',
-    baseFilter: { status: 'suspended' },
-    emptyTitle: 'Nobody is blocked',
-    emptyBody: 'Accounts appear here after repeated failed sign-ins. That is the healthy state.',
+    subtitle: 'Source addresses locked out by the rate limiter after repeated failed sign-ins. Each lockout expires on its own; unblocking only lifts it early.',
+    resource: 'lockouts',
+    searchFields: ['ip', 'username'],
+    emptyTitle: 'Nothing is blocked',
+    emptyBody: 'Addresses appear here after repeated failed sign-ins and clear themselves when the lockout expires. Empty is the healthy state.',
+    bulkAction: {
+      label: 'Unblock', past: 'unblocked', noun: 'lockout', tone: 'normal',
+      body: 'will be able to sign in again immediately.'
+    },
     columns: [
-      { key: 'username', label: 'Username', bold: true },
-      { key: 'email', label: 'Email', dim: true },
-      { key: 'department', label: 'Department' },
-      { key: 'lastSeenAt', label: 'Last seen', cell: fmtAgo, dim: true },
-      { key: 'status', label: 'Status', pill: statusPill }
+      { key: 'ip', label: 'IP', mono: true, bold: true },
+      { key: 'username', label: 'Username', dim: true, cell: (v) => v || 'unknown' },
+      { key: 'attempts', label: 'Failed attempts', align: 'right', num: true },
+      { key: 'blockedAt', label: 'Blocked at', cell: fmtAgo, dim: true },
+      { key: 'blockedUntil', label: 'Blocked until', cell: fmtUntil, mono: true }
     ]
   }
 }
