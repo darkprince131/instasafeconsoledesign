@@ -392,6 +392,11 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
  * across pages, bulk selection spanning a page boundary, and a pending queue
  * too long to clear by hand. Raise them if the tier is raised.
  */
-const SEED_SIZE = { users: 420, devices: 540, events: 300 }
+/* Production scale, which is what this demo claims to be: 1,820 users, 2,140
+   devices, 794 events. These were capped at 420/540/300 because the whole set
+   went up in one request and a big one ran past the function's time limit.
+   The seed is posted in slices of 300 now, so the cap is no longer buying
+   anything except a console a quarter the size of the one being demonstrated. */
+const SEED_SIZE = { users: 1820, devices: 2140, events: 794 }
 
 export default httpAdapter
