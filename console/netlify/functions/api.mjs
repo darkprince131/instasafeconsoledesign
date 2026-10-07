@@ -529,6 +529,12 @@ async function insertRow (table, tenant, body) {
   // event_log.id is a bigserial the database assigns; a client-supplied
   // text id is a type error rather than an override
   if (table === 'event_log') delete record.id
+  /* Everywhere else the id is text and NOT NULL, and a create arriving from
+     the client has none - assigning identifiers is the server's job, not the
+     browser's. Without this every create failed on the NOT NULL. */
+  else if (!record.id) {
+    record.id = `${table.slice(0, 3)}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+  }
   const keys = [], values = []
   for (const [k, v] of Object.entries(record)) {
     const col = k === 'tenant_id' ? k : toSnake(k)
