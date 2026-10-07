@@ -75,9 +75,9 @@ onUnmounted(() => clearInterval(timer))
     <div class="i-tgroup">
       <span class="i-sessclock" title="Session expires in">{{ clock }}</span>
 
-      <button class="i-tbtn" @click="emit('open-tours')" title="Guided tours">
+      <button class="i-tbtn" @click="emit('open-tours')" title="Guided flows">
         <i class="fa-solid fa-route" aria-hidden="true" />
-        <span class="d-none d-lg-inline">Tours</span>
+        <span class="d-none d-lg-inline">Flows</span>
       </button>
 
       <button class="i-tbtn" @click="emit('open-inbox')" :title="unread ? `${unread} unread` : 'Demo Inbox'">

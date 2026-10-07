@@ -105,21 +105,21 @@ const num = (n) => (n ?? 0).toLocaleString()
     <section v-if="!introDismissed" class="i-intro">
       <div class="d-flex align-items-start gap-3">
         <div style="flex:1;min-width:0">
-          <h2>This console actually works</h2>
+          <h2>Start with the job, not the menu</h2>
           <p>
-            It is not a prototype or a set of screenshots. The MFA is real
-            cryptography, the policy engine really evaluates, and everything you
-            change is saved to a database that is yours alone — press
-            <strong>Reset demo</strong> any time to put it back.
+            The guided flows walk you through real administration — add a user,
+            put an application behind a gateway, write the policy that joins
+            them, then prove the access works. Each step waits until the work is
+            actually done, so nothing advances on a click alone. Everything you
+            change is saved to a database that is yours alone; press
+            <strong>Reset demo</strong> to put it back.
           </p>
           <div class="d-flex flex-wrap gap-2 mt-3">
-            <button
-              v-for="t in TOURS.slice(0, 3)" :key="t.id"
-              class="i-btn i-sm" @click="startTour(t.id)"
-            >
-              <i class="fa-solid" :class="t.icon" aria-hidden="true" /> {{ t.title }}
+            <button class="i-btn i-sm i-primary" @click="startTour('onboard')">
+              <i class="fa-solid fa-route" aria-hidden="true" />
+              Give someone access to an application
             </button>
-            <button class="i-btn i-sm i-quiet" @click="startTour()">All tours</button>
+            <button class="i-btn i-sm" @click="startTour()">All flows</button>
           </div>
         </div>
         <button class="i-x" @click="dismissIntro" aria-label="Dismiss">
@@ -229,12 +229,12 @@ const num = (n) => (n ?? 0).toLocaleString()
 
       <div class="i-col">
         <div class="i-chead">
-          <h2>Try the demo</h2>
-          <span class="i-meta">Really works</span>
+          <h2>Guided flows</h2>
+          <span class="i-meta">Each step is checked</span>
         </div>
         <p style="font-size:12.5px;color:var(--i-dim);margin:0 0 14px">
-          These are not screenshots. The crypto, the policy engine and the posture
-          checks genuinely run.
+          Real administration tasks, in order. A step ticks when the record it
+          asked for genuinely exists, not when you press Next.
         </p>
         <div class="d-flex flex-column gap-2">
           <button

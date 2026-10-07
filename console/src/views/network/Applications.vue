@@ -45,9 +45,15 @@ const TYPES = [
 function blank () {
   return {
     name: '', type: 'web', host: '', port: 443, owner: 'Engineering',
-    status: 'active', sessionRecording: false, blockCopyPaste: false, watermark: false
+    status: 'active', sessionRecording: false, blockCopyPaste: false, watermark: false,
+    gateway: ''
   }
 }
+
+/* Applications are reached through a gateway. An application with none is
+   configured but unreachable, which is worth seeing in the list rather than
+   discovering when somebody cannot connect. */
+const gateways = ref([])
 
 const isRemote = computed(() => ['rdp', 'ssh', 'vnc'].includes(form.value.type))
 
@@ -74,6 +80,9 @@ const columns = [
   { key: 'host', label: 'Host', mono: true },
   { key: 'port', label: 'Port', mono: true, align: 'right' },
   { key: 'owner', label: 'Owner' },
+  { key: 'gateway', label: 'Gateway', mono: true,
+    cell: (v) => v || 'unassigned',
+    pill: (v) => v ? null : 'att' },
   { key: 'sessionRecording', label: 'Recording', bool: true },
   { key: 'status', label: 'Status',
     cell: (v) => v.charAt(0).toUpperCase() + v.slice(1),
@@ -159,7 +168,10 @@ const names = computed(() => {
   return n.join(', ')
 })
 
-onMounted(load)
+onMounted(async () => {
+  load()
+  gateways.value = (await api.gateways.list({ perPage: 0 })).data
+})
 </script>
 
 <template>
@@ -261,6 +273,16 @@ onMounted(load)
                 ? 'Reached through the gateway — it never needs a public DNS record.'
                 : 'Private address. It is not exposed to the internet.' }}
             </p>
+          </div>
+          <div class="i-field">
+            <label for="agw">Gateway</label>
+            <select id="agw" class="i-ctl" v-model="form.gateway">
+              <option value="">Unassigned</option>
+              <option v-for="g in gateways" :key="g.id" :value="g.name">
+                {{ g.name }} — {{ g.region }}
+              </option>
+            </select>
+            <p class="i-hint">Traffic reaches this application through the gateway. Without one it is unreachable.</p>
           </div>
           <div class="i-field">
             <label for="ap">Port</label>

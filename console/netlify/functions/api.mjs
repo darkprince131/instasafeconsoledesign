@@ -160,6 +160,7 @@ async function ensureSchema () {
       session_recording boolean not null default false,
       block_copy_paste boolean not null default false,
       watermark boolean not null default false,
+      gateway text,
       created_at timestamptz not null default now()
     )`
   await sql`
@@ -323,6 +324,7 @@ async function ensureSchema () {
      editing it only helps databases that have not been created yet. */
   await sql`alter table users add column if not exists is_admin boolean not null default false`
   await sql`alter table users add column if not exists groups text[] not null default '{}'`
+  await sql`alter table applications add column if not exists gateway text`
 
   /* The seed generates deterministic ids - usr_00001, app_0001, dc_0001 - so
      every tenant produces the same set. With `id` as a global primary key the

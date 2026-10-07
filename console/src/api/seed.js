@@ -187,9 +187,11 @@ export function seedApplications () {
     ['Log Collector',     'ssh',  '10.20.1.90',                  22, 'Security',    1, 0, 0],
     ['Domain Controller', 'rdp',  '10.20.0.10',                3389, 'IT',          1, 1, 1]
   ]
+  const GW = ['gw-mum-01', 'gw-blr-01', 'gw-lon-01', 'gw-sin-01']
   return apps.map(([name, type, host, port, owner, rec, cpb, wm], i) => ({
     id: `app_${pad(i + 1, 4)}`,
     name, type, host, port, owner,
+    gateway: GW[i % GW.length],
     status: name === 'Legacy ERP' ? 'disabled' : 'active',
     sessionRecording: !!rec,
     blockCopyPaste: !!cpb,

@@ -1,169 +1,430 @@
 /**
- * Guided tours.
+ * Guided flows.
  *
- * A self-serve demo has about ninety seconds before a visitor decides whether
- * it is worth their time, and a console with 67 screens does not explain
- * itself. These route people to the things that are genuinely real, because
- * that is the only claim worth making: anyone can mock a screenshot, and
- * nobody can mock a wrong TOTP code being rejected.
+ * These are not narrated screenshots. Each step is a task the visitor does,
+ * and the tour only advances when it detects the work actually happened —
+ * the check queries the database and compares against a baseline taken when
+ * the flow started. So "create an application" means an application exists
+ * that did not exist before, not that somebody clicked Next.
  *
- * Each step names a `to` route and optionally a `target` selector to
- * spotlight. A missing target is not an error — the step still runs, centred,
- * because a tour that breaks when a screen changes is worse than no tour.
+ * Every step can be skipped, because a demo that traps you is worse than one
+ * that lets you wander. Skipping is recorded so the summary stays honest.
  *
- * `act` runs before the step is shown, for steps that need to put the screen
- * into a particular state first.
+ * `baseline(api)` snapshots the state the flow starts from.
+ * `check(api, base, ctx)` returns true once the step's work is done; `ctx`
+ * carries anything an earlier step learned, so later steps can refer to the
+ * thing that was just created.
  */
 
+const since = (base, list) => list.filter(r => !base.ids.has(r.id))
+
+/** Rows of `resource` that did not exist when the flow started. */
+async function fresh (api, base, resource) {
+  const { data } = await api[resource].list({ perPage: 0 })
+  return since(base[resource] || { ids: new Set() }, data)
+}
+
+async function snapshot (api, resources) {
+  const out = {}
+  for (const r of resources) {
+    const { data } = await api[r].list({ perPage: 0 })
+    out[r] = { ids: new Set(data.map(x => x.id)), count: data.length }
+  }
+  return out
+}
+
 export const TOURS = [
-  {
-    id: 'mfa',
-    title: 'Prove the MFA is real',
-    minutes: 2,
-    icon: 'fa-mobile-screen',
-    blurb: 'Scan a QR with your own phone and watch a wrong code get rejected.',
-    steps: [
-      {
-        to: '/mfa-profile',
-        title: 'This is a real authenticator enrolment',
-        body: 'RFC 6238 TOTP, computed with Web Crypto. Not a picture of a QR code — an actual otpauth:// URI.'
-      },
-      {
-        to: '/mfa-profile', target: '.i-qr',
-        title: 'Scan it with any authenticator',
-        body: 'Google Authenticator, Authy, 1Password, Microsoft Authenticator. The code your phone shows is the code this page checks.'
-      },
-      {
-        to: '/mfa-profile', target: '.i-otp',
-        title: 'Try a wrong code first',
-        body: 'Type 000000. It is rejected, because the verification is genuine rather than decorative. Then enter the real one.'
-      },
-      {
-        to: '/mfa-profile', target: '.i-demo-note',
-        title: 'No phone to hand?',
-        body: 'The code your phone would be showing is printed here, computed with the same algorithm. Typing it proves the check is real rather than accepting anything.'
-      }
-    ]
-  },
-
-  {
-    id: 'access',
-    title: 'Answer “can this person reach that?”',
-    minutes: 3,
-    icon: 'fa-magnifying-glass-chart',
-    blurb: 'The policy engine evaluates for real, and shows which rule decided.',
-    steps: [
-      {
-        to: '/access-rules',
-        title: 'Rules are evaluated in order',
-        body: 'The first rule that matches decides and the rest never run. That is why priority is the first column and the default sort.'
-      },
-      {
-        to: '/access-explorer',
-        title: 'This is the screen the real console does not have',
-        body: 'Pick a person and an application. The engine walks the rule table and reports the decision — and, more usefully, why.'
-      },
-      {
-        to: '/access-explorer', target: '.i-verdict',
-        title: 'The answer, and the rule behind it',
-        body: 'Not just allow or deny. It names the rule that decided, lists every rule considered, and marks any that an earlier rule has made unreachable.'
-      },
-      {
-        to: '/access-explorer', target: '.i-sw',
-        title: 'Now break the device',
-        body: 'Switch Jailbroken on. A rule that allows this pair still allows it — but the posture failure overrides the allow, and the explanation says so.'
-      }
-    ]
-  },
-
-  {
-    id: 'devices',
-    title: 'Clear the approval queue',
-    minutes: 2,
-    icon: 'fa-laptop-medical',
-    blurb: '540 devices waiting. The real tenant had 775 and showed the number nowhere.',
-    steps: [
-      {
-        to: '/devices',
-        title: 'The queue leads, because it is the only thing needing a decision',
-        body: 'In the production tenant 775 devices were pending and the console surfaced that nowhere — no count, no queue, no default filter.'
-      },
-      {
-        to: '/devices', target: '.i-selnote, .i-table thead',
-        title: 'Select a few and approve them',
-        body: 'Destructive and bulk actions appear only once something is selected, instead of sitting permanently armed in the toolbar.'
-      },
-      {
-        to: '/devices', target: '.i-acts',
-        title: 'Enrol this browser as a device',
-        body: 'It takes a real fingerprint — platform, screen, hardware, timezone — and hashes it. Press it twice and the second press recognises the same device instead of creating another.'
-      },
-      {
-        to: '/device-checks',
-        title: 'Posture checks genuinely evaluate',
-        body: 'The panel on the right is an editable device payload. Flip a switch and the verdict recomputes, including whether the failure blocks or only warns.'
-      }
-    ]
-  },
-
-  {
-    id: 'siem',
-    title: 'See what your SIEM would receive',
-    minutes: 2,
-    icon: 'fa-shield-halved',
-    blurb: 'Real syslog, CEF and LEEF rendered from this tenant’s own events.',
-    steps: [
-      {
-        to: '/reports/event-logs',
-        title: 'Everything you do here is logged',
-        body: 'Every action in this demo writes a row. That is what makes the next screen worth looking at — it is formatting your events, not a sample file.'
-      },
-      {
-        to: '/profile/export-log',
-        title: 'The actual wire formats',
-        body: 'RFC 5424 syslog with its structured-data element, ArcSight CEF, QRadar LEEF, JSON lines. Switch between them and the payload re-renders.'
-      },
-      {
-        to: '/profile/export-log', target: '.i-session',
-        title: 'Paste it into your parser',
-        body: 'The escaping is done properly — CEF escapes different characters in the prefix than in the extension, which is where hand-rolled output usually breaks.'
-      },
-      {
-        to: '/profile/export-log', target: '.i-hint',
-        title: 'And what it will cost you',
-        body: 'Daily volume in the chosen format, from this tenant’s actual event rate. The first thing a SIEM team asks and the last thing anyone tells them.'
-      }
-    ]
-  },
-
+  // ===================================================================
   {
     id: 'onboard',
-    title: 'Onboard someone end to end',
-    minutes: 4,
-    icon: 'fa-user-plus',
-    blurb: 'User, group, rule, then prove the access works. 23 clicks in the real console.',
+    title: 'Give someone access to an application',
+    minutes: 6,
+    icon: 'fa-route',
+    primary: true,
+    blurb: 'The whole job, end to end: a user, an application, a gateway, a policy — then prove it works.',
+    intro:
+      'This is the flow an administrator actually does. Each step waits until the work is really done, ' +
+      'so nothing here advances on a click alone.',
+    baseline: (api) => snapshot(api, ['users', 'applications', 'gateways', 'accessRules', 'groups']),
     steps: [
       {
         to: '/users', target: '.i-acts',
         title: 'Add a user',
-        body: 'The username and email fill themselves in from the name. In the production console this flow takes 23 clicks across four separate navigation groups.'
+        body: 'Press Add user and fill in a first name and an email. The username and email fill themselves in from the name.',
+        done: 'User created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'users')
+          if (!made.length) return false
+          ctx.user = made[made.length - 1]
+          return true
+        },
+        recap: (ctx) => `${ctx.user?.firstName} ${ctx.user?.lastName || ''}`.trim()
       },
       {
-        to: '/usergroups',
-        title: 'Groups carry the policy',
-        body: 'A user inherits every rule attached to every group they are in. Click a row to edit one — the whole table is clickable, as the real console is.'
+        to: '/gateways', target: '.i-acts',
+        title: 'Add a gateway',
+        body: 'A gateway is where traffic enters. Applications sit behind one, so this has to exist before an application can be reached.',
+        done: 'Gateway created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'gateways')
+          if (!made.length) return false
+          ctx.gateway = made[made.length - 1]
+          return true
+        },
+        recap: (ctx) => ctx.gateway?.name
+      },
+      {
+        to: '/applications', target: '.i-acts',
+        title: 'Add an application, behind that gateway',
+        body: 'Press Add application. Pick a type, give it a host, and choose the gateway you just made in the Gateway field. An application with no gateway is configured but unreachable.',
+        done: 'Application created and assigned',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'applications')
+          const assigned = made.find(a => a.gateway)
+          if (!assigned) return false
+          ctx.app = assigned
+          return true
+        },
+        hint: 'Created one but the step has not ticked? It needs a gateway selected — edit it by clicking its row.',
+        recap: (ctx) => `${ctx.app?.name} → ${ctx.app?.gateway}`
       },
       {
         to: '/access-rules', target: '.i-acts',
-        title: 'Give the group something to reach',
-        body: 'New rules are appended rather than inserted, because inserting one higher silently changes what every rule below it does.'
+        title: 'Write the access rule that joins them',
+        body: 'Until a rule says so, nobody reaches anything — the default is deny. Add a rule with your user or their group as the source and the new application as the destination, and leave the action on Allow.',
+        done: 'Access rule created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'accessRules')
+          const hit = ctx.app ? made.find(r => r.dest === ctx.app.name) : made[0]
+          if (!hit) return false
+          ctx.rule = hit
+          return true
+        },
+        hint: 'The destination has to be the application you just created for this step to tick.',
+        recap: (ctx) => `#${ctx.rule?.priority} ${ctx.rule?.source} → ${ctx.rule?.dest} (${ctx.rule?.action})`
       },
       {
         to: '/access-explorer',
-        title: 'Now prove it worked',
-        body: 'Pick the person and the application. If the answer is deny, the trace tells you which rule got there first — which beats asking them to try it and report back.'
+        title: 'Now prove it',
+        body: 'Pick a user and the application you created, and press Evaluate. The engine walks the rule table and reports the decision, the rule that made it, and any rule an earlier one has made unreachable.',
+        done: 'Access evaluated',
+        async check (api, base) {
+          const { data } = await api.events.list({ perPage: 20, sort: 'at', dir: 'desc' })
+          return data.some(e =>
+            (e.type === 'access.granted' || e.type === 'access.denied') &&
+            !(base.events || new Set()).has(e.id))
+        },
+        hint: 'If the answer is Deny, the trace tells you which rule got there first. That is the useful half.'
       }
-    ]
+    ],
+    outro:
+      'That is the whole path from nothing to working access. In the production console ' +
+      'the same job takes 23 clicks across four separate navigation groups.'
+  },
+
+  // ===================================================================
+  {
+    id: 'mfa',
+    title: 'Set up multi-factor authentication',
+    minutes: 3,
+    icon: 'fa-mobile-screen',
+    blurb: 'Enrol a real authenticator, watch a wrong code get refused, then require it tenant-wide.',
+    intro:
+      'The cryptography here is real — RFC 6238 over Web Crypto. Have a phone handy if you want to ' +
+      'prove it to yourself, though there is a way through without one.',
+    baseline: (api) => snapshot(api, ['users']),
+    steps: [
+      {
+        to: '/mfa-profile', target: '.i-qr',
+        title: 'Scan the QR with an authenticator',
+        body: 'Google Authenticator, Authy, 1Password, Microsoft Authenticator — any of them. This is a real otpauth:// URI, not a picture of one.',
+        done: 'QR ready',
+        optional: true,
+        check: async () => !!document.querySelector('.i-qr svg'),
+        hint: 'No phone? The code your phone would be showing is printed below the input, computed the same way.'
+      },
+      {
+        to: '/mfa-profile', target: '.i-otp',
+        title: 'Try a wrong code first',
+        body: 'Type 000000. It is refused, because the check is genuine rather than decorative. That is the part worth seeing.',
+        done: 'Wrong code refused',
+        optional: true,
+        check: async () => /not valid/i.test(document.querySelector('.i-err')?.textContent || '')
+      },
+      {
+        to: '/mfa-profile', target: '.i-otp',
+        title: 'Now enter the real one',
+        body: 'Six digits from the app, or from the line underneath. The secret is only committed once a correct code proves the phone really has it.',
+        done: 'Authenticator enrolled',
+        async check (api) {
+          const me = await api.auth.me()
+          return !!me?.mfaEnrolled
+        }
+      },
+      {
+        to: '/user-settings',
+        title: 'Require it for everyone',
+        body: 'Under Authentication controls, switch on "Require MFA for every user" and save. The unsaved-changes block names exactly what is about to be committed.',
+        done: 'Tenant-wide MFA required',
+        async check (api) {
+          const s = await api.settings.get('/user-settings')
+          return !!s?.requireMfa
+        },
+        hint: 'Worth noticing what the field says: turning this on locks out anyone not yet enrolled.'
+      }
+    ],
+    outro: 'A wrong code was refused and a right one was accepted, by the same code that would run in production.'
+  },
+
+  // ===================================================================
+  {
+    id: 'sso',
+    title: 'Federate sign-in to an identity provider',
+    minutes: 5,
+    icon: 'fa-right-to-bracket',
+    blurb: 'Create a SAML or OIDC profile, run a real protocol round trip, then put a user on it.',
+    intro:
+      'The identity provider this tests against is bundled and running. The redirect, the authorization ' +
+      'code, the token exchange and the assertion are all real.',
+    baseline: (api) => snapshot(api, ['authProfiles', 'users']),
+    steps: [
+      {
+        to: '/profile/saml', target: '.i-acts',
+        title: 'Create an authentication profile',
+        body: 'Add profile, then pick SAML 2.0 or OpenID Connect. Notice the form changes shape: SAML wants an entity ID and an ACS URL, OIDC wants an issuer and a client ID.',
+        done: 'Profile created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'authProfiles')
+          const fed = made.find(p => ['saml', 'openid', 'oauth'].includes(p.type))
+          if (!fed) return false
+          ctx.profile = fed
+          return true
+        },
+        hint: 'It has to be a SAML, OpenID or OAuth profile — the other types do not federate.',
+        recap: (ctx) => `${ctx.profile?.name} (${ctx.profile?.type})`
+      },
+      {
+        to: '/profile/saml', target: '.i-table',
+        title: 'Test it against the bundled provider',
+        body: 'Press Test on your new profile. It runs the genuine protocol round trip and shows every step — discovery, the redirect, the state check, the code, the exchange, the signature verification.',
+        done: 'Round trip completed',
+        async check (api) {
+          const { data } = await api.events.list({ perPage: 20, sort: 'at', dir: 'desc' })
+          return data.some(e => e.type === 'sso.test.saml' || e.type === 'sso.test.oidc')
+        },
+        hint: 'The Token tab holds a real JWT. Paste it into jwt.io — it decodes, because it is one.'
+      },
+      {
+        to: '/users',
+        title: 'Move a user onto that profile',
+        body: 'Click any user to edit them and set their Authentication profile to the one you created. From then on they sign in through the identity provider rather than against a local password.',
+        done: 'User federated',
+        async check (api, base, ctx) {
+          if (!ctx.profile) return false
+          const { data } = await api.users.list({ perPage: 0 })
+          return data.some(u => u.authProfile === ctx.profile.name)
+        },
+        hint: 'The Authentication profile field is in the Access section of the edit panel.'
+      }
+    ],
+    outro: 'Those endpoints are live. You can point a real service provider at them during a demo and it will work.'
+  },
+
+  // ===================================================================
+  {
+    id: 'devices',
+    title: 'Enrol a device and enforce posture',
+    minutes: 4,
+    icon: 'fa-laptop-medical',
+    blurb: 'Bind a real device fingerprint, approve it, then make a posture rule refuse it.',
+    intro:
+      'Device binding uses an actual browser fingerprint. Posture checks genuinely evaluate against ' +
+      'a payload you can edit.',
+    baseline: (api) => snapshot(api, ['devices', 'deviceChecks']),
+    steps: [
+      {
+        to: '/devices', target: '.i-acts',
+        title: 'Enrol this browser as a device',
+        body: 'Press "Enrol this browser". It takes a real fingerprint — platform, screen, hardware, timezone — hashes it, and files the result as a pending device.',
+        done: 'Device enrolled',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'devices')
+          const mine = made.find(d => d.isThisBrowser) || made[0]
+          if (!mine) return false
+          ctx.device = mine
+          return true
+        },
+        recap: (ctx) => ctx.device?.name
+      },
+      {
+        to: '/devices',
+        title: 'Press it a second time',
+        body: 'Nothing new appears. The fingerprint is recognised rather than duplicated, which is the whole point of binding and is normally impossible to show in a demo.',
+        done: 'Seen',
+        optional: true,
+        check: async () => true
+      },
+      {
+        to: '/devices', target: '.i-table thead',
+        title: 'Approve it',
+        body: 'Select it and press Approve. Until a device is approved its user cannot connect from it.',
+        done: 'Device approved',
+        async check (api, base, ctx) {
+          if (!ctx.device) return false
+          const d = await api.devices.get(ctx.device.id)
+          return d?.status === 'approved'
+        }
+      },
+      {
+        to: '/device-checks',
+        title: 'Make a posture rule fail',
+        body: 'On the right is an editable device payload. Switch off disk encryption, or switch on jailbroken, and watch the verdict recompute — including whether the failure blocks or only warns.',
+        done: 'Posture evaluated as blocked',
+        optional: true,
+        check: async () => !!document.querySelector('.i-verdict.is-block'),
+        hint: 'Jailbroken is a critical check, so it blocks. OS up to date is medium, so it only warns.'
+      }
+    ],
+    outro: 'A device that fails a critical check is refused even when an access rule would otherwise allow it.'
+  },
+
+  // ===================================================================
+  {
+    id: 'groups',
+    title: 'Manage access by group, not by person',
+    minutes: 4,
+    icon: 'fa-users',
+    blurb: 'The way access is actually administered once there is more than one of you.',
+    intro:
+      'Rules written against individuals do not survive a team. This is the same outcome as the first ' +
+      'flow, arranged so it keeps working as people join and leave.',
+    baseline: (api) => snapshot(api, ['groups', 'accessRules', 'users']),
+    steps: [
+      {
+        to: '/usergroups', target: '.i-acts',
+        title: 'Create a group',
+        body: 'Give it a name and set its policy — two-factor, device binding, posture checks. Everything set here is inherited by every member.',
+        done: 'Group created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'groups')
+          if (!made.length) return false
+          ctx.group = made[made.length - 1]
+          return true
+        },
+        recap: (ctx) => ctx.group?.name
+      },
+      {
+        to: '/access-rules', target: '.i-acts',
+        title: 'Write a rule against the group',
+        body: 'Add a rule with Source type set to User group and your new group as the source. One rule now covers everyone who will ever be in it.',
+        done: 'Group rule created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'accessRules')
+          const hit = ctx.group ? made.find(r => r.source === ctx.group.name) : null
+          if (!hit) return false
+          ctx.rule = hit
+          return true
+        },
+        hint: 'Source type has to be User group, and the source has to be the group you just made.',
+        recap: (ctx) => `#${ctx.rule?.priority} ${ctx.rule?.source} → ${ctx.rule?.dest}`
+      },
+      {
+        to: '/access-rules',
+        title: 'Watch the ordering trap',
+        body: 'Click your rule and use the arrows to move it below an existing Deny for the same destination. The explorer will then show it as unreachable — a rule nobody can see is still a rule somebody is relying on.',
+        done: 'Seen',
+        optional: true,
+        check: async () => true
+      }
+    ],
+    outro: 'Adding somebody to the group now grants everything the group has, with no rule to remember.'
+  },
+
+  // ===================================================================
+  {
+    id: 'filters',
+    title: 'Filter what people can reach',
+    minutes: 3,
+    icon: 'fa-filter',
+    blurb: 'Write a block rule, carve an exception above it, and test both.',
+    intro: 'The matcher is real. Wildcards compile to a regular expression with everything else escaped.',
+    baseline: (api) => snapshot(api, ['urlFilters']),
+    steps: [
+      {
+        to: '/url-filter', target: '.i-acts',
+        title: 'Block something broadly',
+        body: 'Add a rule with a pattern like *facebook.com* and the action Block. Give it priority 2.',
+        done: 'Block rule created',
+        async check (api, base, ctx) {
+          const made = await fresh(api, base, 'urlFilters')
+          const blk = made.find(r => r.action === 'block')
+          if (!blk) return false
+          ctx.block = blk
+          return true
+        },
+        recap: (ctx) => `${ctx.block?.pattern} (block)`
+      },
+      {
+        to: '/url-filter', target: '.i-acts',
+        title: 'Now carve out an exception above it',
+        body: 'Add a second rule, action Allow, priority 1, with a narrower pattern — your own company page, say. Lower priority runs first, so the exception wins.',
+        done: 'Exception created',
+        async check (api, base) {
+          const made = await fresh(api, base, 'urlFilters')
+          return made.some(r => r.action === 'allow')
+        }
+      },
+      {
+        to: '/url-filter', target: '.i-search',
+        title: 'Test both',
+        body: 'Type a URL that matches only the broad rule, then one that matches the exception. The verdict names the rule that decided and marks any rule a higher one has shadowed.',
+        done: 'Tested',
+        optional: true,
+        check: async () => !!document.querySelector('.i-verdict'),
+        hint: 'Try a lookalike too — facebookXcom.evil.net is refused, because a dot in a pattern matches a dot and not any character.'
+      }
+    ],
+    outro: 'An Allow above a Block is how every exception is written. Order is the whole semantics.'
+  },
+
+  // ===================================================================
+  {
+    id: 'siem',
+    title: 'Wire the logs into a SIEM',
+    minutes: 3,
+    icon: 'fa-shield-halved',
+    blurb: 'Real syslog, CEF and LEEF from your own events, plus what it will cost in volume.',
+    intro: 'Everything you have done so far is in the event log. This is what a collector would receive.',
+    baseline: (api) => snapshot(api, ['inbox']),
+    steps: [
+      {
+        to: '/reports/event-logs',
+        title: 'Check your own work is logged',
+        body: 'Everything done in this demo wrote a row here. That is what makes the next screen worth anything — it formats your events, not a sample file.',
+        done: 'Seen',
+        optional: true,
+        check: async () => true
+      },
+      {
+        to: '/profile/export-log', target: '.i-ftabs',
+        title: 'Switch between the wire formats',
+        body: 'RFC 5424 syslog, ArcSight CEF, QRadar LEEF, JSON lines. The payload re-renders from your rows each time. Paste any of it into your parser — it will parse.',
+        done: 'Seen',
+        optional: true,
+        check: async () => true
+      },
+      {
+        to: '/profile/export-log', target: '.i-acts',
+        title: 'Send a test batch',
+        body: 'Set a collector host and press Send test batch. Nothing leaves the browser — the payload goes to the Demo Inbox so you can read exactly what would have crossed the boundary.',
+        done: 'Batch sent',
+        async check (api, base) {
+          const made = await fresh(api, base, 'inbox')
+          return made.some(m => m.kind === 'siem')
+        }
+      }
+    ],
+    outro: 'The volume estimate underneath is from your tenant’s real event rate, in the format you picked.'
   }
 ]
 
