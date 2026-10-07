@@ -238,7 +238,7 @@ const num = (n) => (n ?? 0).toLocaleString()
         </p>
         <div class="d-flex flex-column gap-2">
           <button
-            v-for="t in TOURS" :key="t.id"
+            v-for="t in TOURS.slice(0, 4)" :key="t.id"
             class="i-tourline" @click="startTour(t.id)"
           >
             <span class="i-tour-ico"><i class="fa-solid" :class="t.icon" aria-hidden="true" /></span>
@@ -249,6 +249,9 @@ const num = (n) => (n ?? 0).toLocaleString()
             <span class="i-tourline-m">{{ t.minutes }} min</span>
           </button>
         </div>
+        <button class="i-btn i-sm i-quiet mt-2" @click="startTour()">
+          All {{ TOURS.length }} flows
+        </button>
       </div>
     </section>
   </div>
