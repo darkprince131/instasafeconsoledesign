@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
+import { TOURS } from '../tours.js'
 import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
 
@@ -15,6 +16,16 @@ import PageHeader from '../components/ui/PageHeader.vue'
  */
 
 const router = useRouter()
+const startTour = inject('startTour', () => {})
+
+/* First run is per viewer and lives in localStorage, which is the right place
+   for it: dismissing the card is a convenience, not state anyone else needs,
+   and losing it in a private window costs nothing. */
+const introDismissed = ref(true)
+function dismissIntro () {
+  introDismissed.value = true
+  try { localStorage.setItem('i365.intro.dismissed', '1') } catch {}
+}
 const stats = ref({})
 const osBreakdown = ref([])
 const denied = ref([])
@@ -22,6 +33,7 @@ const hourly = ref([])
 const loading = ref(true)
 
 onMounted(async () => {
+  try { introDismissed.value = localStorage.getItem('i365.intro.dismissed') === '1' } catch {}
   stats.value = await api.stats()
 
   const devices = (await api.devices.list({ perPage: 0 })).data
@@ -87,6 +99,34 @@ const num = (n) => (n ?? 0).toLocaleString()
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
       </template>
     </PageHeader>
+
+    <!-- First run. Shown once, dismissible, and it does not pretend to be an
+         alert - it sits above the attention band rather than competing with it. -->
+    <section v-if="!introDismissed" class="i-intro">
+      <div class="d-flex align-items-start gap-3">
+        <div style="flex:1;min-width:0">
+          <h2>This console actually works</h2>
+          <p>
+            It is not a prototype or a set of screenshots. The MFA is real
+            cryptography, the policy engine really evaluates, and everything you
+            change is saved to a database that is yours alone — press
+            <strong>Reset demo</strong> any time to put it back.
+          </p>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button
+              v-for="t in TOURS.slice(0, 3)" :key="t.id"
+              class="i-btn i-sm" @click="startTour(t.id)"
+            >
+              <i class="fa-solid" :class="t.icon" aria-hidden="true" /> {{ t.title }}
+            </button>
+            <button class="i-btn i-sm i-quiet" @click="startTour()">All tours</button>
+          </div>
+        </div>
+        <button class="i-x" @click="dismissIntro" aria-label="Dismiss">
+          <i class="fa-solid fa-xmark" aria-hidden="true" />
+        </button>
+      </div>
+    </section>
 
     <!-- attention band: only when something is actually waiting -->
     <section v-if="attention.length" class="i-band">
@@ -196,19 +236,18 @@ const num = (n) => (n ?? 0).toLocaleString()
           These are not screenshots. The crypto, the policy engine and the posture
           checks genuinely run.
         </p>
-        <div class="d-flex flex-wrap gap-2">
-          <RouterLink class="i-btn i-primary" to="/mfa-profile">
-            <i class="fa-solid fa-mobile-screen" aria-hidden="true" /> Set up real MFA
-          </RouterLink>
-          <RouterLink class="i-btn" to="/access-explorer">
-            <i class="fa-solid fa-magnifying-glass-chart" aria-hidden="true" /> Access explorer
-          </RouterLink>
-          <RouterLink class="i-btn" to="/device-checks">
-            <i class="fa-solid fa-laptop-medical" aria-hidden="true" /> Posture checks
-          </RouterLink>
-          <RouterLink class="i-btn" to="/devices">
-            <i class="fa-solid fa-inbox" aria-hidden="true" /> Approval queue
-          </RouterLink>
+        <div class="d-flex flex-column gap-2">
+          <button
+            v-for="t in TOURS" :key="t.id"
+            class="i-tourline" @click="startTour(t.id)"
+          >
+            <span class="i-tour-ico"><i class="fa-solid" :class="t.icon" aria-hidden="true" /></span>
+            <span style="flex:1;min-width:0">
+              <span class="i-tourline-t">{{ t.title }}</span>
+              <span class="i-tourline-b">{{ t.blurb }}</span>
+            </span>
+            <span class="i-tourline-m">{{ t.minutes }} min</span>
+          </button>
         </div>
       </div>
     </section>

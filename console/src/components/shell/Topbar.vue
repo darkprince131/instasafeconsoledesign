@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import api from '../../api'
 
 defineProps({ unread: { type: Number, default: 0 } })
-const emit = defineEmits(['toggle-nav', 'open-inbox'])
+const emit = defineEmits(['toggle-nav', 'open-inbox', 'open-tours'])
 
 const route = useRoute()
 const theme = ref(document.documentElement.getAttribute('data-i-theme') || 'light')
@@ -74,6 +74,11 @@ onUnmounted(() => clearInterval(timer))
 
     <div class="i-tgroup">
       <span class="i-sessclock" title="Session expires in">{{ clock }}</span>
+
+      <button class="i-tbtn" @click="emit('open-tours')" title="Guided tours">
+        <i class="fa-solid fa-route" aria-hidden="true" />
+        <span class="d-none d-lg-inline">Tours</span>
+      </button>
 
       <button class="i-tbtn" @click="emit('open-inbox')" :title="unread ? `${unread} unread` : 'Demo Inbox'">
         <i class="fa-regular fa-envelope" aria-hidden="true" />

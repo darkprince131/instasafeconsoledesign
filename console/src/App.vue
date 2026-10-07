@@ -5,6 +5,7 @@ import Rail from './components/shell/Rail.vue'
 import Topbar from './components/shell/Topbar.vue'
 import DemoInbox from './components/shell/DemoInbox.vue'
 import Toasts from './components/ui/Toasts.vue'
+import Tour from './components/shell/Tour.vue'
 import api from './api'
 
 const route = useRoute()
@@ -21,10 +22,12 @@ async function refreshStats () {
 }
 
 const toastRef = ref(null)
+const tourRef = ref(null)
 provide('toast', (msg, kind) => toastRef.value?.push(msg, kind))
 provide('refreshStats', refreshStats)
 provide('stats', stats)
 provide('openInbox', () => { inboxOpen.value = true })
+provide('startTour', (id) => id ? tourRef.value?.start(id) : tourRef.value?.openMenu())
 
 const bare = computed(() => route.meta?.bare === true)
 
@@ -43,6 +46,7 @@ onMounted(refreshStats)
         :unread="unread"
         @toggle-nav="navOpen = !navOpen"
         @open-inbox="inboxOpen = true"
+        @open-tours="tourRef?.openMenu()"
       />
       <RouterView v-slot="{ Component }">
         <Suspense>
@@ -58,5 +62,6 @@ onMounted(refreshStats)
   </div>
 
   <DemoInbox v-model:open="inboxOpen" @read="refreshStats" />
+  <Tour ref="tourRef" />
   <Toasts ref="toastRef" />
 </template>
