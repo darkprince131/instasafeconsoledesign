@@ -75,6 +75,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['timeSchedules', seed.seedTimeSchedules()],
         ['geoFences', seed.seedGeoFences()],
         ['lockouts', seed.seedLockouts()],
+        ['softwarePackages', seed.seedSoftwarePackages()],
         ['users', users],
         ['devices', seed.seedDevices(users, SEED_SIZE.devices)],
         ['sessions', seed.seedSessions(users, applications)],

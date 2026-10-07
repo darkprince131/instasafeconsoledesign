@@ -474,3 +474,42 @@ export function seedLockouts () {
       blockedAt: new Date(now - 95 * 60000).toISOString(), blockedUntil: mins(-35) }
   ]
 }
+
+/**
+ * The software-package inventory behind /software-packages.
+ *
+ * Velto's own list is a winget-style catalogue of whatever agents have
+ * reported — the first page is Korean consumer software (벅스, 네이버 웨일,
+ * League of Legends KR), which is a useful reminder that this is an
+ * observation of a real estate and not a curated list. Modelled on that:
+ * a mix of corporate tooling and the consumer software that actually shows
+ * up, because the screen is only interesting when it contains things an
+ * admin did not expect.
+ */
+export function seedSoftwarePackages () {
+  const rows = [
+    ['Google Chrome',            '131.0.6778.86', 'windows', 'Google LLC',             'Google.Chrome',               'Active'],
+    ['Mozilla Firefox',          '133.0.3',       'windows', 'Mozilla',                'Mozilla.Firefox',             'Active'],
+    ['Microsoft Teams',          '24285.3815',    'windows', 'Microsoft Corporation',  'Microsoft.Teams',             'Active'],
+    ['Zoom Workplace',           '6.2.11',        'windows', 'Zoom Communications',    'Zoom.Zoom',                   'Active'],
+    ['Slack',                    '4.41.105',      'macos',   'Slack Technologies',     'SlackTechnologies.Slack',     'Active'],
+    ['Visual Studio Code',       '1.96.2',        'windows', 'Microsoft Corporation',  'Microsoft.VisualStudioCode',  'Active'],
+    ['Notepad++',                '8.7.1',         'windows', 'Notepad++ Team',         'Notepad++.Notepad++',         'Active'],
+    ['7-Zip',                    '24.09',         'windows', 'Igor Pavlov',            '7zip.7zip',                   'Active'],
+    ['PuTTY',                    '0.82',          'windows', 'Simon Tatham',           'PuTTY.PuTTY',                 'Active'],
+    ['WinSCP',                   '6.3.6',         'windows', 'Martin Prikryl',         'WinSCP.WinSCP',               'Active'],
+    ['AnyDesk',                  '8.1.3',         'windows', 'AnyDesk Software GmbH',  'AnyDeskSoftwareGmbH.AnyDesk', 'Disabled'],
+    ['TeamViewer',               '15.59.4',       'windows', 'TeamViewer Germany',     'TeamViewer.TeamViewer',       'Disabled'],
+    ['Tor Browser',              '14.0.3',        'windows', 'The Tor Project',        'TorProject.TorBrowser',       'Disabled'],
+    ['BitTorrent',               '7.11.0',        'windows', 'BitTorrent Inc.',        'BitTorrent.BitTorrent',       'Disabled'],
+    ['CrowdStrike Falcon',       '7.20.19507',    'windows', 'CrowdStrike, Inc.',      'CrowdStrike.Falcon',          'Active'],
+    ['Docker Desktop',           '4.37.1',        'macos',   'Docker Inc.',            'Docker.DockerDesktop',        'Active'],
+    ['Postman',                  '11.21.0',        'macos',   'Postman, Inc.',          'Postman.Postman',             'Active'],
+    ['VLC media player',         '3.0.21',        'linux',   'VideoLAN',               'VideoLAN.VLC',                'Active'],
+    ['Spotify',                  '1.2.53',        'macos',   'Spotify AB',             'Spotify.Spotify',             'Active'],
+    ['WhatsApp',                 '2.2451.4',      'windows', 'WhatsApp LLC',           'WhatsApp.WhatsApp',           'Active']
+  ]
+  return rows.map(([name, version, platform, publisher, packageId, status], i) => ({
+    id: `pkg_${pad(i + 1)}`, name, version, platform, publisher, packageId, status
+  }))
+}

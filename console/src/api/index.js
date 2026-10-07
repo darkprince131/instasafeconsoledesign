@@ -116,6 +116,8 @@ export const api = {
   },
   blockedApps: resource('blockedApps'),
   deviceUpdates: resource('deviceUpdates'),
+  /** Read-only inventory behind /software-packages. */
+  softwarePackages: resource('softwarePackages'),
 
   // ---- network and applications ---------------------------------------
   controllers: {

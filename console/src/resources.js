@@ -44,12 +44,25 @@ const fmtUntil = (v) => {
   return `${Math.round(s / 3600)} h left`
 }
 
-/** Status → pill style. Returning null means "expected, render quietly". */
-const statusPill = (v) => ({
-  active: null, approved: null, running: null, up: null, configured: null, enabled: null,
-  pending: 'att', restarting: 'att', degraded: 'att', 'not-configured': 'att',
-  suspended: 'bad', rejected: 'bad', stopped: 'bad', down: 'bad', disabled: 'bad'
-}[v] ?? null)
+/**
+ * Status -> pill style. Returning null means "expected, render quietly".
+ *
+ * Matched case-insensitively: screens carrying production's own casing
+ * ("Active", "Pending-Approval") would otherwise fall through to null and
+ * render every state unmarked, including the ones the design spends colour
+ * on. A status that earns a mark and silently does not get one is the
+ * failure this is for.
+ */
+const statusPill = (raw) => {
+  const v = String(raw ?? '').toLowerCase().replace(/[\s_]+/g, '-')
+  return ({
+    active: null, approved: null, running: null, up: null, configured: null, enabled: null,
+    pending: 'att', restarting: 'att', degraded: 'att', 'not-configured': 'att',
+    suspended: 'bad', rejected: 'bad', stopped: 'bad', down: 'bad', disabled: 'bad',
+    // production's own hyphenated casing, seen on velto's device list
+    'pending-approval': 'att', expired: 'att', blocked: 'bad'
+  }[v] ?? null)
+}
 
 export const RESOURCES = {
   '/usergroups': {
@@ -230,6 +243,33 @@ export const RESOURCES = {
 
   '/profile/google': { alias: '/profile/azuread' },
   '/profile/scim-import': { alias: '/profile/azuread' },
+  /**
+   * Software packages — a read-only inventory, not a list you edit.
+   *
+   * Velto's columns are Name · Version · Platform · Publisher · Package ·
+   * Status, and the toolbar has no Add, no CSV and no Delete: the catalogue
+   * is supplied, not authored. The `Package` column is a winget-style
+   * identifier (`RiotGames.LeagueOfLegends.KR`), which is what the agent
+   * actually matches on, so it is the column the app blocker needs and the
+   * one worth setting in mono.
+   */
+  '/software-packages': {
+    title: 'Software packages',
+    subtitle: 'What the agent has seen installed across the estate. Supplied, not authored — use App blocker to act on anything here.',
+    resource: 'softwarePackages',
+    searchFields: ['name', 'publisher', 'packageId'],
+    emptyTitle: 'No packages inventoried',
+    emptyBody: 'The catalogue fills in as agents report what is installed.',
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'version', label: 'Version', mono: true },
+      { key: 'platform', label: 'Platform' },
+      { key: 'publisher', label: 'Publisher', dim: true },
+      { key: 'packageId', label: 'Package', mono: true },
+      { key: 'status', label: 'Status', pill: statusPill }
+    ]
+  },
+
   '/downloads/gateway-agents': { alias: '/downloads/user-agents' },
 
   '/downloads/user-agents': {

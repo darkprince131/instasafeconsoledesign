@@ -9,7 +9,7 @@ import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 import Sheet from '../../components/ui/Sheet.vue'
 import {
   URL_TYPES, CONTENT_CATEGORIES, FILETYPE_CATEGORIES,
-  EXTENSIONS_BY_CATEGORY, CATEGORY_NOTES
+  EXTENSIONS_BY_CATEGORY, SUBCATEGORIES_BY_CATEGORY, CATEGORY_NOTES
 } from '../../lib/filter-catalog.js'
 
 /**
@@ -47,9 +47,13 @@ const KINDS = {
   },
   '/content-filter': {
     resource: 'contentFilters', title: 'Content filter', singular: 'content rule',
-    subtitle: 'Matched against the category a destination is classified into.',
-    probe: 'Social / Lifestyle', testLabel: 'Test a category',
-    cols: [{ key: 'category', label: 'Category' }]
+    subtitle: 'Matched against the sub-category a destination is classified into. The category only narrows which sub-categories a rule can name.',
+    probe: 'Social Networking', testLabel: 'Test a sub-category',
+    cols: [
+      { key: 'category', label: 'Category' },
+      { key: 'subCategories', label: 'Sub categories',
+        cell: (v) => Array.isArray(v) ? v.join(', ') : (v || '—') }
+    ]
   },
   '/filetype-filter': {
     resource: 'fileTypeFilters', title: 'File type filter', singular: 'file type rule',
@@ -91,18 +95,29 @@ function blank () {
   return {
     name: '', action: 'block', priority: null, enabled: true,
     urlType: 'wildcard', url: '',
-    category: '', extensions: [], list: ''
+    category: '', subCategories: [], extensions: [], list: ''
   }
 }
 
-/** Extensions offered for the chosen category. Custom offers none. */
+/** Extensions offered for the chosen file-type category. Custom offers none. */
 const offered = computed(() => EXTENSIONS_BY_CATEGORY[form.value.category] || [])
+/** Sub-categories offered for the chosen content category. */
+const offeredSubs = computed(() => SUBCATEGORIES_BY_CATEGORY[form.value.category] || [])
 const categoryNote = computed(() => CATEGORY_NOTES[form.value.category] || '')
 
 // changing category clears a selection that no longer belongs to it
 watch(() => form.value.category, (c, old) => {
-  if (old !== undefined && c !== old) form.value.extensions = []
+  if (old !== undefined && c !== old) {
+    form.value.extensions = []
+    form.value.subCategories = []
+  }
 })
+
+function toggleSub (v) {
+  const set = new Set(form.value.subCategories || [])
+  set.has(v) ? set.delete(v) : set.add(v)
+  form.value.subCategories = [...set]
+}
 
 function toggleExt (e) {
   const set = new Set(form.value.extensions || [])
@@ -111,7 +126,10 @@ function toggleExt (e) {
 }
 function selectAllExt () { form.value.extensions = [...offered.value] }
 function addCustomExt () {
-  const parts = customExt.value.split(/[\s,]+/).map(s => s.replace(/^\./, '').trim().toLowerCase()).filter(Boolean)
+  // normalise to the leading-dot form production stores
+  const parts = customExt.value.split(/[\s,]+/)
+    .map(s => s.trim().toLowerCase().replace(/^\.*/, ''))
+    .filter(Boolean).map(s => '.' + s)
   form.value.extensions = [...new Set([...(form.value.extensions || []), ...parts])]
   customExt.value = ''
 }
@@ -136,9 +154,14 @@ async function load () {
 
 /** The matcher, per filter type. */
 function matches (rule, subject) {
-  if (isContent.value) return rule.category && rule.category === subject
+  /* Content matches on the sub-category, not the category. The category only
+     decides which sub-categories a rule may name. */
+  if (isContent.value) {
+    return (rule.subCategories || []).includes(subject)
+  }
   if (isFileType.value) {
-    const ext = String(subject).split('.').pop().toLowerCase()
+    // extensions are stored with their dot, so compare in that form
+    const ext = '.' + String(subject).split('.').pop().toLowerCase()
     return (rule.extensions || []).map(e => e.toLowerCase()).includes(ext)
   }
   if (isDomain.value) {
@@ -188,7 +211,7 @@ function openAdd () {
   sheetOpen.value = true
 }
 function openEdit (row) {
-  form.value = { ...blank(), ...row, extensions: row.extensions || [] }
+  form.value = { ...blank(), ...row, extensions: row.extensions || [], subCategories: row.subCategories || [] }
   editingId.value = row.id
   sheetOpen.value = true
 }
@@ -196,7 +219,7 @@ function openEdit (row) {
 const valid = computed(() => {
   if (!form.value.name) return false
   if (isUrl.value) return !!form.value.url
-  if (isContent.value) return !!form.value.category
+  if (isContent.value) return !!form.value.category && form.value.subCategories.length > 0
   if (isFileType.value) return !!form.value.category && form.value.extensions.length > 0
   if (isDomain.value) return !!String(form.value.list).trim()
   return true
@@ -275,8 +298,10 @@ onMounted(load)
           <input v-model="probe" type="text" :placeholder="cfg.probe">
         </label>
         <select v-else v-model="probe" class="i-ctl mb-3">
-          <option value="">Pick a category to test…</option>
-          <option v-for="c in CONTENT_CATEGORIES" :key="c">{{ c }}</option>
+          <option value="">Pick a sub-category to test…</option>
+          <optgroup v-for="(subs, cat) in SUBCATEGORIES_BY_CATEGORY" :key="cat" :label="cat">
+            <option v-for="sc in subs" :key="sc">{{ sc }}</option>
+          </optgroup>
         </select>
 
         <template v-if="result">
@@ -357,9 +382,14 @@ onMounted(load)
         </div>
       </div>
 
-      <!-- content -->
+      <!-- content: category only narrows the list; the sub-category filters -->
       <div v-if="isContent" class="i-formsec">
-        <h3>Category</h3>
+        <h3>Category and sub-categories</h3>
+        <p class="i-secsub">
+          The category is not what filters. It chooses which of the 49
+          sub-categories you can pick from, and those are what a destination is
+          matched against.
+        </p>
         <div class="i-frow" style="grid-template-columns:1fr">
           <div class="i-field">
             <label for="cc">Content category <span class="i-req">*</span></label>
@@ -369,6 +399,33 @@ onMounted(load)
             </select>
           </div>
         </div>
+
+        <template v-if="offeredSubs.length">
+          <div class="d-flex align-items-center gap-2 mb-2 mt-3">
+            <span style="font-size:12.5px;font-weight:450;color:var(--i-dim)">
+              Sub categories <span class="i-req">*</span>
+            </span>
+            <span style="font-size:11.5px;color:var(--i-mute)">
+              {{ form.subCategories.length }} of {{ offeredSubs.length }} selected
+            </span>
+            <button
+              class="i-btn i-sm i-quiet ms-auto"
+              @click="form.subCategories = [...offeredSubs]"
+            >Select all</button>
+            <button class="i-btn i-sm i-quiet" @click="form.subCategories = []">Clear</button>
+          </div>
+          <div class="d-flex flex-wrap gap-1">
+            <button
+              v-for="sc in offeredSubs" :key="sc"
+              class="i-chip" :class="{ 'is-on': form.subCategories.includes(sc) }"
+              :aria-pressed="form.subCategories.includes(sc)"
+              @click="toggleSub(sc)"
+            >{{ sc }}</button>
+          </div>
+          <p class="i-hint mt-2">
+            Production renders this as a multi-select that tells you to hold Ctrl.
+          </p>
+        </template>
       </div>
 
       <!-- file type: the cascade -->
@@ -403,7 +460,7 @@ onMounted(load)
               class="i-chip" :class="{ 'is-on': form.extensions.includes(e) }"
               :aria-pressed="form.extensions.includes(e)"
               @click="toggleExt(e)"
-            >.{{ e }}</button>
+            >{{ e }}</button>
           </div>
         </template>
 

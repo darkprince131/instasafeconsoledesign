@@ -395,7 +395,8 @@ const RESOURCE_TABLE = {
      exactly how several screens would have shipped looking broken. */
   subAdmins: 'records', roles: 'records', appGroups: 'records', lockouts: 'records',
   authDevices: 'records', devicePolicies: 'records', blockedApps: 'records',
-  deviceUpdates: 'records', urlFilters: 'records', contentFilters: 'records',
+  deviceUpdates: 'records', softwarePackages: 'records',
+  urlFilters: 'records', contentFilters: 'records',
   fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
   riskProfiles: 'records', userProviders: 'records', downloads: 'records',
   accessLog: 'event_log'
@@ -407,6 +408,7 @@ const RECORD_KINDS = {
   subAdmins: 'sub-admin', roles: 'role', appGroups: 'app-group', lockouts: 'lockout',
   authDevices: 'auth-device', devicePolicies: 'device-policy',
   blockedApps: 'blocked-app', deviceUpdates: 'device-update',
+  softwarePackages: 'software-package',
   urlFilters: 'url-filter', contentFilters: 'content-filter',
   fileTypeFilters: 'filetype-filter', domainLists: 'domain-list',
   idamServices: 'idam-service', riskProfiles: 'risk-profile',
