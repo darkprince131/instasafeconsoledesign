@@ -19,6 +19,7 @@
 
 import * as seed from '../seed.js'
 import { verifyTOTP, generateSecret, otpauthURI } from '../../lib/totp.js'
+import { evaluateAccess, evaluatePosture, browserFingerprint } from '../../lib/policy.js'
 
 export function httpAdapter ({ baseURL = '/api' } = {}) {
   async function request (path, { method = 'GET', body, params } = {}) {
@@ -210,12 +211,156 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
 
       if (name === 'demo.seeded') return request('/seeded')
 
-      /* Everything else — the policy engine, posture evaluation, device
-         binding — is pure logic over rows. It runs client-side here and
-         belongs server-side in production; the mock adapter holds those
-         implementations and they are the reference for the Laravel versions. */
-      const { mockAdapter } = await import('./mock.js')
-      return mockAdapter.call(name, payload)
+      /* The compute-only calls. These used to fall through to the mock
+         adapter, which reads IndexedDB - so on this backend the access
+         explorer was evaluating a different copy of the data entirely and
+         returning a confident answer about the wrong tenant.
+         They now run the shared engine in lib/policy.js over rows fetched
+         from this backend. In production the same functions move server-side;
+         nothing about them changes. */
+
+      if (name === 'deviceChecks.evaluate') {
+        const checks = (await request('/deviceChecks', { params: { perPage: 0 } })).data
+        return evaluatePosture(checks, payload.posture)
+      }
+
+      if (name === 'accessRules.evaluate') {
+        const [user, application, groupsRes, rulesRes] = await Promise.all([
+          request(`/users/${payload.userId}`),
+          request(`/applications/${payload.applicationId}`),
+          request('/groups', { params: { perPage: 0 } }),
+          request('/accessRules', { params: { perPage: 0 } })
+        ])
+        let postureVerdict = null
+        if (payload.posture) {
+          const checks = (await request('/deviceChecks', { params: { perPage: 0 } })).data
+          postureVerdict = evaluatePosture(checks, payload.posture)
+        }
+        const result = evaluateAccess({
+          user, application, groups: groupsRes.data, rules: rulesRes.data, postureVerdict
+        })
+        if (result.ok) {
+          await this.call('events.record', {
+            type: result.outcome === 'allow' ? 'access.granted' : 'access.denied',
+            message: `${result.user.name} ${result.outcome === 'allow' ? 'reached' : 'was denied'} ${application.name}`,
+            severity: result.outcome === 'allow' ? 'info' : 'warning',
+            actor: user.username
+          })
+        }
+        return result
+      }
+
+      if (name === 'devices.bind') {
+        const hash = await browserFingerprint()
+        const existing = (await request('/devices', { params: { perPage: 0, search: hash } }))
+          .data.find(d => d.fingerprint === hash)
+        if (existing) return { ok: true, device: existing, alreadyBound: true }
+
+        const user = await request(`/users/${payload.userId}`)
+        const device = await request('/devices', {
+          method: 'POST',
+          body: {
+            name: `${user.firstName}-ThisBrowser`,
+            userId: user.id, username: user.username,
+            os: navigator.platform,
+            osFamily: navigator.platform.includes('Win') ? 'Windows'
+              : navigator.platform.includes('Mac') ? 'macOS' : 'Linux',
+            agentVersion: '4.8.2 (browser)',
+            fingerprint: hash, macAddress: '—', ipAddress: null,
+            status: 'pending', bound: false,
+            city: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            lastSeenAt: new Date().toISOString(),
+            posture: {
+              diskEncryption: true, antivirus: true, firewall: true,
+              osUpToDate: true, screenLock: true, jailbroken: false
+            },
+            isThisBrowser: true
+          }
+        })
+        await this.call('events.record', {
+          type: 'device.enrolled',
+          message: `${user.firstName} enrolled this browser as a device`
+        })
+        return { ok: true, device, fingerprint: hash }
+      }
+
+      if (name === 'devices.approve' || name === 'devices.reject') {
+        const approve = name === 'devices.approve'
+        await request(`/devices/${payload.id}`, {
+          method: 'PUT', body: { status: approve ? 'approved' : 'rejected', bound: approve }
+        })
+        return { ok: true }
+      }
+
+      if (name === 'devices.approveMany') {
+        for (const id of payload.ids || []) {
+          await request(`/devices/${id}`, { method: 'PUT', body: { status: 'approved', bound: true } })
+        }
+        await this.call('events.record', {
+          type: 'device.approved', message: `${(payload.ids || []).length} devices approved in bulk`
+        })
+        return { ok: true, count: (payload.ids || []).length }
+      }
+
+      if (name === 'users.suspend' || name === 'users.activate') {
+        const status = name === 'users.suspend' ? 'suspended' : 'active'
+        await request(`/users/${payload.id}`, { method: 'PUT', body: { status } })
+        return { ok: true }
+      }
+
+      if (name === 'controllers.action') {
+        const next = { stop: 'stopped', restart: 'restarting', commit: 'running' }[payload.action]
+        await request(`/controllers/${payload.id}`, {
+          method: 'PUT',
+          body: { status: next, ...(payload.action === 'commit' ? { pendingCommit: false } : {}) }
+        })
+        if (payload.action === 'restart') {
+          setTimeout(() => request(`/controllers/${payload.id}`, {
+            method: 'PUT', body: { status: 'running' }
+          }).catch(() => {}), 4000)
+        }
+        return { ok: true, status: next }
+      }
+
+      if (name === 'inbox.markRead') {
+        await request(`/inbox/${payload.id}`, { method: 'PUT', body: { read: true } })
+        return { ok: true }
+      }
+
+      if (name === 'inbox.clear') {
+        const { data } = await request('/inbox', { params: { perPage: 0 } })
+        if (data.length) {
+          await request('/inbox/bulk-delete', { method: 'POST', body: { ids: data.map(m => m.id) } })
+        }
+        return { ok: true }
+      }
+
+      if (name === 'settings.get') {
+        const { data } = await request('/records', { params: { perPage: 0, 'f.kind': 'setting' } })
+          .catch(() => ({ data: [] }))
+        return data.find(r => r.name === payload.key)?.value ?? null
+      }
+
+      if (name === 'settings.set') {
+        const { data } = await request('/records', { params: { perPage: 0, 'f.kind': 'setting' } })
+          .catch(() => ({ data: [] }))
+        const existing = data.find(r => r.name === payload.key)
+        if (existing) {
+          await request(`/records/${existing.id}`, { method: 'PUT', body: { value: payload.value } })
+        } else {
+          await request('/records', {
+            method: 'POST', body: { kind: 'setting', name: payload.key, value: payload.value }
+          })
+        }
+        return { ok: true }
+      }
+
+      if (name === 'auth.me') {
+        const { data } = await request('/users', { params: { perPage: 1, search: 'admin' } })
+        return data[0] || null
+      }
+
+      throw new Error(`No HTTP implementation for "${name}"`)
     }
   }
 }

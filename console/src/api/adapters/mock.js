@@ -14,6 +14,7 @@
 
 import { db, id } from '../../lib/db.js'
 import { verifyTOTP, generateSecret, otpauthURI } from '../../lib/totp.js'
+import { evaluateAccess, evaluatePosture } from '../../lib/policy.js'
 import * as seed from '../seed.js'
 
 const SEED_FLAG = 'i365.seeded.v1'

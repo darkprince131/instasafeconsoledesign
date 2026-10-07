@@ -304,7 +304,7 @@ defineExpose({ start, openMenu })
 
               <div class="i-flow-wait">
                 <span class="i-flow-pulse" />
-                Waiting for you to {{ step.done ? step.done.toLowerCase() : 'finish this step' }}
+                Watching for: {{ step.done || 'this step to be finished' }}
               </div>
 
               <div class="d-flex align-items-center gap-2 mt-2">
