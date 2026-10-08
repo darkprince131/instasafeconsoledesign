@@ -889,3 +889,50 @@ html[data-i-theme="dark"] .i-segb.is-on{ background:var(--i-raise,#232329); }
 .i-stat .i-vdate{ font-size:19px; letter-spacing:var(--i-tr-section); }
 .i-alink{ color:var(--i-v700); text-decoration:none; margin-left:4px; }
 .i-alink:hover{ text-decoration:underline; }
+
+/* ================== 15 · definition list ================== */
+/* Label above value, not a two-column table. A device's UUID is 36 characters
+   and a fixed label column either wraps it or squeezes the label. */
+.i-deflist{ margin:0; display:grid; gap:var(--i-s3) var(--i-s5); grid-template-columns:repeat(2,minmax(0,1fr)); }
+.i-deflist > div{ min-width:0; }
+.i-deflist dt{
+  margin:0 0 1px; font-size:var(--i-t-micro); font-weight:400;
+  letter-spacing:var(--i-tr-micro); text-transform:uppercase; color:var(--i-mute);
+}
+.i-deflist dd{
+  margin:0; font-size:var(--i-t-meta); color:var(--i-ink);
+  overflow-wrap:anywhere;
+}
+@media (max-width:575.98px){ .i-deflist{ grid-template-columns:1fr; } }
+
+/* ================== 16 · bulk operations list ================== */
+.i-oplist{ display:flex; flex-direction:column; }
+.i-oprow{
+  display:block; width:100%; text-align:left; cursor:pointer;
+  border:0; border-top:1px solid var(--i-rule); background:transparent;
+  padding:var(--i-s3) var(--i-s2); font:inherit; color:var(--i-ink);
+}
+.i-oplist .i-oprow:last-child{ border-bottom:1px solid var(--i-rule); }
+.i-oprow:hover{ background:var(--i-tint); }
+.i-oprow:active{ transform:translateY(1px); }
+.i-oprow:focus-visible{ outline:2px solid var(--i-v600); outline-offset:-2px; }
+.i-opt{ display:flex; align-items:center; gap:8px; font-size:var(--i-t-body); font-weight:500; }
+.i-oprow.is-bad .i-opt{ color:var(--i-bad); }
+.i-opn{
+  font-family:var(--i-mono); font-size:10.5px; padding:1px 6px; border-radius:99px;
+  background:var(--i-tint); color:var(--i-dim); font-weight:400;
+}
+.i-opb{ display:block; margin-top:2px; font-size:var(--i-t-meta); color:var(--i-mute); }
+
+/* ================== 17 · MFA state (admin side) ================== */
+.i-mfastate{
+  display:flex; align-items:flex-start; gap:11px;
+  padding:var(--i-s3) var(--i-s4); border-radius:var(--i-r-ctl);
+  background:var(--i-tint);
+}
+.i-mfastate > i{ margin-top:2px; font-size:14px; }
+.i-mfastate.is-on > i{ color:var(--i-ok); }
+.i-mfastate.is-off > i{ color:var(--i-c600); }
+.i-mfastate span{ display:flex; flex-direction:column; min-width:0; }
+.i-mfastate strong{ font-size:var(--i-t-body); font-weight:500; }
+.i-mfastate small{ font-size:var(--i-t-meta); color:var(--i-mute); }

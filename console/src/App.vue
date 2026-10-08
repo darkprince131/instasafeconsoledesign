@@ -36,7 +36,12 @@ onMounted(refreshStats)
 
 <template>
   <!-- Sign-in renders without the shell; everything else inside it. -->
-  <RouterView v-if="bare" />
+  <!-- Portal routes bring their own shell; the sign-in page is bare but still
+       needs the portal's canvas behind it. -->
+  <div v-if="bare && route.meta?.portalBare" class="p-app">
+    <main class="p-main"><RouterView /></main>
+  </div>
+  <RouterView v-else-if="bare" />
 
   <div v-else class="i-app" :class="{ 'i-navopen': navOpen }">
     <Rail :stats="stats" @close="navOpen = false" />

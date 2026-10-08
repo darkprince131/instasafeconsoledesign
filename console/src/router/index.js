@@ -74,12 +74,36 @@ const routes = [
     component: () => import('../views/SignIn.vue'),
     meta: { bare: true }
   },
+  /**
+   * The end-user portal.
+   *
+   * `/mfa-profile` used to live here, inside the admin console, as the
+   * administrator's own enrolment screen hung off the rail footer. That was
+   * the wrong product: an administrator cannot enrol somebody else's
+   * authenticator, because enrolment means scanning a QR with a phone they
+   * are not holding. Enrolment belongs to the person with the phone, so it
+   * moved here, and the admin side kept what an admin actually does —
+   * require MFA, see whether it happened, reset it when the phone is lost.
+   *
+   * `bare: true` keeps the console shell off these routes entirely. The
+   * portal brings its own.
+   */
   {
-    path: '/mfa-profile',
-    name: 'mfa',
-    component: () => import('../views/identity/MfaEnrol.vue'),
-    meta: { title: 'Multi-factor authentication', section: 'Identity' }
-  }
+    path: '/portal',
+    component: () => import('../views/portal/PortalShell.vue'),
+    meta: { bare: true },
+    children: [
+      { path: '', name: 'portal', component: () => import('../views/portal/PortalHome.vue') }
+    ]
+  },
+  {
+    path: '/portal/signin',
+    name: 'portal-signin',
+    component: () => import('../views/portal/PortalSignIn.vue'),
+    meta: { bare: true, portalBare: true }
+  },
+  /* the old path still resolves, so a bookmark lands somewhere sensible */
+  { path: '/mfa-profile', redirect: '/portal' }
 ]
 
 // one route per documented destination

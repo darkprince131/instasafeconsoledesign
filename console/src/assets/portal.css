@@ -1,0 +1,172 @@
+/* ============================================================
+   End-user portal
+   ============================================================
+   A separate, much smaller stylesheet, on purpose.
+
+   The admin console is a dense 68-screen tool built for someone who lives in
+   it. The portal is three cards an employee sees maybe three times a year. It
+   shares the brand and the typeface and nothing else: no rail, no tables, no
+   density, no theming. Reusing the console's layer here would have meant
+   inheriting a navigation shell and a 52px row rhythm that the portal has no
+   use for, and then suppressing both.
+   ============================================================ */
+
+.p-app{
+  --p-ink:#1b1c20;
+  --p-dim:#55565f;
+  --p-mute:#83858f;
+  --p-rule:#e7e7ec;
+  --p-bg:#fafafb;
+  --p-card:#fff;
+  --p-violet:#5b4fd1;
+  --p-violet-d:#4a3fc0;
+  --p-ok:#157a4a;
+  --p-bad:#c0392f;
+  --p-att:#8a5a00;
+
+  min-height:100dvh;
+  display:flex; flex-direction:column;
+  background:var(--p-bg);
+  color:var(--p-ink);
+  font-family:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:14px; line-height:1.6;
+  letter-spacing:-.004em;
+  -webkit-font-smoothing:antialiased;
+}
+.p-app *,.p-app *::before,.p-app *::after{ box-sizing:border-box; }
+
+/* ---- chrome ---- */
+.p-top{
+  display:flex; align-items:center; gap:12px;
+  padding:14px 20px; border-bottom:1px solid var(--p-rule); background:var(--p-card);
+}
+.p-brand{ display:flex; align-items:center; gap:9px; font-weight:500; font-size:15px; }
+.p-acct{ margin-left:auto; position:relative; }
+.p-acctb{
+  display:flex; align-items:center; gap:8px; padding:5px 9px 5px 5px;
+  border:1px solid var(--p-rule); border-radius:99px; background:var(--p-card);
+  font:inherit; font-size:13px; color:var(--p-ink); cursor:pointer;
+}
+.p-acctb:hover{ background:var(--p-bg); }
+.p-av{
+  width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+  background:var(--p-violet); color:#fff; font-size:11px; font-weight:500;
+}
+.p-menu{
+  position:absolute; right:0; top:calc(100% + 6px); min-width:200px; z-index:20;
+  padding:6px; border:1px solid var(--p-rule); border-radius:10px;
+  background:var(--p-card); box-shadow:0 12px 28px -12px rgba(20,20,30,.22);
+}
+.p-menuh{ margin:0; padding:7px 9px; font-size:12px; color:var(--p-mute); overflow-wrap:anywhere; }
+.p-menui{
+  display:block; width:100%; text-align:left; padding:8px 9px; border:0;
+  border-radius:6px; background:transparent; font:inherit; font-size:13px;
+  color:var(--p-ink); cursor:pointer;
+}
+.p-menui:hover{ background:var(--p-bg); }
+
+.p-main{ flex:1; width:100%; max-width:640px; margin:0 auto; padding:30px 20px 60px; }
+.p-narrow{ max-width:400px; margin:40px auto 0; }
+
+.p-foot{
+  display:flex; gap:14px; justify-content:center; align-items:center;
+  padding:18px; border-top:1px solid var(--p-rule);
+  font-size:12px; color:var(--p-mute);
+}
+.p-foot a{ color:var(--p-dim); }
+
+/* ---- blocks ---- */
+.p-stack{ display:flex; flex-direction:column; gap:18px; }
+.p-card{
+  padding:22px; border:1px solid var(--p-rule); border-radius:12px;
+  background:var(--p-card);
+}
+.p-h1{ margin:0 0 4px; font-size:23px; font-weight:500; letter-spacing:-.02em; }
+.p-h2{ margin:0 0 6px; font-size:15px; font-weight:500; letter-spacing:-.012em; }
+.p-lede{ margin:0 0 18px; font-size:14px; color:var(--p-dim); }
+.p-note{ margin:8px 0; font-size:13px; color:var(--p-mute); }
+.p-err{ margin:10px 0; font-size:13px; color:var(--p-bad); }
+.p-ok{ margin:0; display:flex; align-items:center; gap:8px; font-size:14px; color:var(--p-ok); }
+
+/* ---- form ---- */
+.p-field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.p-field label{ font-size:13px; color:var(--p-dim); }
+.p-field input{
+  height:40px; padding:0 12px; border:1px solid var(--p-rule); border-radius:8px;
+  background:var(--p-card); font:inherit; font-size:14px; color:var(--p-ink);
+}
+.p-field input:focus{
+  outline:0; border-color:var(--p-violet); box-shadow:0 0 0 3px rgba(91,79,209,.14);
+}
+.p-code{
+  font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:21px; letter-spacing:.3em; text-align:center;
+}
+.p-codewrap{ position:relative; }
+.p-ttl{
+  position:absolute; right:12px; top:34px;
+  font-family:"Geist Mono",ui-monospace,monospace; font-size:12px; color:var(--p-mute);
+  font-variant-numeric:tabular-nums;
+}
+
+.p-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:40px; padding:0 18px; border:1px solid var(--p-violet);
+  border-radius:8px; background:var(--p-violet); color:#fff;
+  font:inherit; font-size:14px; font-weight:500; cursor:pointer;
+  transition:background .15s ease;
+}
+.p-btn:hover:not(:disabled){ background:var(--p-violet-d); }
+.p-btn:active:not(:disabled){ transform:translateY(1px); }
+.p-btn:disabled{ opacity:.55; cursor:not-allowed; }
+.p-btn.p-ghost{
+  margin-top:12px; background:transparent; color:var(--p-ink); border-color:var(--p-rule);
+}
+.p-btn.p-ghost:hover:not(:disabled){ background:var(--p-bg); }
+.p-link{
+  display:block; margin-top:12px; border:0; background:none; padding:0;
+  font:inherit; font-size:13px; color:var(--p-dim); text-decoration:underline; cursor:pointer;
+}
+.p-hint{ margin:14px 0 0; font-size:12px; color:var(--p-mute); }
+
+/* ---- enrolment ---- */
+.p-steps{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:20px; }
+.p-steps li{ font-size:14px; }
+.p-steps strong{ font-weight:500; }
+.p-qr{
+  margin:12px 0; padding:12px; width:max-content;
+  border:1px solid var(--p-rule); border-radius:10px; background:#fff;
+}
+.p-key{
+  font-family:"Geist Mono",ui-monospace,monospace; font-size:12.5px;
+  padding:2px 6px; border-radius:5px; background:var(--p-bg);
+  border:1px solid var(--p-rule); overflow-wrap:anywhere;
+}
+
+/* ---- lists ---- */
+.p-list{ margin:12px 0 0; padding:0; list-style:none; }
+.p-list li{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:11px 0; border-top:1px solid var(--p-rule);
+}
+.p-li-t{ font-size:14px; }
+.p-li-s{ font-size:12.5px; color:var(--p-mute); }
+.p-tag{
+  margin-left:auto; font-size:11.5px; padding:2px 9px; border-radius:99px;
+  background:var(--p-bg); color:var(--p-dim); border:1px solid var(--p-rule);
+}
+/* colour only where something is not simply fine */
+.p-tag.is-pending{ background:#fdf5e6; border-color:#f0dfba; color:var(--p-att); }
+.p-tag.is-rejected{ background:#fdeeed; border-color:#f3cfcc; color:var(--p-bad); }
+
+.p-toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  margin:0; padding:9px 16px; border-radius:99px;
+  background:var(--p-ink); color:#fff; font-size:13px;
+  box-shadow:0 10px 24px -10px rgba(20,20,30,.4);
+}
+
+@media (max-width:575.98px){
+  .p-main{ padding:22px 16px 48px; }
+  .p-card{ padding:18px; }
+}

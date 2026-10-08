@@ -341,7 +341,10 @@ async function ensureSchema () {
      how a seeded value disappears between the browser and the database. */
   for (const [table, col, type] of [
     ['sessions', 'duration_min', 'integer'],
-    ['event_log', 'target', 'text']
+    ['event_log', 'target', 'text'],
+    ['devices', 'serial_number', 'text'],
+    ['devices', 'uuid', 'text'],
+    ['users', 'mfa_required', 'boolean not null default false']
   ]) {
     await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
   }

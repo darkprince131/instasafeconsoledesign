@@ -99,7 +99,10 @@ function badge (key) {
       </template>
     </div>
 
-    <RouterLink to="/mfa-profile" class="i-railfoot">
+    <!-- This used to link to the admin's own MFA enrolment, which put an
+         end-user task in the administrator's navigation. It is the account
+         row now; enrolment is in the portal. -->
+    <RouterLink to="/settings/company-details" class="i-railfoot">
       <span class="i-av">DA</span>
       <span class="i-uname">Demo Admin</span>
       <i class="fa-solid fa-gear ms-auto" style="font-size:12px;opacity:.6" aria-hidden="true" />

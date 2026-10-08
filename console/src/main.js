@@ -10,6 +10,11 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import './assets/i365.css'
 import './assets/app.css'
+import './assets/portal.css'
+import { restorePortalSession } from './lib/portal-session.js'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+
+// a portal sign-in lives in sessionStorage; pick it up before the first route
+restorePortalSession()
 
 createApp(App).use(createPinia()).use(router).mount('#app')

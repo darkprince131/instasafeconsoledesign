@@ -166,6 +166,13 @@ export function seedDevices (users, count = 2140) {
       osFamily: os.split(' ')[0],
       agentVersion: chance(0.72) ? '4.8.2' : pick(['4.7.9','4.6.1','4.8.0']),
       macAddress: Array.from({ length: 6 }, () => Math.floor(r() * 256).toString(16).padStart(2, '0')).join(':'),
+      /* Velto identifies a device by MAC, serial and UUID together, because
+         any one of them can be spoofed, reused after a motherboard swap, or
+         simply absent on a personal machine. */
+      serialNumber: Array.from({ length: 10 }, () =>
+        'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'[Math.floor(r() * 34)]).join(''),
+      uuid: [8, 4, 4, 4, 12].map(n => Array.from({ length: n }, () =>
+        '0123456789abcdef'[Math.floor(r() * 16)]).join('')).join('-'),
       ipAddress: `10.${Math.floor(r() * 254)}.${Math.floor(r() * 254)}.${Math.floor(r() * 254)}`,
       status,
       bound: status === 'approved' && chance(0.88),

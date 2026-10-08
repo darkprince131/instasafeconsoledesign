@@ -43,7 +43,21 @@ function open () {
         }
       }
     }
-    req.onsuccess = () => { _db = req.result; resolve(_db) }
+    /* A version bump cannot proceed while another tab still holds the old
+       version open. Without this handler that request simply never settles:
+       no error, no rejection, every call after it awaiting a promise that
+       will not resolve, and a console that hangs with a loading skeleton
+       for ever. Anyone with the demo open in two tabs across a deploy hits
+       it. Saying what happened lets the caller show it. */
+    req.onblocked = () => reject(new Error(
+      'Another tab has this demo open on an older version. Close the other tabs and reload.'))
+    req.onsuccess = () => {
+      _db = req.result
+      /* And the reverse: when some other tab wants to upgrade, step out of
+         its way rather than being the tab that blocks it. */
+      _db.onversionchange = () => { _db.close(); _db = null }
+      resolve(_db)
+    }
     req.onerror = () => reject(req.error)
   })
 }

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
+import ListTools from '../components/ui/ListTools.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
 import Sheet from '../components/ui/Sheet.vue'
@@ -154,6 +155,24 @@ watch(() => props.config, () => {
  * it. A screen can therefore name its own bulk action; everything else keeps
  * Delete and reads the same as before.
  */
+/* Bulk Ops and Graph for the 50-odd screens on this template.
+   The operation list is whatever the screen's own bulk action is, so a screen
+   that unblocks offers Unblock and not Delete. The graph dimensions are
+   derived from the columns: anything that is a status, a boolean or a plain
+   short label is worth counting; names, ids and timestamps are not, because
+   counting 2,000 distinct values tells you nothing. */
+const bulkOps = computed(() => {
+  if (!cfg.value?.columns) return []
+  return [{
+    key: 'bulk', label: bulk.value.label, tone: bulk.value.tone,
+    body: `The selected ${bulk.value.noun}s ${bulk.value.body}`
+  }]
+})
+
+const graphDims = computed(() => (cfg.value?.columns || [])
+  .filter(c => c.pill || c.bool || /status|type|profile|category|department|protocol|platform|severity|action|os|kind/i.test(c.key))
+  .map(c => ({ key: c.key, label: c.label })))
+
 const bulk = computed(() => ({
   label: 'Delete', past: 'deleted', noun: 'record',
   tone: 'bad', body: 'will be removed. This cannot be undone.',
@@ -222,6 +241,11 @@ onMounted(load)
             <i class="fa-solid fa-download" aria-hidden="true" />
             <span class="d-none d-sm-inline">Export</span>
           </button>
+          <ListTools
+            :operations="bulkOps" :selected="selectedIds"
+            :rows="rows" :dimensions="graphDims" :total="total"
+            @run="confirmOpen = true"
+          />
           <button v-if="cfg.primaryAction && editable" class="i-btn i-primary" @click="openAdd">
             <i class="fa-solid fa-plus" aria-hidden="true" /> {{ cfg.primaryAction }}
           </button>

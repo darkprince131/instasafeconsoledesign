@@ -3,6 +3,7 @@ import { ref, computed, watch, inject, onMounted } from 'vue'
 import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
 import DataTable from '../../components/ui/DataTable.vue'
+import ListTools from '../../components/ui/ListTools.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 import Sheet from '../../components/ui/Sheet.vue'
@@ -17,9 +18,66 @@ const sort = ref(''); const dir = ref('asc')
 const search = ref(''); const filter = ref('all')
 const selectedIds = ref([]); const table = ref(null)
 const confirmOpen = ref(false)
+
+/* What Bulk Ops offers here. Each one already existed behind the selection
+   strip; this is where you can find out they exist before selecting. */
+const BULK_OPS = [
+  { key: 'suspend', label: 'Suspend', body: 'Sign them out and refuse further access until reactivated. Reversible.' },
+  { key: 'activate', label: 'Activate', body: 'Lift a suspension and let them sign in again.' },
+  { key: 'requireMfa', label: 'Require MFA', body: 'They are prompted to enrol in the end-user portal at next sign-in.' },
+  { key: 'resetMfa', label: 'Reset MFA', body: 'Discards the enrolled authenticator. They enrol again from the portal.', tone: 'bad' },
+  { key: 'delete', label: 'Delete', body: 'Removes the account and its device bindings. Cannot be undone.', tone: 'bad' }
+]
+const GRAPH_DIMS = [
+  { key: 'department', label: 'Department' },
+  { key: 'authProfile', label: 'Authentication profile' },
+  { key: 'status', label: 'Status' },
+  { key: 'mfaEnrolled', label: 'MFA enrolled' },
+  { key: 'location', label: 'Location' }
+]
+
+async function runBulk (key) {
+  const ids = selectedIds.value
+  if (!ids.length) return
+  if (key === 'delete') { confirmOpen.value = true; return }
+  const verb = {
+    suspend: 'suspended', activate: 'activated',
+    requireMfa: 'set to require MFA', resetMfa: 'had MFA reset'
+  }[key]
+  for (const id of ids) {
+    if (key === 'suspend') await api.users.suspend(id)
+    else if (key === 'activate') await api.users.activate(id)
+    else if (key === 'requireMfa') await api.users.update(id, { mfaRequired: true })
+    else if (key === 'resetMfa') await api.auth.resetMfa(id)
+  }
+  table.value?.clearSelection()
+  toast(`${ids.length} user${ids.length === 1 ? '' : 's'} ${verb}`)
+  load()
+}
 const sheetOpen = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
+const resettingMfa = ref(false)
+
+/**
+ * Reset somebody else's MFA.
+ *
+ * The one MFA action an administrator genuinely performs, and the one this
+ * console did not have: somebody loses their phone, and without this they are
+ * locked out permanently. It discards the enrolled secret; the next time they
+ * sign in to the portal they are taken through enrolment again.
+ */
+async function resetMfaForUser () {
+  if (!editingId.value) return
+  if (!confirm('Reset multi-factor for this user?\n\nTheir current authenticator stops working immediately and they will have to enrol a new one from the end-user portal.')) return
+  resettingMfa.value = true
+  try {
+    await api.auth.resetMfa(editingId.value)
+    form.value.mfaEnrolled = false
+    toast('Multi-factor reset — they enrol again from the portal')
+    load()
+  } finally { resettingMfa.value = false }
+}
 const form = ref(blank())
 
 function blank () {
@@ -27,7 +85,7 @@ function blank () {
     firstName: '', lastName: '', email: '', username: '',
     countryCode: '91', mobile: '', location: '',
     authProfile: 'Local', department: 'Engineering',
-    status: 'pending', mfaEnrolled: false, groups: [],
+    status: 'pending', mfaEnrolled: false, mfaRequired: false, groups: [],
     deviceBinding: true, deviceCheckEnabled: true,
     geoFenceEnabled: false, autoSuspend: false
   }
@@ -194,6 +252,11 @@ onMounted(load)
         <div class="i-tools">
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
         <button class="i-btn">Import CSV</button>
+        <ListTools
+          :operations="BULK_OPS" :selected="selectedIds"
+          :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
+          @run="runBulk"
+        />
         <button class="i-btn i-primary" @click="openAdd">
           <i class="fa-solid fa-plus" aria-hidden="true" /> Add user
         </button>
@@ -289,6 +352,40 @@ onMounted(load)
             </select>
           </div>
         </div>
+      </div>
+
+      <!-- Multi-factor, from the administrator's side.
+           An admin cannot enrol somebody else's authenticator: enrolment
+           means scanning a QR with a phone the admin does not have. What an
+           admin does is require it, see whether it happened, and reset it
+           when the phone is lost. The enrolment itself lives in the end-user
+           portal, where the person with the phone is. -->
+      <div v-if="editingId" class="i-formsec">
+        <h3>Multi-factor authentication</h3>
+        <p class="i-secsub">
+          Enrolment happens in the end-user portal. From here you require it,
+          see whether it has been done, and reset it.
+        </p>
+        <div class="i-mfastate" :class="form.mfaEnrolled ? 'is-on' : 'is-off'">
+          <i class="fa-solid" aria-hidden="true"
+             :class="form.mfaEnrolled ? 'fa-shield-halved' : 'fa-shield'" />
+          <span>
+            <strong>{{ form.mfaEnrolled ? 'Enrolled' : 'Not enrolled' }}</strong>
+            <small>
+              {{ form.mfaEnrolled
+                ? 'An authenticator app is registered to this account.'
+                : 'They will be asked to enrol the next time they sign in to the portal.' }}
+            </small>
+          </span>
+          <button
+            v-if="form.mfaEnrolled" class="i-btn i-sm i-danger ms-auto"
+            :disabled="resettingMfa" @click="resetMfaForUser"
+          >{{ resettingMfa ? 'Resetting…' : 'Reset' }}</button>
+        </div>
+        <label class="i-sw mt-3">
+          <input type="checkbox" v-model="form.mfaRequired"><span class="i-track" />
+          Require multi-factor at every sign-in
+        </label>
       </div>
 
       <div class="i-formsec">

@@ -125,41 +125,33 @@ export const TOURS = [
   // ===================================================================
   {
     id: 'mfa',
-    title: 'Set up multi-factor authentication',
-    minutes: 3,
+    title: 'Require multi-factor, and watch a user enrol',
+    minutes: 4,
     icon: 'fa-mobile-screen',
-    blurb: 'Enrol a real authenticator, watch a wrong code get refused, then require it tenant-wide.',
+    blurb: 'Require MFA from the admin side, then enrol an authenticator as the employee would.',
     intro:
-      'The cryptography here is real — RFC 6238 over Web Crypto. Have a phone handy if you want to ' +
-      'prove it to yourself, though there is a way through without one.',
+      'This flow crosses the line between the two products on purpose. An administrator requires ' +
+      'multi-factor and can reset it; they cannot enrol it, because enrolment means scanning a QR ' +
+      'with a phone the administrator is not holding. So the first half happens here and the second ' +
+      'half happens in the end-user portal. The cryptography is real either way - RFC 6238 over Web ' +
+      'Crypto - and there is a way through without a phone.',
     baseline: (api) => snapshot(api, ['users']),
     steps: [
       {
-        to: '/mfa-profile', target: '.i-qr',
-        title: 'Scan the QR with an authenticator',
-        body: 'Google Authenticator, Authy, 1Password, Microsoft Authenticator — any of them. This is a real otpauth:// URI, not a picture of one.',
-        done: 'QR ready',
+        to: '/users', target: '.i-table',
+        title: 'Find somebody not yet enrolled',
+        body: 'The MFA column marks who has not done it. Click the row to open them — the whole row is the control, there is no pencil icon.',
+        done: 'User open',
         optional: true,
-        check: async () => !!document.querySelector('.i-qr svg'),
-        hint: 'No phone? The code your phone would be showing is printed below the input, computed the same way.'
+        check: async () => !!document.querySelector('.i-sheet')
       },
       {
-        to: '/mfa-profile', target: '.i-otp',
-        title: 'Try a wrong code first',
-        body: 'Type 000000. It is refused, because the check is genuine rather than decorative. That is the part worth seeing.',
-        done: 'Wrong code refused',
+        to: '/users', target: '.i-sheet',
+        title: 'Require it, and note what you cannot do',
+        body: 'Multi-factor authentication shows whether they are enrolled and lets you require it or reset it. There is no "enrol" button, and that absence is correct: you do not have their phone.',
+        done: 'MFA required',
         optional: true,
-        check: async () => /not valid/i.test(document.querySelector('.i-err')?.textContent || '')
-      },
-      {
-        to: '/mfa-profile', target: '.i-otp',
-        title: 'Now enter the real one',
-        body: 'Six digits from the app, or from the line underneath. The secret is only committed once a correct code proves the phone really has it.',
-        done: 'Authenticator enrolled',
-        async check (api) {
-          const me = await api.auth.me()
-          return !!me?.mfaEnrolled
-        }
+        check: async () => !!document.querySelector('.i-mfastate')
       },
       {
         to: '/user-settings',
@@ -171,9 +163,33 @@ export const TOURS = [
           return !!s?.requireMfa
         },
         hint: 'Worth noticing what the field says: turning this on locks out anyone not yet enrolled.'
+      },
+      {
+        to: '/portal/signin',
+        title: 'Now switch sides',
+        body: 'This is the end-user portal — a different product, three cards, no navigation tree. Sign in as any user; any password is accepted in the demo.',
+        done: 'Signed in to the portal',
+        optional: true,
+        check: async () => {
+          try { return !!sessionStorage.getItem('i365.portal.user') } catch { return false }
+        }
+      },
+      {
+        to: '/portal', target: '.p-qr',
+        title: 'Enrol the authenticator',
+        body: 'Set up authenticator, then scan with Google Authenticator, Authy, 1Password or Microsoft Authenticator. This is a real otpauth:// URI, not a picture of one. Type 000000 first if you want to watch a wrong code get refused.',
+        done: 'Authenticator enrolled',
+        async check () {
+          try {
+            const u = JSON.parse(sessionStorage.getItem('i365.portal.user') || 'null')
+            return !!document.querySelector('.p-ok') || !!u?.mfaEnrolled
+          } catch { return false }
+        },
+        hint: 'No phone? The code your phone would be showing is printed under the input, computed the same way.'
       }
     ],
-    outro: 'A wrong code was refused and a right one was accepted, by the same code that would run in production.'
+    outro:
+      'A wrong code was refused and a right one accepted, by the same code that would run in production - and the enrolment happened where it belongs, with the person holding the phone.'
   },
 
   // ===================================================================
