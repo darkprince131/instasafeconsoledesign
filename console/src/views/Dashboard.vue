@@ -28,7 +28,7 @@ function dismissIntro () {
 }
 const stats = ref({})
 const osBreakdown = ref([])
-const denied = ref([])
+const allDevices = ref([])
 const hourly = ref([])
 const loading = ref(true)
 
@@ -37,19 +37,13 @@ onMounted(async () => {
   stats.value = await api.stats()
 
   const devices = (await api.devices.list({ perPage: 0 })).data
+  allDevices.value = devices
   const byOs = {}
   for (const d of devices) byOs[d.osFamily] = (byOs[d.osFamily] || 0) + 1
   osBreakdown.value = Object.entries(byOs)
     .map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n).slice(0, 5)
 
   const events = (await api.events.list({ perPage: 0 })).data
-  const byApp = {}
-  for (const e of events.filter(x => x.type === 'access.denied')) {
-    byApp[e.actor] = (byApp[e.actor] || 0) + 1
-  }
-  denied.value = Object.entries(byApp)
-    .map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n).slice(0, 5)
-
   allEvents.value = events
   try { anomalyRows.value = (await api.anomalies.list({ perPage: 0 })).data } catch { anomalyRows.value = [] }
 
@@ -173,6 +167,108 @@ const bytes = (n) => {
 const mins = (n) => n < 60 ? `${n} min` : `${Math.floor(n / 60)}h ${n % 60}m`
 
 /** The four panels, declared rather than repeated four times in markup. */
+/* ---- fleet health ------------------------------------------------------
+   Both panels below read `allDevices`, which the dashboard already loads for
+   the OS breakdown. Nothing here costs an extra request — the data was on the
+   page and was being used for one bar chart.                              */
+
+/**
+ * Posture across the estate.
+ *
+ * The console evaluates these six checks on every connection and shows the
+ * result precisely nowhere in aggregate. "Four hundred machines have no disk
+ * encryption" is the single most actionable number a ZTNA console holds, and
+ * it was computable from data already on the page.
+ *
+ * Note `jailbroken`: it is the one check that passes by being false, so
+ * reading the raw boolean as healthy would report every rooted phone as fine.
+ */
+const POSTURE_CHECKS = {
+  diskEncryption: 'Disk encryption',
+  antivirus: 'Antivirus running',
+  firewall: 'Firewall enabled',
+  osUpToDate: 'Operating system current',
+  screenLock: 'Screen lock set',
+  jailbroken: 'Not jailbroken or rooted'
+}
+const posture = computed(() => {
+  const devs = allDevices.value
+  if (!devs.length) return []
+  return Object.entries(POSTURE_CHECKS).map(([k, label]) => {
+    const applicable = devs.filter(d => d.posture && k in d.posture)
+    const failing = applicable.filter(d =>
+      k === 'jailbroken' ? d.posture[k] === true : d.posture[k] !== true).length
+    return {
+      k, label, failing, n: applicable.length,
+      pct: applicable.length ? Math.round((failing / applicable.length) * 100) : 0
+    }
+  }).sort((a, b) => b.failing - a.failing)
+})
+
+/**
+ * Agent versions.
+ *
+ * An out-of-date agent is the commonest cause of a posture failure, which
+ * this console says on the downloads screen and then never counts. The
+ * newest version present is treated as current; everything behind it is
+ * marked, because that is the population that will start failing checks.
+ */
+const agents = computed(() => {
+  const by = {}
+  for (const d of allDevices.value) {
+    const v = d.agentVersion || 'unknown'
+    by[v] = (by[v] || 0) + 1
+  }
+  const versions = Object.keys(by).filter(v => v !== 'unknown')
+  const cmp = (a, b) => {
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number)
+    for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pb[i] || 0) - (pa[i] || 0)
+    return 0
+  }
+  const current = versions.sort(cmp)[0]
+  return Object.entries(by)
+    .map(([name, n]) => ({ name, n, current: name === current }))
+    .sort((a, b) => b.n - a.n)
+})
+const behind = computed(() =>
+  agents.value.filter(a => !a.current).reduce((t, a) => t + a.n, 0))
+
+/* ---- two more period panels, from events and sessions already loaded ---- */
+
+/** What happened when people tried to sign in. */
+const SIGNIN_TYPES = {
+  'auth.login.success': 'Signed in',
+  'auth.login.failed': 'Password refused',
+  'auth.mfa.success': 'Second factor passed',
+  'auth.mfa.failed': 'Second factor refused'
+}
+const signIns = computed(() =>
+  top(allEvents.value.filter(e =>
+    SIGNIN_TYPES[e.type] && new Date(e.at).getTime() >= since.value),
+  e => SIGNIN_TYPES[e.type], () => 1, 4))
+
+/** Which gateway is carrying the connections. */
+const gatewayLoad = computed(() =>
+  top(inWindow.value, s => s.gateway, () => 1, 6))
+
+/** The last few things that happened, whatever they were. */
+const recent = computed(() => [...allEvents.value]
+  .sort((a, b) => new Date(b.at) - new Date(a.at))
+  .slice(0, 8)
+  .map(e => ({
+    id: e.id, type: e.type, actor: e.actor, severity: e.severity,
+    when: fmtWhen(e.at),
+    what: e.message || e.type
+  })))
+
+function fmtWhen (v) {
+  const s = (Date.now() - new Date(v)) / 1000
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m`
+  if (s < 86400) return `${Math.floor(s / 3600)}h`
+  return `${Math.floor(s / 86400)}d`
+}
+
 const panels = computed(() => [
   { title: 'Top data usage', meta: 'by user', rows: topData.value, fmt: bytes,
     empty: 'No traffic recorded in this window.' },
@@ -189,11 +285,14 @@ const panels = computed(() => [
     to: anomalyRows.value.length ? null : '/reports/anomaly-logs',
     toLabel: 'Run a scan' },
   { title: 'Top blocked services', meta: 'by application', rows: topBlocked.value,
-    fmt: (v) => v.toLocaleString(), empty: 'Nothing was blocked in this window.' }
+    fmt: (v) => v.toLocaleString(), empty: 'Nothing was blocked in this window.' },
+  { title: 'Sign-in outcomes', meta: 'by result', rows: signIns.value,
+    fmt: (v) => v.toLocaleString(), empty: 'Nobody signed in during this window.' },
+  { title: 'Gateway load', meta: 'sessions carried', rows: gatewayLoad.value,
+    fmt: (v) => v.toLocaleString(), empty: 'No sessions in this window.' }
 ])
 
 const maxOs = computed(() => Math.max(1, ...osBreakdown.value.map(o => o.n)))
-const maxDenied = computed(() => Math.max(1, ...denied.value.map(o => o.n)))
 const maxHour = computed(() => Math.max(1, ...hourly.value))
 const num = (n) => (n ?? 0).toLocaleString()
 </script>
@@ -286,6 +385,73 @@ const num = (n) => (n ?? 0).toLocaleString()
       </div>
     </section>
 
+    <!-- Fleet health.
+         Neither panel is period-scoped: both describe the estate as it stands
+         right now, and "40% of devices had no antivirus last Tuesday" is not
+         a question anybody asks. -->
+    <section class="i-analytics">
+      <div class="i-ahead">
+        <h2>Fleet health</h2>
+        <span class="i-meta">{{ num(stats.devices) }} devices, as they stand</span>
+      </div>
+
+      <div class="i-agrid">
+        <div class="i-apanel">
+          <div class="i-chead">
+            <h3>Posture across the estate</h3>
+            <span class="i-meta">devices failing each check</span>
+          </div>
+          <div v-if="loading"><div class="i-skel mb-2" v-for="n in 5" :key="n" /></div>
+          <template v-else>
+            <div v-for="p in posture" :key="p.k" class="i-barrow">
+              <span class="i-bl" :title="p.label">{{ p.label }}</span>
+              <span class="i-bartrack">
+                <span
+                  class="i-barfill"
+                  :class="{ 'is-bad': p.pct >= 25 }"
+                  :style="{ width: Math.max(1.5, p.pct) + '%' }"
+                />
+              </span>
+              <span class="i-barval">{{ num(p.failing) }}<small class="i-pcts">{{ p.pct }}%</small></span>
+            </div>
+            <p class="i-hint">
+              A device failing any check its policy requires is refused at the
+              gateway, whatever its user is allowed to reach.
+            </p>
+          </template>
+        </div>
+
+        <div class="i-apanel">
+          <div class="i-chead">
+            <h3>Agent versions</h3>
+            <span class="i-meta">
+              <template v-if="behind">{{ num(behind) }} behind</template>
+              <template v-else>all current</template>
+            </span>
+          </div>
+          <div v-if="loading"><div class="i-skel mb-2" v-for="n in 4" :key="n" /></div>
+          <template v-else>
+            <div v-for="a in agents" :key="a.name" class="i-barrow">
+              <span class="i-bl i-tech">
+                {{ a.name }}
+                <span v-if="a.current" class="i-curtag">current</span>
+              </span>
+              <span class="i-bartrack">
+                <span
+                  class="i-barfill" :class="{ 'is-bad': !a.current }"
+                  :style="{ width: (a.n / (agents[0]?.n || 1) * 100) + '%' }"
+                />
+              </span>
+              <span class="i-barval">{{ num(a.n) }}</span>
+            </div>
+            <p class="i-hint">
+              An out-of-date agent is the commonest cause of a posture failure.
+            </p>
+          </template>
+        </div>
+      </div>
+    </section>
+
     <!-- The four reports production leads with, under one period control. -->
     <section class="i-analytics">
       <div class="i-ahead">
@@ -375,18 +541,21 @@ const num = (n) => (n ?? 0).toLocaleString()
     <section class="i-cols">
       <div class="i-col">
         <div class="i-chead">
-          <h2>Most denied users</h2>
-          <span class="i-meta">Last 30 days</span>
+          <h2>Recent activity</h2>
+          <RouterLink to="/reports/event-logs" class="i-meta text-decoration-none">Event log</RouterLink>
         </div>
-        <div v-for="o in denied" :key="o.name" class="i-barrow">
-          <span class="i-bl">{{ o.name }}</span>
-          <span class="i-bartrack"><span class="i-barfill" :style="{ width: (o.n / maxDenied * 100) + '%' }" /></span>
-          <span class="i-barval">{{ o.n }}</span>
-        </div>
-        <div v-if="!loading && !denied.length" class="i-zero" style="padding:40px 0">
-          <h3>Nothing denied</h3>
-          <p>No access was refused in this window. That is the healthy state.</p>
-        </div>
+        <div v-if="loading"><div class="i-skel mb-2" v-for="n in 5" :key="n" /></div>
+        <ul v-else-if="recent.length" class="i-feed">
+          <li v-for="e in recent" :key="e.id">
+            <span class="i-feeddot" :class="'is-' + (e.severity || 'info')" aria-hidden="true" />
+            <span class="i-feedtext">
+              <span class="i-feedwhat">{{ e.what }}</span>
+              <code class="i-tech i-feedtype">{{ e.type }}</code>
+            </span>
+            <span class="i-feedwhen">{{ e.when }}</span>
+          </li>
+        </ul>
+        <p v-else class="i-anote">Nothing has happened yet.</p>
       </div>
 
       <div class="i-col">

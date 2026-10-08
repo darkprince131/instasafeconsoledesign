@@ -241,6 +241,7 @@ onMounted(async () => {
     <GraphView
       v-if="graphOn"
       :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
+      :resource="'devices'"
       label-key="name"
     />
 
