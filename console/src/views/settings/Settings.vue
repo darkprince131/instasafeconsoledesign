@@ -23,6 +23,46 @@ const route = useRoute()
 const toast = inject('toast', () => {})
 
 const PAGES = {
+  /**
+   * The local authentication profile.
+   *
+   * It sits under Authentication profiles in the navigation beside SAML and
+   * RADIUS, which makes it look like it should be a list of profiles too. It
+   * is not, and velto does not pretend otherwise: there is exactly one local
+   * directory per tenant, so the screen is its password policy — thirteen
+   * fields, Save and Cancel, no table.
+   *
+   * Field names and defaults are velto's.
+   */
+  '/profile/local': {
+    title: 'Local profile',
+    subtitle: 'The password policy for accounts held in this console rather than in a directory. One local directory per tenant, so this is a policy rather than a list.',
+    sections: [
+      ['Password composition', [
+        ['maxLength', 'Maximum password length', 'number', '20'],
+        ['minLength', 'Minimum password length', 'number', '6'],
+        ['minNumeric', 'Minimum numeric characters', 'number', '2'],
+        ['minUpper', 'Minimum uppercase characters', 'number', '1'],
+        ['minLower', 'Minimum lowercase characters', 'number', '2'],
+        ['minSpecial', 'Minimum special characters', 'number', '1'],
+        ['specialSet', 'Set of "special" characters', 'text', '~!@#$%^&*()',
+          'Only these count towards the minimum above. Anything outside the set is treated as an ordinary character.']
+      ]],
+      ['Rotation', [
+        ['forceChange', 'Force user to change password on next login', 'switch', false],
+        ['expiryEnabled', 'Enable password expiry', 'switch', false],
+        ['expiryDays', 'Passwords expire after (days)', 'number', '365',
+          'Applies only while expiry is enabled.']
+      ]],
+      ['Reuse', [
+        ['preventReuse', 'Prevent any password reuse', 'switch', false],
+        ['restrictRecentReuse', 'Restrict recent password reuse', 'switch', false],
+        ['reuseHistory', 'Number of previous passwords to block', 'number', '15',
+          'Applies only while recent reuse is restricted.']
+      ]]
+    ]
+  },
+
   '/settings/company-details': {
     title: 'Company details',
     subtitle: 'Who this tenant belongs to, and who to contact about it.',

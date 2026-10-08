@@ -189,6 +189,23 @@ async function removeSelected () {
   load()
 }
 
+/**
+ * A screen's own toolbar action.
+ *
+ * Sync and metadata exchange are backend work with no offline equivalent, so
+ * rather than miming success these say what they would do and what they
+ * depend on. A fake "Synced 412 users" would be the one thing on this screen
+ * that is not true.
+ */
+function runTool (t) {
+  const says = {
+    sync: 'Sync would bind to the directory with the stored credentials and pull accounts and group membership. It needs a reachable domain controller, so it does nothing here.',
+    'import-idp': 'Import would read an IdP metadata XML file and fill the entity ID, sign-in URL and certificate from it. Upload is a backend route and is not wired in this demo.',
+    'download-sp': 'Download would hand you the SP metadata for this tenant to give to the identity provider. It is generated server-side.'
+  }[t.key]
+  toast(says || `${t.label} is wired in a later phase.`)
+}
+
 function onRowAction (row) {
   toast(`${cfg.value.rowAction.label} — ${row.name || row.id}. Wired in a later phase.`)
 }
@@ -240,6 +257,17 @@ onMounted(load)
           <button class="i-btn" title="Download this list as CSV">
             <i class="fa-solid fa-download" aria-hidden="true" />
             <span class="d-none d-sm-inline">Export</span>
+          </button>
+          <!-- Actions that belong to one screen rather than to every screen.
+               Sync Now on a directory profile, Import IDP Metadata on SAML:
+               velto puts these in the toolbar and they are the reason each
+               protocol needs its own screen rather than a filter chip. -->
+          <button
+            v-for="t in (cfg.tools || [])" :key="t.key"
+            class="i-btn" @click="runTool(t)"
+          >
+            <i v-if="t.icon" class="fa-solid" :class="t.icon" aria-hidden="true" />
+            <span class="d-none d-lg-inline">{{ t.label }}</span>
           </button>
           <ListTools
             :operations="bulkOps" :selected="selectedIds"

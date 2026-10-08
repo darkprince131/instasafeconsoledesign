@@ -309,23 +309,56 @@ export function seedGateways () {
 }
 
 // ------------------------------------------------------- auth profiles
+/**
+ * Authentication profiles, one shape per protocol.
+ *
+ * These used to be eight rows of one invented shape — name, type, host, port,
+ * tls — behind a single screen with a type filter. Velto does not work that
+ * way: each protocol is its own screen with its own columns, its own form and
+ * its own toolbar, because an Active Directory profile and an OAuth2 profile
+ * have almost no fields in common. A domain and two server IPs mean nothing
+ * to OAuth; a client id and a redirect URI mean nothing to RADIUS.
+ *
+ * Field names below are velto's column headings. `local` is absent on
+ * purpose: it is not a list at all, it is the tenant's password policy, and
+ * it lives in settings.
+ */
 export function seedAuthProfiles () {
-  return [
-    ['Local Directory','local','configured'],
-    ['Corp Active Directory','active-directory','configured'],
-    ['Corp LDAPS','ldap','configured'],
-    ['RADIUS NPS','radius','configured'],
-    ['Okta SAML','saml','configured'],
-    ['Azure OIDC','openid','configured'],
-    ['Google OAuth','oauth','not-configured'],
-    ['Passwordless Email','passwordless','configured']
-  ].map(([name, type, status], i) => ({
-    id: `ap_${pad(i + 1, 4)}`, name, type, status,
+  const rows = [
+    // Active Directory — Profile Name · Domain · Primary Server IP · Backup Server IP
+    ['active-directory', { name: 'corp-ad-primary', domain: 'corp.instasafe.com', primaryServerIp: '10.20.4.11', backupServerIp: '10.20.4.12' }],
+    ['active-directory', { name: 'contractors-ad', domain: 'ext.instasafe.com', primaryServerIp: '10.20.9.31', backupServerIp: '10.20.9.32' }],
+
+    // OpenLDAP — adds Port and Protocol
+    ['ldap', { name: 'openldap-eu', domain: 'eu.ldap.instasafe.com', primaryServerIp: '10.44.1.8', backupServerIp: '10.44.1.9', port: 636, protocol: 'TLS' }],
+    ['ldap', { name: 'openldap-lab', domain: 'lab.ldap.instasafe.com', primaryServerIp: '10.44.7.2', backupServerIp: '10.44.7.2', port: 389, protocol: 'TCP' }],
+
+    // RADIUS — Name · RADIUS Server IP · Backup RADIUS Server IP · Port
+    ['radius', { name: 'nps-mumbai', radiusServerIp: '10.61.3.40', backupRadiusServerIp: '10.61.3.41', port: 1812 }],
+    ['radius', { name: 'nps-london', radiusServerIp: '10.62.3.40', backupRadiusServerIp: '10.62.3.40', port: 1812 }],
+
+    // SAML — Name · Integration Type · IDP EntityId · IDP Sign-In URL
+    ['saml', { name: 'okta-workforce', integrationType: 'SAML2.0', idpEntityId: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6', idpSignInUrl: 'https://instasafe.okta.com/app/instasafe_i365/exk1f2g3h4IJKLMN5o6/sso/saml' }],
+    ['saml', { name: 'entra-contractors', integrationType: 'SAML2.0', idpEntityId: 'https://sts.windows.net/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/', idpSignInUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/saml2' }],
+
+    // OAuth2 — Name · Client Id · Redirect URI
+    ['oauth', { name: 'google-workspace', clientId: '81427366104-k3m9rv2qf7hs1bd8e4ucnp0ga6tjlw5x.apps.googleusercontent.com', redirectUri: 'https://instasafe-console-demo.netlify.app/oauth2/callback' }],
+
+    // OpenID — Name · Client Id · Issuer URL
+    ['openid', { name: 'entra-oidc', clientId: '2ec521d5-20dd-4410-9493-b54523d837d8', issuerUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/v2.0' }],
+    ['openid', { name: 'auth0-partners', clientId: 'Pew0wevZV6VToxCKmvjKPLdBigT2Lo4r', issuerUrl: 'https://instasafe-partners.eu.auth0.com/' }],
+
+    // Passwordless — Name · Primary Auth · Fallback Authn
+    ['passwordless', { name: 'fido-engineering', primaryAuth: 'FIDO Key', fallbackAuth: 'Password' }],
+    ['passwordless', { name: 'fido-executives', primaryAuth: 'FIDO Key', fallbackAuth: 'FIDO Key' }]
+  ]
+  return rows.map(([type, fields], i) => ({
+    id: `ap_${pad(i + 1, 4)}`,
+    type,
+    status: 'configured',
     users: Math.floor(r() * 600),
-    host: type === 'local' ? null : `${type}.corp.instasafe.com`,
-    port: { 'active-directory': 389, ldap: 636, radius: 1812 }[type] || null,
-    tls: ['ldap', 'radius'].includes(type),
-    createdAt: ago(300 + r() * 300)
+    createdAt: ago(300 + r() * 300),
+    ...fields
   }))
 }
 

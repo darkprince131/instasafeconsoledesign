@@ -65,6 +65,212 @@ const statusPill = (raw) => {
 }
 
 export const RESOURCES = {
+  /* ============================================================
+     Authentication profiles - seven screens, not one with a filter.
+
+     This was a single screen behind eight routes with a type chip, which is
+     the shape you get from thinking "they are all auth profiles". Velto
+     treats each protocol as its own destination with its own columns, its
+     own form and its own toolbar, and it is right to: a domain and two
+     server IPs mean nothing to OAuth2, and a client id and redirect URI mean
+     nothing to RADIUS. Filtering one table by type forces every screen to
+     show the union of fields that no single protocol uses.
+
+     `baseFilter` keeps them in one collection, because they do share a
+     lifecycle - but nothing about that is visible, and no screen offers to
+     show you another protocol's rows.
+
+     /profile/local is deliberately absent: it is not a list. It is the
+     tenant's password policy and it lives in settings.
+     ============================================================ */
+
+  '/profile/active-directory': {
+    title: 'Active Directory profile',
+    subtitle: 'Domain controllers users authenticate against. Sync pulls accounts and group membership across.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'active-directory' },
+    singular: 'Active Directory profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'domain', 'primaryServerIp'],
+    emptyTitle: 'No Active Directory profiles',
+    emptyBody: 'Add one to authenticate users against a domain controller.',
+    tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    form: [
+      { key: 'name', label: 'Profile name', required: true, placeholder: 'corp-ad-primary' },
+      { key: 'domain', label: 'Domain', required: true, placeholder: 'corp.example.com' },
+      { key: 'primaryServerIp', label: 'Primary server IP', required: true, placeholder: '10.20.4.11' },
+      { key: 'backupServerIp', label: 'Backup server IP', placeholder: 'Used only when the primary does not answer' }
+    ],
+    columns: [
+      { key: 'name', label: 'Profile name', bold: true },
+      { key: 'domain', label: 'Domain' },
+      { key: 'primaryServerIp', label: 'Primary server IP', mono: true },
+      { key: 'backupServerIp', label: 'Backup server IP', mono: true, cell: (v) => v || dash }
+    ]
+  },
+
+  '/profile/ldap': {
+    title: 'OpenLDAP',
+    subtitle: 'LDAP directories users authenticate against. Port and protocol decide whether the bind is encrypted.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'ldap' },
+    singular: 'OpenLDAP profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'domain', 'primaryServerIp'],
+    emptyTitle: 'No LDAP profiles',
+    emptyBody: 'Add one to authenticate users against an LDAP directory.',
+    tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    form: [
+      { key: 'name', label: 'Profile name', required: true, placeholder: 'openldap-eu' },
+      { key: 'domain', label: 'Domain', required: true, placeholder: 'ldap.example.com' },
+      { key: 'primaryServerIp', label: 'Primary server IP', required: true },
+      { key: 'backupServerIp', label: 'Backup server IP' },
+      { key: 'port', label: 'Port', placeholder: '636 for LDAPS, 389 for plain LDAP' },
+      { key: 'protocol', label: 'Protocol', options: ['TLS', 'TCP'] }
+    ],
+    columns: [
+      { key: 'name', label: 'Profile name', bold: true },
+      { key: 'domain', label: 'Domain' },
+      { key: 'primaryServerIp', label: 'Primary server IP', mono: true },
+      { key: 'backupServerIp', label: 'Backup server IP', mono: true, cell: (v) => v || dash },
+      { key: 'port', label: 'Port', mono: true, align: 'right' },
+      /* 389 over TCP is a plaintext bind. It is the one value on this screen
+         that is a security decision rather than a setting, so it is the one
+         that takes a mark. */
+      { key: 'protocol', label: 'Protocol', pill: (v) => v === 'TCP' ? 'att' : null }
+    ]
+  },
+
+  '/profile/radius': {
+    title: 'RADIUS profile',
+    subtitle: 'RADIUS servers users authenticate against, usually fronting an existing directory or MFA appliance.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'radius' },
+    singular: 'RADIUS profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'radiusServerIp'],
+    emptyTitle: 'No RADIUS profiles',
+    emptyBody: 'Add one to authenticate users against a RADIUS server.',
+    form: [
+      { key: 'name', label: 'Name', required: true, placeholder: 'nps-mumbai' },
+      { key: 'radiusServerIp', label: 'RADIUS server IP', required: true },
+      { key: 'backupRadiusServerIp', label: 'Backup RADIUS server IP' },
+      { key: 'port', label: 'Port', placeholder: '1812' },
+      { key: 'sharedSecret', label: 'Shared secret', type: 'password',
+        hint: 'Held by both ends. Never shown again once saved.' }
+    ],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'radiusServerIp', label: 'RADIUS server IP', mono: true },
+      { key: 'backupRadiusServerIp', label: 'Backup server IP', mono: true, cell: (v) => v || dash },
+      { key: 'port', label: 'Port', mono: true, align: 'right' }
+    ]
+  },
+
+  '/profile/saml': {
+    title: 'SAML',
+    subtitle: 'Identity providers that assert who a user is. Import the IdP metadata rather than typing these by hand.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'saml' },
+    singular: 'SAML profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'idpEntityId'],
+    emptyTitle: 'No SAML profiles',
+    emptyBody: 'Add one, or import an identity provider metadata file.',
+    tools: [
+      { key: 'import-idp', label: 'Import IDP Metadata', icon: 'fa-file-import' },
+      { key: 'download-sp', label: 'Download SP MetaData', icon: 'fa-file-export' }
+    ],
+    form: [
+      { key: 'name', label: 'Name', required: true, placeholder: 'okta-workforce' },
+      { key: 'integrationType', label: 'Integration type', options: ['SAML2.0'] },
+      { key: 'idpEntityId', label: 'IdP entity ID', required: true,
+        placeholder: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6' },
+      { key: 'idpSignInUrl', label: 'IdP sign-in URL', required: true,
+        placeholder: 'https://example.okta.com/app/.../sso/saml' }
+    ],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'integrationType', label: 'Integration type' },
+      { key: 'idpEntityId', label: 'IdP entity ID', mono: true },
+      { key: 'idpSignInUrl', label: 'IdP sign-in URL', mono: true }
+    ]
+  },
+
+  '/profile/oauth': {
+    title: 'OAuth2',
+    subtitle: 'OAuth2 providers. The redirect URI has to match what the provider has registered, character for character.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'oauth' },
+    singular: 'OAuth2 profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'clientId'],
+    emptyTitle: 'No OAuth2 profiles',
+    emptyBody: 'Add one to let users sign in through an OAuth2 provider.',
+    form: [
+      { key: 'name', label: 'Name', required: true, placeholder: 'google-workspace' },
+      { key: 'clientId', label: 'Client ID', required: true },
+      { key: 'clientSecret', label: 'Client secret', type: 'password',
+        hint: 'Issued by the provider. Never shown again once saved.' },
+      { key: 'redirectUri', label: 'Redirect URI', required: true,
+        hint: 'Must match the registration at the provider exactly - a trailing slash is a different URI.' }
+    ],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'clientId', label: 'Client ID', mono: true },
+      { key: 'redirectUri', label: 'Redirect URI', mono: true }
+    ]
+  },
+
+  '/profile/openid': {
+    title: 'OpenID',
+    subtitle: 'OpenID Connect providers. The issuer URL is what the console reads the discovery document from.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'openid' },
+    singular: 'OpenID profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'clientId', 'issuerUrl'],
+    emptyTitle: 'No OpenID profiles',
+    emptyBody: 'Add one to let users sign in through an OpenID Connect provider.',
+    form: [
+      { key: 'name', label: 'Name', required: true, placeholder: 'entra-oidc' },
+      { key: 'clientId', label: 'Client ID', required: true },
+      { key: 'clientSecret', label: 'Client secret', type: 'password' },
+      { key: 'issuerUrl', label: 'Issuer URL', required: true,
+        hint: 'The console appends /.well-known/openid-configuration to this.' }
+    ],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'clientId', label: 'Client ID', mono: true },
+      { key: 'issuerUrl', label: 'Issuer URL', mono: true }
+    ]
+  },
+
+  '/profile/passwordless': {
+    title: 'Passwordless profiles',
+    subtitle: 'What a user presents instead of a password, and what they fall back to when it is unavailable.',
+    resource: 'authProfiles',
+    baseFilter: { type: 'passwordless' },
+    singular: 'passwordless profile',
+    primaryAction: 'Add profile',
+    searchFields: ['name'],
+    emptyTitle: 'No passwordless profiles',
+    emptyBody: 'Add one to let users sign in with a security key instead of a password.',
+    form: [
+      { key: 'name', label: 'Name', required: true, placeholder: 'fido-engineering' },
+      { key: 'primaryAuth', label: 'Primary authentication',
+        options: ['FIDO Key', 'Certificate', 'Push notification', 'Magic link'] },
+      { key: 'fallbackAuth', label: 'Fallback authentication',
+        options: ['FIDO Key', 'Password', 'OTP', 'None'],
+        hint: 'A fallback of Password means a lost key locks nobody out - and that the password still matters.' }
+    ],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'primaryAuth', label: 'Primary auth' },
+      { key: 'fallbackAuth', label: 'Fallback authn' }
+    ]
+  },
+
   '/usergroups': {
     singular: 'group',
     formSubtitle: 'Policy set here is inherited by every member.',

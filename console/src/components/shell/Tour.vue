@@ -92,13 +92,39 @@ async function goto () {
   measure()
 }
 
+/**
+ * Where to put the ring, or whether to put one at all.
+ *
+ * The second half matters more than the first. A spotlight that keeps
+ * pointing at a button after a slide-in panel has covered it does not read as
+ * "this is the thing" — it reads as stuck, because the thing it is circling
+ * is no longer on screen. So when a sheet or a modal is open, the ring stands
+ * down: whatever the step was pointing at has been superseded by the panel
+ * the step asked you to open.
+ *
+ * It also stands down for an element that is present but not rendered — a
+ * zero-size box, or one scrolled out of view — rather than drawing a ring
+ * around nothing at the top-left corner.
+ */
 function measure () {
   const sel = step.value?.target
   if (!sel) { rect.value = null; return }
+
+  /* Something is layered over the page. The target, if it is still there at
+     all, is behind it. Pointing at it would be pointing through a scrim. */
+  if (sel !== '.i-sheet' && document.querySelector('.i-sheet, .i-modal, .i-scrim')) {
+    rect.value = null
+    return
+  }
+
   const el = document.querySelector(sel)
-  if (!el) { rect.value = null; return }
+  if (!el || !el.offsetParent) { rect.value = null; return }
+
   const r = el.getBoundingClientRect()
-  rect.value = (r.width && r.height && r.top < window.innerHeight && r.bottom > 0)
+  const onScreen = r.width > 0 && r.height > 0 &&
+    r.top < window.innerHeight && r.bottom > 0 &&
+    r.left < window.innerWidth && r.right > 0
+  rect.value = onScreen
     ? { top: r.top - 6, left: r.left - 6, width: r.width + 12, height: r.height + 12 }
     : null
 }

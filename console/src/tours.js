@@ -48,7 +48,7 @@ export const TOURS = [
     baseline: (api) => snapshot(api, ['users', 'applications', 'gateways', 'accessRules', 'groups']),
     steps: [
       {
-        to: '/users', target: '.i-acts',
+        to: '/users', target: '.i-tools',
         title: 'Add a user',
         body: 'Press Add user and fill in a first name and an email. The username and email fill themselves in from the name.',
         done: 'User created',
@@ -61,7 +61,7 @@ export const TOURS = [
         recap: (ctx) => `${ctx.user?.firstName} ${ctx.user?.lastName || ''}`.trim()
       },
       {
-        to: '/gateways', target: '.i-acts',
+        to: '/gateways', target: '.i-tools',
         title: 'Add a gateway',
         body: 'A gateway is where traffic enters. Applications sit behind one, so this has to exist before an application can be reached.',
         done: 'Gateway created',
@@ -74,7 +74,7 @@ export const TOURS = [
         recap: (ctx) => ctx.gateway?.name
       },
       {
-        to: '/applications', target: '.i-acts',
+        to: '/applications', target: '.i-tools',
         title: 'Add an application, behind that gateway',
         body: 'Press Add application. Pick a type, give it a host, and choose the gateway you just made in the Gateway field. An application with no gateway is configured but unreachable.',
         done: 'Application created and assigned',
@@ -89,7 +89,7 @@ export const TOURS = [
         recap: (ctx) => `${ctx.app?.name} → ${ctx.app?.gateway}`
       },
       {
-        to: '/access-rules', target: '.i-acts',
+        to: '/access-rules', target: '.i-tools',
         title: 'Write the access rule that joins them',
         body: 'Until a rule says so, nobody reaches anything — the default is deny. Add a rule with your user or their group as the source and the new application as the destination, and leave the action on Allow.',
         done: 'Access rule created',
@@ -205,7 +205,7 @@ export const TOURS = [
     baseline: (api) => snapshot(api, ['authProfiles', 'users']),
     steps: [
       {
-        to: '/profile/saml', target: '.i-acts',
+        to: '/profile/saml', target: '.i-tools',
         title: 'Create an authentication profile',
         body: 'Add profile, then pick SAML 2.0 or OpenID Connect. Notice the form changes shape: SAML wants an entity ID and an ACS URL, OIDC wants an issuer and a client ID.',
         done: 'Profile created',
@@ -259,7 +259,7 @@ export const TOURS = [
     baseline: (api) => snapshot(api, ['devices', 'deviceChecks']),
     steps: [
       {
-        to: '/devices', target: '.i-acts',
+        to: '/devices', target: '.i-tools',
         title: 'Enrol this browser as a device',
         body: 'Press "Enrol this browser". It takes a real fingerprint — platform, screen, hardware, timezone — hashes it, and files the result as a pending device.',
         done: 'Device enrolled',
@@ -317,7 +317,7 @@ export const TOURS = [
     baseline: (api) => snapshot(api, ['groups', 'accessRules', 'users']),
     steps: [
       {
-        to: '/usergroups', target: '.i-acts',
+        to: '/usergroups', target: '.i-tools',
         title: 'Create a group',
         body: 'Give it a name and set its policy — two-factor, device binding, posture checks. Everything set here is inherited by every member.',
         done: 'Group created',
@@ -330,7 +330,7 @@ export const TOURS = [
         recap: (ctx) => ctx.group?.name
       },
       {
-        to: '/access-rules', target: '.i-acts',
+        to: '/access-rules', target: '.i-tools',
         title: 'Write a rule against the group',
         body: 'Add a rule with Source type set to User group and your new group as the source. One rule now covers everyone who will ever be in it.',
         done: 'Group rule created',
@@ -367,7 +367,7 @@ export const TOURS = [
     baseline: (api) => snapshot(api, ['urlFilters']),
     steps: [
       {
-        to: '/url-filter', target: '.i-acts',
+        to: '/url-filter', target: '.i-tools',
         title: 'Block something broadly',
         body: 'Add a rule with a pattern like *facebook.com* and the action Block. Give it priority 2.',
         done: 'Block rule created',
@@ -381,7 +381,7 @@ export const TOURS = [
         recap: (ctx) => `${ctx.block?.pattern} (block)`
       },
       {
-        to: '/url-filter', target: '.i-acts',
+        to: '/url-filter', target: '.i-tools',
         title: 'Now carve out an exception above it',
         body: 'Add a second rule, action Allow, priority 1, with a narrower pattern — your own company page, say. Lower priority runs first, so the exception wins.',
         done: 'Exception created',
@@ -430,7 +430,7 @@ export const TOURS = [
         check: async () => true
       },
       {
-        to: '/profile/export-log', target: '.i-acts',
+        to: '/profile/export-log', target: '.i-tools',
         title: 'Send a test batch',
         body: 'Set a collector host and press Send test batch. Nothing leaves the browser — the payload goes to the Demo Inbox so you can read exactly what would have crossed the boundary.',
         done: 'Batch sent',

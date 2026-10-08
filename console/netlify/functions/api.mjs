@@ -344,7 +344,25 @@ async function ensureSchema () {
     ['event_log', 'target', 'text'],
     ['devices', 'serial_number', 'text'],
     ['devices', 'uuid', 'text'],
-    ['users', 'mfa_required', 'boolean not null default false']
+    ['users', 'mfa_required', 'boolean not null default false'],
+    /* Each authentication protocol has its own field set. They share a table
+       because they share a lifecycle, but an Active Directory profile and an
+       OAuth2 profile have almost nothing in common, so the columns are the
+       union and each screen uses its own slice. */
+    ['auth_profiles', 'domain', 'text'],
+    ['auth_profiles', 'primary_server_ip', 'text'],
+    ['auth_profiles', 'backup_server_ip', 'text'],
+    ['auth_profiles', 'protocol', 'text'],
+    ['auth_profiles', 'radius_server_ip', 'text'],
+    ['auth_profiles', 'backup_radius_server_ip', 'text'],
+    ['auth_profiles', 'integration_type', 'text'],
+    ['auth_profiles', 'idp_entity_id', 'text'],
+    ['auth_profiles', 'idp_sign_in_url', 'text'],
+    ['auth_profiles', 'client_id', 'text'],
+    ['auth_profiles', 'redirect_uri', 'text'],
+    ['auth_profiles', 'issuer_url', 'text'],
+    ['auth_profiles', 'primary_auth', 'text'],
+    ['auth_profiles', 'fallback_auth', 'text']
   ]) {
     await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
   }

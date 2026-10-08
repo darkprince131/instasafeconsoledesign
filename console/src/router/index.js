@@ -16,14 +16,11 @@ import { RESOURCES } from '../resources.js'
 const bespoke = {
   '/dashboard':        () => import('../views/Dashboard.vue'),
   '/users':            () => import('../views/identity/Users.vue'),
-  '/profile/local':             () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/active-directory':  () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/ldap':              () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/radius':            () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/saml':              () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/oauth':             () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/openid':            () => import('../views/identity/AuthProfiles.vue'),
-  '/profile/passwordless':      () => import('../views/identity/AuthProfiles.vue'),
+  /* The seven protocol screens are list-template configs in resources.js now,
+     one each, with their own columns and toolbars. Only /profile/local is
+     bespoke, and it is bespoke because it is not a list at all: it is the
+     tenant's password policy. */
+  '/profile/local':             () => import('../views/settings/Settings.vue'),
   '/devices':          () => import('../views/devices/Devices.vue'),
   '/device-checks':    () => import('../views/devices/DeviceChecks.vue'),
   '/applications':     () => import('../views/network/Applications.vue'),

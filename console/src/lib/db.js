@@ -52,11 +52,21 @@ function open () {
     req.onblocked = () => reject(new Error(
       'Another tab has this demo open on an older version. Close the other tabs and reload.'))
     req.onsuccess = () => {
-      _db = req.result
+      const conn = req.result
+      _db = conn
       /* And the reverse: when some other tab wants to upgrade, step out of
-         its way rather than being the tab that blocks it. */
-      _db.onversionchange = () => { _db.close(); _db = null }
-      resolve(_db)
+         its way rather than being the tab that blocks it.
+
+         The handler closes over its own connection rather than reading the
+         module-level `_db`. It can fire more than once, and the first run
+         nulls `_db` — so a second run was calling `.close()` on null and
+         throwing, which is a worse failure than the one this was added to
+         fix. Only clear the cache if it is still this connection. */
+      conn.onversionchange = () => {
+        try { conn.close() } catch {}
+        if (_db === conn) _db = null
+      }
+      resolve(conn)
     }
     req.onerror = () => reject(req.error)
   })
