@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { TOURS } from '../tours.js'
 import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
+import LineChart from '../components/ui/LineChart.vue'
 
 /**
  * The dashboard answers "what needs me?" before it answers "what exists?".
@@ -29,7 +30,6 @@ function dismissIntro () {
 const stats = ref({})
 const osBreakdown = ref([])
 const allDevices = ref([])
-const hourly = ref([])
 const loading = ref(true)
 
 onMounted(async () => {
@@ -50,9 +50,6 @@ onMounted(async () => {
   // sessions per hour across the day, from the live session set
   const sessions = (await api.sessions.list({ perPage: 0 })).data
   allSessions.value = sessions
-  const buckets = Array(24).fill(0)
-  for (const s of sessions) buckets[new Date(s.startedAt).getHours()]++
-  hourly.value = buckets
 
   loading.value = false
 })
@@ -233,6 +230,91 @@ const agents = computed(() => {
 const behind = computed(() =>
   agents.value.filter(a => !a.current).reduce((t, a) => t + a.n, 0))
 
+/* ---- time series ---------------------------------------------------------
+   Lines, because these are the questions where the answer is a direction
+   rather than a ranking. Top users and busiest gateway stay as bars: a line
+   drawn between unordered categories implies a trend that is not there.
+
+   Buckets follow the period control — Today is twenty-four hours, Week and
+   Month are days — so one toggle governs the whole section.               */
+
+const bucketing = computed(() => {
+  if (period.value === 'today') {
+    const start = new Date(); start.setHours(0, 0, 0, 0)
+    return {
+      n: 24, size: 3600_000, start: start.getTime(),
+      label: (i) => `${String(i).padStart(2, '0')}:00`
+    }
+  }
+  const days = periodDays.value
+  const start = new Date(); start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - (days - 1))
+  return {
+    n: days, size: 86400_000, start: start.getTime(),
+    label: (i) => new Date(start.getTime() + i * 86400_000)
+      .toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  }
+})
+
+const bucketLabels = computed(() =>
+  Array.from({ length: bucketing.value.n }, (_, i) => bucketing.value.label(i)))
+
+/** Drop each row into its bucket by a timestamp, adding whatever it is worth. */
+function series (rows, when, value = () => 1) {
+  const { n, size, start } = bucketing.value
+  const out = Array(n).fill(0)
+  for (const r of rows) {
+    const t = new Date(when(r)).getTime()
+    if (!t || t < start) continue
+    const i = Math.floor((t - start) / size)
+    if (i >= 0 && i < n) out[i] += value(r)
+  }
+  return out
+}
+
+/** Sessions opened against sign-ins refused, on one axis.
+    Put together on purpose: a refusal spike that tracks a traffic spike is
+    a busy morning, and the same spike on a flat line is somebody trying
+    passwords. */
+const activitySeries = computed(() => [
+  { name: 'Sessions started', points: series(allSessions.value, s => s.startedAt) },
+  {
+    name: 'Sign-ins refused', tone: 'attention',
+    points: series(
+      allEvents.value.filter(e => e.type === 'auth.login.failed' || e.type === 'auth.mfa.failed'),
+      e => e.at)
+  }
+])
+
+/** Traffic through the gateways over the same window. */
+const trafficSeries = computed(() => [{
+  name: 'Transferred',
+  points: series(allSessions.value, s => s.startedAt,
+    s => Number(s.bytesIn || 0) + Number(s.bytesOut || 0))
+}])
+
+/** Enrolment, cumulative, so the shape shows when the fleet actually grew —
+    and the approval backlog alongside it, since those two diverging is the
+    whole story of 775 pending devices. */
+const enrolSeries = computed(() => {
+  const opened = series(allDevices.value, d => d.enrolledAt)
+  const stillPending = series(
+    allDevices.value.filter(d => d.status === 'pending'), d => d.enrolledAt)
+  let a = 0, b = 0
+  return [
+    { name: 'Enrolled', points: opened.map(v => (a += v)) },
+    { name: 'Still waiting for approval', tone: 'attention', points: stillPending.map(v => (b += v)) }
+  ]
+})
+
+const bytesShort = (n) => {
+  if (!n) return '0'
+  const u = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
+  return `${(n / 1024 ** i).toFixed(i > 1 ? 1 : 0)} ${u[i]}`
+}
+const plain = (v) => Math.round(v).toLocaleString()
+
 /* ---- two more period panels, from events and sessions already loaded ---- */
 
 /** What happened when people tried to sign in. */
@@ -293,7 +375,6 @@ const panels = computed(() => [
 ])
 
 const maxOs = computed(() => Math.max(1, ...osBreakdown.value.map(o => o.n)))
-const maxHour = computed(() => Math.max(1, ...hourly.value))
 const num = (n) => (n ?? 0).toLocaleString()
 </script>
 
@@ -466,6 +547,33 @@ const num = (n) => (n ?? 0).toLocaleString()
         </div>
       </div>
 
+      <!-- Trend first, ranking second. "Is this getting worse" is the
+           question you ask before "who is worst", and the period control
+           above governs both. -->
+      <div class="i-trends">
+        <div class="i-apanel">
+          <div class="i-chead">
+            <h3>Activity</h3>
+            <span class="i-meta">sessions against refused sign-ins</span>
+          </div>
+          <LineChart
+            :series="activitySeries" :labels="bucketLabels"
+            :format="plain" :height="180"
+          />
+        </div>
+
+        <div class="i-apanel">
+          <div class="i-chead">
+            <h3>Traffic</h3>
+            <span class="i-meta">through the gateways</span>
+          </div>
+          <LineChart
+            :series="trafficSeries" :labels="bucketLabels"
+            :format="bytesShort" :height="180" area
+          />
+        </div>
+      </div>
+
       <div class="i-agrid">
         <div v-for="pn in panels" :key="pn.title" class="i-apanel">
           <div class="i-chead">
@@ -516,25 +624,17 @@ const num = (n) => (n ?? 0).toLocaleString()
 
       <div class="i-col">
         <div class="i-chead">
-          <h2>Sessions today</h2>
-          <span class="i-meta">Hourly · peak {{ maxHour }}</span>
+          <h2>Enrolment and the approval backlog</h2>
+          <span class="i-meta">cumulative, over the period</span>
         </div>
-        <div class="d-flex align-items-end gap-1" style="height:132px">
-          <span
-            v-for="(n, h) in hourly" :key="h"
-            class="flex-fill"
-            :title="`${String(h).padStart(2,'0')}:00 — ${n} sessions`"
-            :style="{
-              height: Math.max(3, (n / maxHour) * 100) + '%',
-              background: n === maxHour ? 'var(--i-v600)' : 'var(--i-v500)',
-              opacity: n === maxHour ? 1 : .55,
-              borderRadius: '3px'
-            }"
-          />
-        </div>
-        <div class="d-flex justify-content-between mt-2" style="font-size:11px;color:var(--i-mute)">
-          <span>00:00</span><span>12:00</span><span>23:00</span>
-        </div>
+        <LineChart
+          :series="enrolSeries" :labels="bucketLabels"
+          :format="plain" :height="200"
+        />
+        <p class="i-hint">
+          The gap between the two lines is the queue. When they climb together,
+          devices are enrolling and nobody is approving them.
+        </p>
       </div>
     </section>
 

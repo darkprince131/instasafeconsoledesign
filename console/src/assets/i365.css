@@ -1073,3 +1073,37 @@ html[data-i-theme="dark"] .i-gbartrack{ background:rgba(255,255,255,.07); }
 @media (max-width:1399.98px){
   .i-apanel .i-barrow{ grid-template-columns:minmax(0,142px) 1fr auto; }
 }
+
+/* ================== 19 · line chart ================== */
+/* Unboxed like everything else: gridlines and space, no frame, no shadow. */
+.i-lc{ margin:0; }
+.i-lclegend{ display:flex; gap:var(--i-s4); flex-wrap:wrap; padding-bottom:var(--i-s2); }
+.i-lcsvg{ display:block; width:100%; height:auto; overflow:visible; }
+.i-lcsvg:focus-visible{ outline:2px solid var(--i-v600); outline-offset:3px; border-radius:4px; }
+.i-lcgrid line{ stroke:var(--i-rule); stroke-width:1; }
+.i-lcaxis text{
+  font-family:var(--i-sans); font-size:10px; fill:var(--i-mute);
+  font-variant-numeric:tabular-nums;
+}
+.i-lcline{ fill:none; stroke-width:1.75; stroke-linejoin:round; stroke-linecap:round; }
+.i-lcarea{ opacity:.09; }
+.i-lcguide{ stroke:var(--i-dim); stroke-width:1; stroke-dasharray:3 3; }
+.i-lcdot{ stroke:var(--i-canvas); stroke-width:2; }
+
+/* The readout sits under the chart rather than floating over it: a tooltip
+   that follows the cursor covers the very points you are comparing. */
+.i-lcread{
+  display:flex; gap:var(--i-s4); flex-wrap:wrap; align-items:baseline;
+  margin:var(--i-s2) 0 0; min-height:19px;
+  font-size:var(--i-t-micro); color:var(--i-mute); font-variant-numeric:tabular-nums;
+}
+.i-lcread strong{ color:var(--i-ink); font-weight:500; }
+.i-lcread b{ color:var(--i-ink); font-weight:500; }
+.i-lcread.is-idle{ color:var(--i-mute); opacity:.75; }
+/* Two charts across the top of the period section, stacking on narrow. */
+.i-trends{
+  display:grid; gap:var(--i-s6) var(--i-s7);
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  padding-top:var(--i-s5);
+}
+@media (max-width:991.98px){ .i-trends{ grid-template-columns:1fr; } }

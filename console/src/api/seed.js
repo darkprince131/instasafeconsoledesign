@@ -476,21 +476,29 @@ function describeEvent (type, u) {
 /**
  * Sessions: the live ones, and the history behind them.
  *
- * This used to produce 318 sessions all started within the last ten hours,
- * which made every usage report and every Today/Week/Month toggle return the
- * identical answer — the period control was decoration. A console that
- * reports on usage needs usage to have happened.
+ * Two corrections live in here.
  *
- * So: 318 active sessions from the last ten hours, and ~940 ended ones spread
- * over thirty days carrying a real duration. Live sessions filters on
- * `status: 'active'` and is unaffected.
+ * First, these were all seeded inside a ten-hour window, so every usage
+ * report and every Today/Week/Month toggle returned the same answer and the
+ * period control was decoration.
+ *
+ * Second, and less obvious: the fix produced numbers that could not both be
+ * true. 318 sessions open right now against roughly thirty starting per day
+ * is not a busy tenant, it is an impossible one — if thirty sessions start a
+ * day and a few hundred are open at any moment, they would each have to run
+ * for a week. The charts showed it honestly, as a flat line with one spike on
+ * today, and the flat part was the lie.
+ *
+ * So the concurrency now follows from the volume rather than being picked
+ * independently: about a hundred sessions start per working day, they run a
+ * few hours, and a bit over a hundred are open at any given moment. Weekends
+ * dip to a third, which gives the line a shape that means something.
  */
 export function seedSessions (users, apps) {
-  const mk = (i, daysAgo, active) => {
+  const mk = (i, startedAt, active) => {
     const u = users[1 + Math.floor(r() * (users.length - 1))]
     const a = pick(apps)
     const [city] = pick(CITIES)
-    const startedAt = ago(daysAgo)
     // a working session, not a round number: 3 minutes to about 5 hours
     const durationMin = active ? null : Math.max(3, Math.round(r() * r() * 310) + 3)
     return {
@@ -507,9 +515,33 @@ export function seedSessions (users, apps) {
       status: active ? 'active' : 'ended'
     }
   }
-  const live = Array.from({ length: 318 }, (_, i) => mk(i, r() * 0.4, true))
-  const past = Array.from({ length: 940 }, (_, i) => mk(318 + i, r() * 30, false))
-  return [...live, ...past]
+
+  const out = []
+  const now = Date.now()
+  const DAY = 86400000
+
+  /* Thirty days of history, with a weekend trough. Sessions cluster through
+     the working day rather than landing uniformly across midnight. */
+  for (let d = 30; d >= 1; d--) {
+    const dayStart = new Date(now - d * DAY)
+    dayStart.setHours(0, 0, 0, 0)
+    const weekend = [0, 6].includes(dayStart.getDay())
+    const n = Math.round((weekend ? 34 : 104) * (0.82 + r() * 0.36))
+    for (let k = 0; k < n; k++) {
+      // a bell around mid-morning and mid-afternoon rather than a flat day
+      const hour = 7 + Math.floor((r() + r()) / 2 * 11)
+      const at = new Date(dayStart.getTime() + hour * 3600000 + Math.floor(r() * 3600000))
+      out.push(mk(out.length, at.toISOString(), false))
+    }
+  }
+
+  /* What is open right now. Follows from the volume above: a hundred-odd
+     starts a day at a few hours each leaves roughly this many running. */
+  const live = Math.round(112 * (0.9 + r() * 0.2))
+  for (let k = 0; k < live; k++) {
+    out.push(mk(out.length, ago(r() * 0.28), true))
+  }
+  return out
 }
 
 /**
