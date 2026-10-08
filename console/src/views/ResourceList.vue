@@ -5,6 +5,7 @@ import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
 import ListTools from '../components/ui/ListTools.vue'
+import GraphView from '../components/ui/GraphView.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
 import Sheet from '../components/ui/Sheet.vue'
@@ -161,13 +162,7 @@ watch(() => props.config, () => {
    derived from the columns: anything that is a status, a boolean or a plain
    short label is worth counting; names, ids and timestamps are not, because
    counting 2,000 distinct values tells you nothing. */
-const bulkOps = computed(() => {
-  if (!cfg.value?.columns) return []
-  return [{
-    key: 'bulk', label: bulk.value.label, tone: bulk.value.tone,
-    body: `The selected ${bulk.value.noun}s ${bulk.value.body}`
-  }]
-})
+const graphOn = ref(false)
 
 const graphDims = computed(() => (cfg.value?.columns || [])
   .filter(c => c.pill || c.bool || /status|type|profile|category|department|protocol|platform|severity|action|os|kind/i.test(c.key))
@@ -269,10 +264,13 @@ onMounted(load)
             <i v-if="t.icon" class="fa-solid" :class="t.icon" aria-hidden="true" />
             <span class="d-none d-lg-inline">{{ t.label }}</span>
           </button>
+          <!-- Bulk Ops is users and devices only: those are the two velto
+               offers it on, and a CSV of access-rule names is not a thing
+               anybody has. Graph is offered wherever there is a field worth
+               grouping by. -->
           <ListTools
-            :operations="bulkOps" :selected="selectedIds"
+            v-model:graph="graphOn"
             :rows="rows" :dimensions="graphDims" :total="total"
-            @run="confirmOpen = true"
           />
           <button v-if="cfg.primaryAction && editable" class="i-btn i-primary" @click="openAdd">
             <i class="fa-solid fa-plus" aria-hidden="true" /> {{ cfg.primaryAction }}
@@ -289,8 +287,15 @@ onMounted(load)
         </div>
       </div>
 
+      <GraphView
+        v-if="graphOn"
+        :rows="rows" :dimensions="graphDims" :total="total"
+        label-key="name"
+      />
+
       <DataTable
-        ref="table"
+        v-else
+      ref="table"
         :columns="cfg.columns"
         :rows="rows"
         :total="total"

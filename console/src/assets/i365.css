@@ -905,24 +905,75 @@ html[data-i-theme="dark"] .i-segb.is-on{ background:var(--i-raise,#232329); }
 }
 @media (max-width:575.98px){ .i-deflist{ grid-template-columns:1fr; } }
 
-/* ================== 16 · bulk operations list ================== */
-.i-oplist{ display:flex; flex-direction:column; }
-.i-oprow{
-  display:block; width:100%; text-align:left; cursor:pointer;
-  border:0; border-top:1px solid var(--i-rule); background:transparent;
-  padding:var(--i-s3) var(--i-s2); font:inherit; color:var(--i-ink);
+/* ================== 16 · bulk operations (CSV) ================== */
+.i-csvex{
+  width:100%; margin:10px 0 4px; border-collapse:collapse;
+  font-size:var(--i-t-micro); font-family:var(--i-mono);
 }
-.i-oplist .i-oprow:last-child{ border-bottom:1px solid var(--i-rule); }
-.i-oprow:hover{ background:var(--i-tint); }
-.i-oprow:active{ transform:translateY(1px); }
-.i-oprow:focus-visible{ outline:2px solid var(--i-v600); outline-offset:-2px; }
-.i-opt{ display:flex; align-items:center; gap:8px; font-size:var(--i-t-body); font-weight:500; }
-.i-oprow.is-bad .i-opt{ color:var(--i-bad); }
-.i-opn{
-  font-family:var(--i-mono); font-size:10.5px; padding:1px 6px; border-radius:99px;
-  background:var(--i-tint); color:var(--i-dim); font-weight:400;
+.i-csvex th,.i-csvex td{
+  border:1px solid var(--i-rule); padding:5px 8px; text-align:left; white-space:nowrap;
 }
-.i-opb{ display:block; margin-top:2px; font-size:var(--i-t-meta); color:var(--i-mute); }
+.i-csvex th{ background:var(--i-tint); color:var(--i-dim); font-weight:500; }
+.i-csvex td{ color:var(--i-mute); }
+
+.i-filepick{
+  display:flex; align-items:center; gap:9px; padding:11px 14px; cursor:pointer;
+  border:1px dashed var(--i-rule-strong); border-radius:var(--i-r-ctl);
+  background:var(--i-tint); font-size:var(--i-t-meta); color:var(--i-dim);
+}
+.i-filepick:hover{ border-color:var(--i-v600); color:var(--i-ink); }
+.i-filepick input{ display:none; }
+.i-err{ font-size:var(--i-t-meta); color:var(--i-bad); margin:0; }
+
+/* the dry run */
+.i-planlist{ max-height:300px; overflow:auto; border-top:1px solid var(--i-rule); }
+.i-planrow{
+  display:grid; grid-template-columns:76px minmax(0,1fr) minmax(0,1.4fr);
+  gap:10px; align-items:baseline;
+  padding:7px 2px; border-bottom:1px solid var(--i-rule); font-size:var(--i-t-meta);
+}
+.i-planverb{
+  font-size:10px; letter-spacing:var(--i-tr-micro); text-transform:uppercase;
+  color:var(--i-v700);
+}
+.i-planrow.is-skip .i-planverb{ color:var(--i-mute); }
+.i-planname{ font-family:var(--i-mono); overflow:hidden; text-overflow:ellipsis; }
+.i-planwhy{ color:var(--i-mute); }
+.i-planrow.is-skip .i-planname{ color:var(--i-mute); }
+
+/* ================== 16b · graph view ================== */
+.i-graphview{ padding-top:var(--i-s3); }
+.i-graphbar{ display:flex; align-items:center; gap:var(--i-s4); padding-bottom:var(--i-s4); }
+.i-clusters{
+  display:grid; gap:var(--i-s6) var(--i-s5);
+  grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+}
+.i-cluster{ text-align:center; min-width:0; }
+.i-cluster-plot{
+  position:relative; height:132px; border-radius:var(--i-r-float);
+  background:var(--i-tint);
+}
+.i-node{
+  position:absolute; width:9px; height:9px; margin:-4.5px 0 0 -4.5px;
+  border-radius:50%; background:var(--i-v500);
+  box-shadow:0 0 0 2px var(--i-tint);
+}
+.i-nodemore{
+  position:absolute; right:9px; bottom:8px;
+  font-size:10.5px; color:var(--i-mute); font-variant-numeric:tabular-nums;
+}
+.i-cluster-name{
+  margin-top:9px; font-size:var(--i-t-meta); color:var(--i-ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.i-cluster-n{
+  font-size:17px; font-weight:450; color:var(--i-ink);
+  letter-spacing:var(--i-tr-section); font-variant-numeric:tabular-nums;
+}
+.i-cluster-who{
+  font-size:var(--i-t-micro); color:var(--i-mute);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
 
 /* ================== 17 · MFA state (admin side) ================== */
 .i-mfastate{

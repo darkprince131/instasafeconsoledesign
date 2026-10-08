@@ -6,6 +6,7 @@ import DataTable from '../../components/ui/DataTable.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import Sheet from '../../components/ui/Sheet.vue'
 import ListTools from '../../components/ui/ListTools.vue'
+import GraphView from '../../components/ui/GraphView.vue'
 import { fmtAgo, statusPill } from '../../resources.js'
 
 /**
@@ -92,10 +93,6 @@ const columns = [
    the affordance that says so, which a bare row does not. */
 const rowAction = { label: 'View' }
 
-const BULK_OPS = [
-  { key: 'approve', label: 'Approve', body: 'Let these devices connect. Posture checks still apply at every session.' },
-  { key: 'reject', label: 'Reject', body: 'Refuse them. The user can re-enrol, which puts them back in the queue.', tone: 'bad' }
-]
 const GRAPH_DIMS = [
   { key: 'osFamily', label: 'Operating system family' },
   { key: 'os', label: 'Operating system' },
@@ -104,9 +101,11 @@ const GRAPH_DIMS = [
   { key: 'city', label: 'Location' },
   { key: 'bound', label: 'Bound to a user' }
 ]
-function runBulk (key) {
-  if (key === 'approve') return approveSelected()
-  if (key === 'reject') return rejectSelected()
+const graphOn = ref(false)
+
+function onBulkApplied ({ op, count }) {
+  toast(`${count} device${count === 1 ? '' : 's'} ${op === 'delete' ? 'deleted' : op + 'd'}`)
+  refreshCounts(); refreshStats(); load()
 }
 
 const chips = computed(() => [
@@ -230,15 +229,23 @@ onMounted(async () => {
         </button>
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
         <ListTools
-          :operations="BULK_OPS" :selected="selectedIds"
+          v-model:graph="graphOn"
+          kind="devices" resource="devices"
           :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
-          @run="runBulk"
+          @apply="onBulkApplied"
         />
         </div>
       </div>
     </div>
 
+    <GraphView
+      v-if="graphOn"
+      :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
+      label-key="name"
+    />
+
     <DataTable
+      v-else
       ref="table" :columns="columns" :rows="rows" :total="total" :loading="loading"
       v-model:page="page" v-model:perPage="perPage" :sort="sort" :dir="dir"
       :row-action="rowAction"

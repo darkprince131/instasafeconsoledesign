@@ -4,6 +4,7 @@ import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
 import DataTable from '../../components/ui/DataTable.vue'
 import ListTools from '../../components/ui/ListTools.vue'
+import GraphView from '../../components/ui/GraphView.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 import Sheet from '../../components/ui/Sheet.vue'
@@ -19,15 +20,6 @@ const search = ref(''); const filter = ref('all')
 const selectedIds = ref([]); const table = ref(null)
 const confirmOpen = ref(false)
 
-/* What Bulk Ops offers here. Each one already existed behind the selection
-   strip; this is where you can find out they exist before selecting. */
-const BULK_OPS = [
-  { key: 'suspend', label: 'Suspend', body: 'Sign them out and refuse further access until reactivated. Reversible.' },
-  { key: 'activate', label: 'Activate', body: 'Lift a suspension and let them sign in again.' },
-  { key: 'requireMfa', label: 'Require MFA', body: 'They are prompted to enrol in the end-user portal at next sign-in.' },
-  { key: 'resetMfa', label: 'Reset MFA', body: 'Discards the enrolled authenticator. They enrol again from the portal.', tone: 'bad' },
-  { key: 'delete', label: 'Delete', body: 'Removes the account and its device bindings. Cannot be undone.', tone: 'bad' }
-]
 const GRAPH_DIMS = [
   { key: 'department', label: 'Department' },
   { key: 'authProfile', label: 'Authentication profile' },
@@ -36,22 +28,12 @@ const GRAPH_DIMS = [
   { key: 'location', label: 'Location' }
 ]
 
-async function runBulk (key) {
-  const ids = selectedIds.value
-  if (!ids.length) return
-  if (key === 'delete') { confirmOpen.value = true; return }
-  const verb = {
-    suspend: 'suspended', activate: 'activated',
-    requireMfa: 'set to require MFA', resetMfa: 'had MFA reset'
-  }[key]
-  for (const id of ids) {
-    if (key === 'suspend') await api.users.suspend(id)
-    else if (key === 'activate') await api.users.activate(id)
-    else if (key === 'requireMfa') await api.users.update(id, { mfaRequired: true })
-    else if (key === 'resetMfa') await api.auth.resetMfa(id)
-  }
-  table.value?.clearSelection()
-  toast(`${ids.length} user${ids.length === 1 ? '' : 's'} ${verb}`)
+const graphOn = ref(false)
+
+/* Bulk Ops writes through the API directly and then tells us how it went, so
+   the table just needs to catch up. */
+function onBulkApplied ({ op, count }) {
+  toast(`${count} user${count === 1 ? '' : 's'} ${op === 'add' ? 'created' : op + 'd'}`)
   load()
 }
 const sheetOpen = ref(false)
@@ -253,9 +235,10 @@ onMounted(load)
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
         <button class="i-btn">Import CSV</button>
         <ListTools
-          :operations="BULK_OPS" :selected="selectedIds"
+          v-model:graph="graphOn"
+          kind="users" resource="users"
           :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
-          @run="runBulk"
+          @apply="onBulkApplied"
         />
         <button class="i-btn i-primary" @click="openAdd">
           <i class="fa-solid fa-plus" aria-hidden="true" /> Add user
@@ -264,7 +247,14 @@ onMounted(load)
       </div>
     </div>
 
+    <GraphView
+      v-if="graphOn"
+      :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
+      label-key="username"
+    />
+
     <DataTable
+      v-else
       ref="table" :columns="columns" :rows="rows" :total="total" :loading="loading"
       v-model:page="page" v-model:perPage="perPage" :sort="sort" :dir="dir"
       @sort="onSort" @selection="selectedIds = $event" @row-click="openEdit"
