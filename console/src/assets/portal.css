@@ -111,7 +111,7 @@
 
 .p-btn{
   display:inline-flex; align-items:center; justify-content:center;
-  min-height:40px; padding:0 18px; border:1px solid var(--p-violet);
+  gap:8px; min-height:40px; padding:0 18px; border:1px solid var(--p-violet);
   border-radius:8px; background:var(--p-violet); color:#fff;
   font:inherit; font-size:14px; font-weight:500; cursor:pointer;
   transition:background .15s ease;
@@ -170,3 +170,42 @@
   .p-main{ padding:22px 16px 48px; }
   .p-card{ padding:18px; }
 }
+
+/* ================== the member gate ================== */
+/* One question, centred, nothing else on screen. Velto's own version of this
+   page is the whole member area, which is the right instinct: if the agent is
+   not running then no amount of account self-service helps. */
+.p-gate{ text-align:center; padding:28px 0 0; display:flex; flex-direction:column; align-items:center; }
+.p-mark{
+  width:52px; height:52px; border-radius:50%; display:grid; place-items:center;
+  color:#fff; font-size:21px; margin-bottom:18px;
+}
+.p-mark.is-ok{ background:var(--p-ok); }
+.p-mark.is-bad{ background:#d02f28; }
+.p-mark.is-wait{ background:var(--p-mute); }
+.p-gh{ margin:0 0 6px; font-size:22px; font-weight:500; letter-spacing:-.02em; }
+.p-gs{ margin:0 0 22px; font-size:14px; color:var(--p-dim); max-width:38ch; }
+.p-gacts{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.p-btn.p-dl{ margin-top:16px; text-decoration:none; gap:9px; }
+.p-ghint{ margin:24px 0 10px; font-size:12.5px; color:var(--p-mute); }
+.p-plats{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.p-plat{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 13px;
+  border:1px solid var(--p-rule); border-radius:8px; background:var(--p-card);
+  font-size:13px; color:var(--p-ink); text-decoration:none;
+}
+.p-plat:hover{ background:var(--p-bg); }
+.p-gnote{ margin:24px 0 0; font-size:13px; color:var(--p-mute); max-width:46ch; }
+.p-gstamp{ margin:22px 0 0; font-size:11.5px; color:var(--p-mute); }
+.p-adminlink{
+  margin-top:26px; display:inline-flex; align-items:center; gap:7px;
+  font-size:12.5px; color:var(--p-dim); text-decoration:none;
+}
+.p-adminlink:hover{ text-decoration:underline; }
+.p-plat{ font:inherit; cursor:pointer; }
+.p-gexplain{
+  margin:18px auto 0; max-width:48ch; padding:11px 14px;
+  border:1px solid var(--p-rule); border-radius:8px; background:var(--p-card);
+  font-size:12.5px; color:var(--p-dim); text-align:left;
+}
+.p-gexplain code{ font-family:"Geist Mono",ui-monospace,monospace; font-size:11.5px; }

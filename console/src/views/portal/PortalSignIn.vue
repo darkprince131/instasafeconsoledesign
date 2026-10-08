@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../api'
 import { portalSignIn } from '../../lib/portal-session.js'
+import { secondsRemaining, generateTOTP } from '../../lib/totp.js'
+import { qrSvg } from '../../lib/qr.js'
 
 /**
  * Portal sign-in.
@@ -18,7 +20,7 @@ import { portalSignIn } from '../../lib/portal-session.js'
 
 const router = useRouter()
 
-const step = ref('credentials')     // credentials · mfa
+const step = ref('credentials')     // credentials · enrol · mfa
 const username = ref('')
 const password = ref('')
 const code = ref('')
@@ -26,6 +28,7 @@ const error = ref('')
 const busy = ref(false)
 const pending = ref(null)
 const suggestion = ref('')
+const noSecret = ref(false)
 
 onMounted(async () => {
   /* Offer a real account from this tenant rather than a made-up one, so the
@@ -36,10 +39,10 @@ onMounted(async () => {
        "enrolled" users carry the flag without a secret anybody holds, so
        signing in as one lands on a code prompt that can never be satisfied.
        An unenrolled account puts the demo on the path worth showing. */
-    const res = await api.users.list({ page: 1, perPage: 40, filters: { status: 'active' } })
-    const pick = (res.data || []).find(u => !u.isAdmin && !u.mfaEnrolled)
-      || (res.data || []).find(u => !u.isAdmin)
-    suggestion.value = pick?.username || ''
+    const res = await api.users.list({
+      page: 1, perPage: 10, filters: { status: 'active', mfaEnrolled: false }
+    })
+    suggestion.value = (res.data || []).find(u => !u.isAdmin)?.username || ''
   } catch { suggestion.value = '' }
 })
 
@@ -56,9 +59,16 @@ async function submitCredentials () {
       error.value = res?.error || 'That username and password do not match.'
       return
     }
+    /* Three ways out of a correct password:
+       enrolled -> prove it; required but not enrolled -> enrol now;
+       otherwise -> straight in. */
     if (res.mfaRequired) {
       pending.value = res.user
       step.value = 'mfa'
+      return
+    }
+    if (res.user?.mfaRequired && !res.user?.mfaEnrolled) {
+      await beginEnrolment(res.user)
       return
     }
     enter(res.user)
@@ -66,6 +76,56 @@ async function submitCredentials () {
     error.value = e?.message || 'Sign-in failed.'
   } finally { busy.value = false }
 }
+
+/* ---- enrolment, as a step of signing in ---------------------------------
+   An employee does not go looking for a settings page to turn on MFA. The
+   administrator requires it, and the next time they sign in they are asked to
+   enrol before they get any further. That is where this belongs, and it is
+   why the member portal has no settings screen to put it on.
+
+   The TOTP is the real thing: RFC 6238 over Web Crypto, a genuine otpauth://
+   URI, and a secret that stays unconfirmed until a correct code proves the
+   phone actually has it. */
+const secret = ref('')
+const uri = ref('')
+const left = ref(30)
+const preview = ref('')
+let ticker
+
+const qr = computed(() => uri.value ? qrSvg(uri.value, 170) : '')
+
+async function beginEnrolment (user) {
+  pending.value = user
+  const res = await api.auth.startMfaEnrolment({ userId: user.id })
+  secret.value = res.secret
+  uri.value = res.uri
+  step.value = 'enrol'
+  clearInterval(ticker)
+  ticker = setInterval(tick, 1000)
+  tick()
+}
+
+async function tick () {
+  left.value = secondsRemaining()
+  if (!secret.value) return
+  try { preview.value = await generateTOTP(secret.value) } catch { preview.value = '' }
+}
+
+async function submitEnrolment () {
+  error.value = ''
+  busy.value = true
+  try {
+    const res = await api.auth.confirmMfaEnrolment({ userId: pending.value.id, code: code.value.trim() })
+    if (!res?.ok) {
+      error.value = 'That code is not right. Codes change every 30 seconds — wait for the next one and try again.'
+      return
+    }
+    clearInterval(ticker)
+    enter({ ...pending.value, mfaEnrolled: true })
+  } finally { busy.value = false }
+}
+
+onUnmounted(() => clearInterval(ticker))
 
 async function submitCode () {
   error.value = ''
@@ -77,9 +137,14 @@ async function submitCode () {
          The second is the lost-phone case, and the only way out of it is an
          administrator reset — saying so beats letting someone retype six
          digits at a prompt that cannot ever accept them. */
-      error.value = /not set up/i.test(res?.error || '')
-        ? 'This account has multi-factor turned on but no authenticator registered. Ask your administrator to reset it, then sign in again to enrol.'
-        : 'That code is not right. Codes change every 30 seconds — wait for the next one and try again.'
+      /* "No secret to check against" is the lost-phone case and cannot be
+         solved by typing more digits. Offer the way out instead of a wall. */
+      if (/not set up/i.test(res?.error || '')) {
+        noSecret.value = true
+        error.value = 'This account requires a code but has no authenticator registered.'
+      } else {
+        error.value = 'That code is not right. Codes change every 30 seconds — wait for the next one and try again.'
+      }
       return
     }
     enter(pending.value)
@@ -117,6 +182,47 @@ function enter (user) {
       </p>
     </form>
 
+    <!-- enrolment, before they are let in -->
+    <form v-else-if="step === 'enrol'" @submit.prevent="submitEnrolment">
+      <p class="p-lede">
+        Your administrator requires a second step at sign-in. Set it up once,
+        now, and you will not be asked again.
+      </p>
+
+      <ol class="p-steps">
+        <li>
+          <strong>Scan this with an authenticator app.</strong>
+          <div class="p-qr" v-html="qr" />
+          <p class="p-note">
+            Google Authenticator, Authy, 1Password, Microsoft Authenticator.
+            Cannot scan? Enter this key instead:
+            <code class="p-key">{{ secret }}</code>
+          </p>
+        </li>
+        <li>
+          <strong>Type the six-digit code it shows.</strong>
+          <div class="p-field p-codewrap">
+            <input
+              v-model="code" inputmode="numeric" maxlength="6"
+              class="p-code" aria-label="Verification code" autofocus
+            >
+            <span class="p-ttl">{{ left }}s</span>
+          </div>
+          <p v-if="preview" class="p-note">
+            Nothing to scan with? The current code is
+            <code class="p-key">{{ preview }}</code> — computed here the same
+            way your phone would.
+          </p>
+        </li>
+      </ol>
+
+      <p v-if="error" class="p-err">{{ error }}</p>
+
+      <button class="p-btn" :disabled="busy || code.length < 6">
+        {{ busy ? 'Verifying…' : 'Finish and sign in' }}
+      </button>
+    </form>
+
     <form v-else @submit.prevent="submitCode">
       <p class="p-lede">
         Enter the six-digit code from your authenticator app.
@@ -131,10 +237,19 @@ function enter (user) {
 
       <p v-if="error" class="p-err">{{ error }}</p>
 
-      <button class="p-btn" :disabled="busy || code.length < 6">
+      <template v-if="noSecret">
+        <p class="p-note">
+          Nothing to type a code from. Enrol an authenticator now, or ask your
+          administrator to reset multi-factor on your account.
+        </p>
+        <button type="button" class="p-btn" @click="noSecret = false; error = ''; beginEnrolment(pending)">
+          Enrol an authenticator
+        </button>
+      </template>
+      <button v-else class="p-btn" :disabled="busy || code.length < 6">
         {{ busy ? 'Verifying…' : 'Verify' }}
       </button>
-      <button type="button" class="p-link" @click="step = 'credentials'; error = ''">
+      <button type="button" class="p-link" @click="step = 'credentials'; error = ''; noSecret = false">
         Use a different account
       </button>
     </form>

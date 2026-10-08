@@ -1,238 +1,170 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import api from '../../api'
-import { portalUser } from '../../lib/portal-session.js'
-import { secondsRemaining, generateTOTP } from '../../lib/totp.js'
-import { qrSvg } from '../../lib/qr.js'
-import { browserFingerprint } from '../../lib/policy.js'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { portalUser, portalSignOut } from '../../lib/portal-session.js'
 
 /**
- * What an employee actually needs.
+ * The member portal: one page, and it is a gate rather than an account area.
  *
- * Three things, in the order they need them: enrol an authenticator, see
- * whether their devices are approved, and see what they are allowed to reach.
- * Nothing else. This is not a small admin console — it is a different product
- * with three jobs.
+ * This was built as a three-card self-service page — enrol MFA, see my
+ * devices, see my applications — which is what a ZTNA end-user portal sounds
+ * like it should be. Velto's actual /member area is one screen that asks a
+ * single question: is the InstaSafe agent installed and running on the
+ * machine you are sitting at? If it is not, nothing else matters, because
+ * nothing will connect. So it offers the download and gets out of the way.
  *
- * The TOTP here is the real implementation (RFC 6238 over Web Crypto). The QR
- * is a genuine otpauth:// URI; scanning it with Google Authenticator, Authy,
- * 1Password or Microsoft Authenticator produces codes this page verifies, and
- * a wrong code is rejected. The secret stays unconfirmed until a correct code
- * proves the phone really has it, which is what stops somebody locking
- * themselves out of their own account.
+ * Enrolment moved into the sign-in flow, which is where it belongs: an
+ * employee is prompted to enrol when the administrator has required it and
+ * they have not done it yet, not by finding a settings page.
+ *
+ * The agent probe below is real. It tries the loopback port a desktop agent
+ * would listen on and reports what actually happened; it does not pretend to
+ * check and then show a canned failure. In this demo nothing is listening, so
+ * it reports not detected — which is the state velto shows on any machine
+ * without the agent, and the state worth designing for.
  */
 
+const router = useRouter()
 const user = portalUser
-const toastMsg = ref('')
 
-/* ---- enrolment ---------------------------------------------------------- */
-const step = ref('idle')        // idle · scan · verify · done
-const secret = ref('')
-const uri = ref('')
-const code = ref('')
-const error = ref('')
-const busy = ref(false)
-const enrolled = ref(false)
-const left = ref(30)
-const preview = ref('')
-let ticker
+const AGENT_PORT = 7865
+const state = ref('checking')     // checking · missing · running
+const checkedAt = ref(null)
+const explain = ref('')
 
-const qr = computed(() => uri.value ? qrSvg(uri.value, 180) : '')
+/** What to offer first. A download button for the wrong OS is noise. */
+const PLATFORMS = [
+  { key: 'windows', label: 'Windows', icon: 'fa-brands fa-windows', file: 'insta-check.exe' },
+  { key: 'deb', label: 'Linux (.deb)', icon: 'fa-brands fa-linux', file: 'insta-check.deb' },
+  { key: 'rpm', label: 'Linux (.rpm)', icon: 'fa-brands fa-linux', file: 'insta-check.rpm' },
+  { key: 'macos', label: 'macOS', icon: 'fa-brands fa-apple', file: 'insta-check.pkg' },
+  { key: 'ios', label: 'iOS', icon: 'fa-brands fa-app-store-ios', store: true },
+  { key: 'android', label: 'Android', icon: 'fa-brands fa-android', store: true }
+]
 
-async function startEnrolment () {
-  busy.value = true
-  error.value = ''
+const detected = computed(() => {
+  const ua = navigator.userAgent
+  if (/Android/i.test(ua)) return 'android'
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios'
+  if (/Mac OS X/i.test(ua)) return 'macos'
+  if (/Linux/i.test(ua)) return 'deb'
+  return 'windows'
+})
+const primary = computed(() => PLATFORMS.find(p => p.key === detected.value))
+const others = computed(() => PLATFORMS.filter(p => p.key !== detected.value))
+
+/**
+ * Ask the agent whether it is there.
+ *
+ * A desktop agent exposes a loopback endpoint; the browser can reach it and
+ * nothing else can. `no-cors` means we never see the body, only whether the
+ * request completed at all — which is the entire question. A refused
+ * connection throws, and that is a genuine answer, not a simulated one.
+ */
+async function probe () {
+  state.value = 'checking'
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), 1800)
   try {
-    const res = await api.auth.startMfaEnrolment({ userId: user.value.id })
-    secret.value = res.secret
-    uri.value = res.uri
-    step.value = 'scan'
-  } catch (e) {
-    error.value = e?.message || 'Could not start enrolment.'
-  } finally { busy.value = false }
-}
-
-async function confirmEnrolment () {
-  error.value = ''
-  busy.value = true
-  try {
-    const res = await api.auth.confirmMfaEnrolment({ userId: user.value.id, code: code.value.trim() })
-    if (!res?.ok) {
-      error.value = 'That code is not right. Codes change every 30 seconds — wait for the next one and try again.'
-      return
-    }
-    enrolled.value = true
-    step.value = 'done'
-    toastMsg.value = 'Authenticator enrolled'
-  } finally { busy.value = false }
-}
-
-/* The live code, shown only while enrolling, so somebody without a phone to
-   hand can still see the mechanism working rather than taking it on faith. */
-async function tick () {
-  left.value = secondsRemaining()
-  if (secret.value && step.value !== 'done') {
-    try { preview.value = await generateTOTP(secret.value) } catch { preview.value = '' }
+    await fetch(`http://127.0.0.1:${AGENT_PORT}/status`, { mode: 'no-cors', signal: ctl.signal })
+    state.value = 'running'
+  } catch {
+    state.value = 'missing'
+  } finally {
+    clearTimeout(timer)
+    checkedAt.value = new Date()
   }
 }
 
-/* ---- my devices and applications ---------------------------------------- */
-const devices = ref([])
-const apps = ref([])
-const loading = ref(true)
-const binding = ref(false)
-
-async function load () {
-  loading.value = true
-  const u = user.value
-  if (!u) { loading.value = false; return }
-
-  /* Enrolment state comes from the record, not from the session snapshot.
-     The snapshot was taken at sign-in, so trusting it meant enrolling an
-     authenticator and then being told on the next reload that you had not. */
-  try {
-    const fresh = await api.users.get(u.id)
-    if (fresh) enrolled.value = !!fresh.mfaEnrolled
-  } catch { enrolled.value = !!u.mfaEnrolled }
-  if (enrolled.value) step.value = 'done'
-
-  const [d, a] = await Promise.all([
-    api.devices.list({ perPage: 0, filters: { userId: u.id } }).then(r => r.data).catch(() => []),
-    api.applications.list({ perPage: 0 }).then(r => r.data).catch(() => [])
-  ])
-  devices.value = d
-  apps.value = a.slice(0, 8)
-  loading.value = false
+function signOut () {
+  portalSignOut()
+  router.push('/portal/signin')
 }
 
-/** Enrols the browser you are reading this in, with a real fingerprint. */
-async function enrolThisBrowser () {
-  binding.value = true
-  try {
-    const fp = await browserFingerprint()
-    const res = await api.devices.bind({ userId: user.value.id, fingerprint: fp })
-    toastMsg.value = res?.existing
-      ? 'This browser is already registered'
-      : 'Registered — an administrator has to approve it'
-    load()
-  } finally { binding.value = false }
-}
-
-const statusWord = (s) => ({
-  approved: 'Approved', pending: 'Waiting for approval', rejected: 'Refused'
-}[s] || s)
-
-onMounted(() => { load(); tick(); ticker = setInterval(tick, 1000) })
-onUnmounted(() => clearInterval(ticker))
+onMounted(() => {
+  if (!user.value) { router.replace('/portal/signin'); return }
+  probe()
+})
 </script>
 
 <template>
-  <div v-if="user" class="p-stack">
-    <div>
-      <h1 class="p-h1">Hello, {{ user.firstName || user.username }}</h1>
-      <p class="p-lede">Your account, your devices, and what you can reach.</p>
-    </div>
+  <div class="p-gate">
+    <template v-if="state === 'checking'">
+      <span class="p-mark is-wait"><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true" /></span>
+      <h1 class="p-gh">Checking this device</h1>
+      <p class="p-gs">Looking for the InstaSafe agent.</p>
+    </template>
 
-    <!-- 1 · multi-factor -->
-    <section class="p-card">
-      <h2 class="p-h2">Multi-factor authentication</h2>
-
-      <template v-if="step === 'done' || enrolled">
-        <p class="p-ok">
-          <i class="fa-solid fa-circle-check" aria-hidden="true" />
-          Your authenticator is set up.
-        </p>
-        <p class="p-note">
-          You will be asked for a six-digit code when you sign in. Lost your
-          phone? Ask your administrator to reset this — they cannot see your
-          codes, but they can clear the enrolment so you can start again.
-        </p>
-      </template>
-
-      <template v-else-if="step === 'idle'">
-        <p class="p-note">
-          Add a second step to your sign-in using an authenticator app —
-          Google Authenticator, Authy, 1Password or Microsoft Authenticator.
-        </p>
-        <button class="p-btn" :disabled="busy" @click="startEnrolment">
-          {{ busy ? 'Preparing…' : 'Set up authenticator' }}
+    <template v-else-if="state === 'running'">
+      <span class="p-mark is-ok"><i class="fa-solid fa-check" aria-hidden="true" /></span>
+      <h1 class="p-gh">You are protected</h1>
+      <p class="p-gs">
+        The agent is running on this device. Your applications are reachable
+        through it — there is nothing else to do here.
+      </p>
+      <div class="p-gacts">
+        <button class="p-btn p-ghost" @click="signOut">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
         </button>
-      </template>
+        <button class="p-btn p-ghost" @click="probe">
+          <i class="fa-solid fa-rotate" aria-hidden="true" /> Check again
+        </button>
+      </div>
+    </template>
 
-      <template v-else>
-        <ol class="p-steps">
-          <li>
-            <strong>Scan this with your authenticator app.</strong>
-            <div class="p-qr" v-html="qr" />
-            <p class="p-note">
-              Cannot scan? Enter this key by hand:
-              <code class="p-key">{{ secret }}</code>
-            </p>
-          </li>
-          <li>
-            <strong>Type the six-digit code it shows.</strong>
-            <div class="p-field p-codewrap">
-              <input
-                v-model="code" inputmode="numeric" maxlength="6"
-                class="p-code" aria-label="Verification code"
-              >
-              <span class="p-ttl">{{ left }}s</span>
-            </div>
-            <p v-if="preview" class="p-note">
-              Nothing to scan with? The current code is
-              <code class="p-key">{{ preview }}</code> — this page computes it
-              the same way your phone would.
-            </p>
-            <p v-if="error" class="p-err">{{ error }}</p>
-            <button class="p-btn" :disabled="busy || code.length < 6" @click="confirmEnrolment">
-              {{ busy ? 'Verifying…' : 'Verify and finish' }}
-            </button>
-          </li>
-        </ol>
-      </template>
-    </section>
+    <template v-else>
+      <span class="p-mark is-bad"><i class="fa-solid fa-xmark" aria-hidden="true" /></span>
+      <h1 class="p-gh">InstaSafe agent not detected</h1>
+      <p class="p-gs">It may not be installed, or it may not be running.</p>
 
-    <!-- 2 · devices -->
-    <section class="p-card">
-      <h2 class="p-h2">Your devices</h2>
-      <p class="p-note">
-        Each device has to be approved before it can connect. Approval is done
-        by your administrator.
-      </p>
+      <div class="p-gacts">
+        <button class="p-btn p-ghost" @click="signOut">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
+        </button>
+        <button class="p-btn p-ghost" @click="probe">
+          <i class="fa-solid fa-rotate" aria-hidden="true" /> Retry
+        </button>
+      </div>
 
-      <div v-if="loading" class="p-note">Loading…</div>
-
-      <ul v-else-if="devices.length" class="p-list">
-        <li v-for="d in devices" :key="d.id">
-          <span class="p-li-t">{{ d.name }}</span>
-          <span class="p-li-s">{{ d.os }}</span>
-          <span class="p-tag" :class="'is-' + d.status">{{ statusWord(d.status) }}</span>
-        </li>
-      </ul>
-
-      <p v-else class="p-note">No devices are registered to you yet.</p>
-
-      <button class="p-btn p-ghost" :disabled="binding" @click="enrolThisBrowser">
-        {{ binding ? 'Registering…' : 'Register this browser' }}
+      <!-- The buttons are velto's, the binaries are not ours to ship.
+           A download that 404s is a worse fake than one that says what it is,
+           so these explain themselves rather than failing. -->
+      <button v-if="primary" class="p-btn p-dl" @click="explain = primary.label">
+        <i :class="primary.icon" aria-hidden="true" /> Download for {{ primary.label }}
       </button>
-    </section>
 
-    <!-- 3 · applications -->
-    <section class="p-card">
-      <h2 class="p-h2">What you can reach</h2>
-      <p class="p-note">
-        Access depends on your group, your device passing its checks, and the
-        policy your administrator set. If something is missing here, ask them.
+      <p class="p-ghint">Other platforms</p>
+      <div class="p-plats">
+        <button
+          v-for="p in others" :key="p.key"
+          class="p-plat" @click="explain = p.label"
+        >
+          <i :class="p.icon" aria-hidden="true" /> {{ p.label }}
+        </button>
+      </div>
+
+      <p v-if="explain" class="p-gexplain">
+        In production this downloads the InstaSafe agent for {{ explain }} —
+        velto serves it from <code>/storage/insta-check.*</code>, with iOS and
+        Android going to the App Store and Play Store. This demo does not ship
+        a signed binary, so the button stops here rather than handing you a
+        404.
       </p>
-      <ul v-if="apps.length" class="p-list">
-        <li v-for="a in apps" :key="a.id">
-          <span class="p-li-t">{{ a.name }}</span>
-          <span class="p-li-s">{{ a.type }}<template v-if="a.host"> · {{ a.host }}</template></span>
-        </li>
-      </ul>
-      <p v-else class="p-note">Nothing is published to you yet.</p>
-    </section>
 
-    <p v-if="toastMsg" class="p-toast">{{ toastMsg }}</p>
+      <p class="p-gnote">
+        Already installed it? Start the InstaSafe agent, then press Retry. If it
+        still says this, your administrator can see whether your device has been
+        approved.
+      </p>
+    </template>
+
+    <p v-if="checkedAt" class="p-gstamp">
+      Checked at {{ checkedAt.toLocaleTimeString() }} ·
+      this page really does probe for the agent, it does not assume
+    </p>
+
+    <RouterLink to="/dashboard" class="p-adminlink">
+      <i class="fa-solid fa-gauge" aria-hidden="true" /> Administrator console
+    </RouterLink>
   </div>
 </template>
