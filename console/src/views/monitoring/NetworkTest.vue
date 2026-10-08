@@ -61,12 +61,15 @@ async function run () {
       title="Network test"
       subtitle="Reachability and latency from where you are sitting."
     >
-      <template #actions>
+    </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
         <button class="i-btn i-primary" :disabled="running" @click="run">
           {{ running ? 'Running…' : 'Run test' }}
         </button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <div style="max-width:640px">
       <div v-for="r in results" :key="r.label" class="i-checkrow">

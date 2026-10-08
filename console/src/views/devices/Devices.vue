@@ -190,22 +190,6 @@ onMounted(async () => {
     >
     </PageHeader>
 
-    <section v-if="counts.pending" class="i-band">
-      <div>
-        <div class="i-bt">
-          <span class="i-fdot" aria-hidden="true" />
-          {{ counts.pending.toLocaleString() }} devices are waiting for approval
-        </div>
-        <p class="i-bs">
-          Until one is approved its user cannot connect from it. The current console
-          shows this number nowhere.
-        </p>
-      </div>
-      <div class="i-bandacts">
-        <button class="i-btn i-primary" @click="filter = 'pending'">Review the queue</button>
-      </div>
-    </section>
-
     <div class="i-strip">
       <div class="i-ftabs">
         <button
@@ -223,10 +207,6 @@ onMounted(async () => {
           <input v-model="search" type="search" placeholder="Search device, user, IP or MAC">
         </label>
         <div class="i-tools">
-        <button class="i-btn" :disabled="binding" @click="bindThisBrowser">
-          <i class="fa-solid fa-fingerprint" aria-hidden="true" />
-          {{ binding ? 'Enrolling…' : 'Enrol this browser' }}
-        </button>
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
         <ListTools
           v-model:graph="graphOn"
@@ -234,9 +214,33 @@ onMounted(async () => {
           :rows="rows" :dimensions="GRAPH_DIMS" :total="total"
           @apply="onBulkApplied"
         />
+        <!-- Devices are enrolled rather than added, so this is the screen's
+             create action and it takes the anchor the Add button holds
+             everywhere else. -->
+        <button class="i-btn i-primary" :disabled="binding" @click="bindThisBrowser">
+          <i class="fa-solid fa-fingerprint" aria-hidden="true" />
+          {{ binding ? 'Enrolling…' : 'Enrol this browser' }}
+        </button>
         </div>
       </div>
     </div>
+
+    <section v-if="counts.pending" class="i-band">
+      <div>
+        <div class="i-bt">
+          <span class="i-fdot" aria-hidden="true" />
+          {{ counts.pending.toLocaleString() }} devices are waiting for approval
+        </div>
+        <p class="i-bs">
+          Until one is approved its user cannot connect from it. The current console
+          shows this number nowhere.
+        </p>
+      </div>
+      <div class="i-bandacts">
+        <button class="i-btn i-primary" @click="filter = 'pending'">Review the queue</button>
+      </div>
+    </section>
+
 
     <GraphView
       v-if="graphOn"

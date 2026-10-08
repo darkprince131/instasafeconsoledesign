@@ -144,13 +144,16 @@ onMounted(load)
       title="Anomaly logs"
       subtitle="Behaviour that does not fit the pattern. A healthy tenant produces none, which is why this screen has a button."
     >
-      <template #actions>
+    </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
         <button class="i-btn i-primary" :disabled="scanning" @click="scan">
           <i class="fa-solid fa-satellite-dish" aria-hidden="true" />
           {{ scanning ? 'Scanning…' : 'Run detection' }}
         </button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <DataTable
       :columns="columns" :rows="rows" :total="rows.length" :loading="loading"

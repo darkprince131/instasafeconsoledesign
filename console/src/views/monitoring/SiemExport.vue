@@ -133,7 +133,10 @@ onMounted(load)
       title="SIEM export"
       subtitle="What your events look like in your SIEM, in the format it actually ingests."
     >
-      <template #actions>
+    </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
         <button class="i-btn" :disabled="!filtered.length" @click="copy">
           <i class="fa-regular fa-copy" aria-hidden="true" /> Copy
         </button>
@@ -143,8 +146,8 @@ onMounted(load)
         <button class="i-btn i-primary" :disabled="saving || !filtered.length" @click="sendTest">
           {{ saving ? 'Sending…' : 'Send test batch' }}
         </button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <div class="row g-4">
       <!-- the payload -->

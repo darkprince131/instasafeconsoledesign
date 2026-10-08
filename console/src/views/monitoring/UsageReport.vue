@@ -105,7 +105,10 @@ onMounted(load)
 <template>
   <div class="i-page">
     <PageHeader :title="cfg.title" :subtitle="cfg.subtitle">
-      <template #actions>
+    </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
         <select class="i-ctl" style="width:auto" v-model="window_" aria-label="Time window">
           <option value="today">Today</option>
           <option value="week">Last 7 days</option>
@@ -114,8 +117,8 @@ onMounted(load)
         <button class="i-btn" :disabled="!rows.length" @click="csv">
           <i class="fa-solid fa-download" aria-hidden="true" /> CSV
         </button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <div v-if="loading" class="i-skeleton-page" />
 

@@ -134,13 +134,18 @@ onMounted(load)
       title="Device checks"
       subtitle="Each check is an operating system, a check type and a value. A device has to satisfy every check that applies to it."
     >
-      <template #actions>
-        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> CSV</button>
-        <button class="i-btn i-primary" @click="openAdd">
-          <i class="fa-solid fa-plus" aria-hidden="true" /> Add
-        </button>
-      </template>
     </PageHeader>
+
+    <!-- Same row, same anchor as every other screen: the primary action sits
+         at the page gutter whether or not this screen has a search. -->
+    <div class="i-strip">
+      <div class="i-tools">
+        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+        <button class="i-btn i-primary" @click="openAdd">
+          <i class="fa-solid fa-plus" aria-hidden="true" /> Add check
+        </button>
+      </div>
+    </div>
 
     <div class="row g-4">
       <div class="col-12 col-xl-7">

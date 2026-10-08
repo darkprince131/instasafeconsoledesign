@@ -246,7 +246,10 @@ onMounted(load)
 <template>
   <div class="i-page">
     <PageHeader :title="cfg.title" :subtitle="cfg.subtitle">
-      <template #actions>
+    </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
         <button
           v-if="cfg.testLabel" class="i-btn" :disabled="testing" @click="sendTest"
         >{{ testing ? 'Sending…' : cfg.testLabel }}</button>
@@ -254,8 +257,8 @@ onMounted(load)
           v-if="!cfg.readOnly" class="i-btn i-primary"
           :disabled="saving || !dirty" @click="save"
         >{{ saving ? 'Saving…' : 'Save changes' }}</button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
 
     <div style="max-width:760px">
       <div v-for="[heading, fields] in cfg.sections" :key="heading" class="i-formsec">

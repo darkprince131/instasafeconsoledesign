@@ -72,10 +72,13 @@ onUnmounted(() => clearInterval(tick))
       title="Live sessions"
       :subtitle="total.toLocaleString() + ' sessions open right now. Refreshes every 15 seconds.'"
     >
-      <template #actions>
-        <button class="i-btn" @click="load()"><i class="fa-solid fa-rotate" aria-hidden="true" /> Refresh</button>
-      </template>
     </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
+        <button class="i-btn" @click="load()"><i class="fa-solid fa-rotate" aria-hidden="true" /> Refresh</button>
+      </div>
+    </div>
 
     <div class="i-strip">
       <div class="i-right ms-auto">

@@ -254,13 +254,16 @@ onMounted(load)
 <template>
   <div class="i-page">
     <PageHeader :title="cfg.title" :subtitle="cfg.subtitle">
-      <template #actions>
-        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> CSV</button>
-        <button class="i-btn i-primary" @click="openAdd">
-          <i class="fa-solid fa-plus" aria-hidden="true" /> Add
-        </button>
-      </template>
     </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
+        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+        <button class="i-btn i-primary" @click="openAdd">
+          <i class="fa-solid fa-plus" aria-hidden="true" /> Add filter
+        </button>
+      </div>
+    </div>
 
     <div class="row g-4">
       <div class="col-12 col-xl-7">

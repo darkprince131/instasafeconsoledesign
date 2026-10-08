@@ -384,10 +384,13 @@ const num = (n) => (n ?? 0).toLocaleString()
       title="Dashboard"
       :subtitle="`Demo tenant · ${num(stats.users)} users · ${num(stats.devices)} devices · ${num(stats.gateways)} gateways`"
     >
-      <template #actions>
-        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
-      </template>
     </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
+        <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+      </div>
+    </div>
 
     <!-- First run. Shown once, dismissible, and it does not pretend to be an
          alert - it sits above the attention band rather than competing with it. -->

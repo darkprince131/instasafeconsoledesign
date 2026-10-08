@@ -497,17 +497,38 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
    their own line beneath. `.i-right` keeps its name because nine screens use
    it, but it is no longer pushed right - the search was being squeezed to its
    260px floor at the far edge of a 1,400px screen. */
-.i-strip .i-right{
-  order:-1; margin-left:0; display:flex; align-items:center; gap:8px;
-  flex:1 1 420px; min-width:0;
+/* The primary action is anchored, and everything else moves around it.
+   
+   Export, Import CSV, Sync Now, Bulk Ops, Graph, Enrol this browser — the
+   secondary tools differ per screen, so with the whole group packed together
+   the Add button landed at a different x on every one. Switching tabs then
+   means re-finding the button you press most, every time, which is the exact
+   cost Fitts's law puts a number on.
+   
+   So `.i-tools` takes the remaining width and the primary is pushed to its
+   far end. The button now sits at the page gutter on every screen; the
+   secondary tools reflow leftward and the search absorbs the slack. A screen
+   with no primary leaves that spot empty rather than letting an unrelated
+   button inherit the muscle memory.
+   
+   `display:contents` on `.i-right` is what lets one rule cover both layouts:
+   nine screens nest search and tools inside it, the shared template has them
+   as siblings, and this flattens the first into the second without touching
+   either file. */
+.i-strip .i-right{ display:contents; }
+.i-strip .i-search{ order:-1; }
+.i-strip .i-tools{
+  display:flex; align-items:center; gap:6px;
+  flex:1 1 auto; min-width:0;
 }
-.i-strip .i-right.ms-auto{ margin-left:0 !important; }
+.i-strip .i-tools > .i-btn.i-primary:last-child,
+.i-strip .i-tools > .i-anchor{ margin-left:auto; }
 .i-strip .i-ftabs{ order:1; flex-basis:100%; }
 /* a screen with no chips keeps everything on one line */
 .i-strip .i-ftabs:only-child{ flex-basis:auto; }
 .i-search{
   display:flex; align-items:center; gap:8px; height:34px; padding:0 11px;
-  flex:1 1 420px; min-width:240px; max-width:700px;
+  flex:0 1 420px; min-width:200px;
   border:1px solid var(--i-rule-strong);
   border-radius:var(--i-r-ctl); background:var(--i-canvas);
   transition:border-color .16s ease;

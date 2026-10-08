@@ -59,10 +59,13 @@ onMounted(() => {
       title="Controllers"
       subtitle="The control plane. Policy changes take effect when they are committed here."
     >
-      <template #actions>
-        <button class="i-btn i-primary"><i class="fa-solid fa-plus" aria-hidden="true" /> Add controller</button>
-      </template>
     </PageHeader>
+
+    <div class="i-strip">
+      <div class="i-tools">
+        <button class="i-btn i-primary"><i class="fa-solid fa-plus" aria-hidden="true" /> Add controller</button>
+      </div>
+    </div>
 
     <section v-if="rows.some(c => c.pendingCommit)" class="i-band">
       <div>
