@@ -243,6 +243,41 @@ production's; what the operations *are* comes from this console's existing
 bulk actions, and `ListTools.vue` says so in its header. Worth one look at
 velto to check.
 
+## 14. Authentication profiles were one screen with a filter — FIXED
+
+Each protocol is its own destination in velto, with its own columns, form and
+toolbar. This console had one screen behind eight routes with a type chip.
+
+| Route | Heading | Columns | Toolbar beyond Add/CSV/Delete |
+|---|---|---|---|
+| `local` | Local Profile | **none — it is a form** | Save · Cancel |
+| `active-directory` | Active Directory Profile | Profile Name · Domain · Primary Server IP · Backup Server IP | **Sync Now** |
+| `ldap` | OpenLDAP | the above + Port · Protocol | **Sync Now** |
+| `radius` | RADIUS Profile | Name · RADIUS Server IP · Backup RADIUS Server IP · Port | — |
+| `saml` | SAML | Name · Integration Type · IDP EntityId · IDP Sign-In URL | **Import IDP Metadata · Download SP MetaData** |
+| `oauth` | OAuth2 | Name · Client Id · Redirect URI | — |
+| `openid` | OpenID | Name · Client Id · Issuer URL | — |
+| `passwordless` | Passwordless Profiles | Name · Primary Auth · Fallback Authn | — |
+
+`/profile/local` is the one that gives the game away. It sits in the nav
+beside SAML and RADIUS so it looks like it should be a list too, but there is
+exactly one local directory per tenant — the screen is its **password
+policy**: thirteen fields, Save and Cancel, no table.
+
+```
+Maximum / Minimum password length · Minimum numeric · uppercase · lowercase ·
+special characters · Set of "special" characters · Force change on next login ·
+Enable password expiry · Passwords expire after (days) · Prevent any reuse ·
+Restrict recent reuse · Number of previous passwords to block
+```
+
+Velto greys the two number fields until their toggle is on, which is worth
+copying — the number is meaningless while the feature is off.
+
+One addition beyond velto: LDAP's **Protocol** column takes a coral mark on
+`TCP`. Port 389 over TCP is a plaintext bind, and it is the only value on that
+screen that is a security decision rather than a setting.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
