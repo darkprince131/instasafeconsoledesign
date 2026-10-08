@@ -190,6 +190,59 @@ Found building it: `statusPill` matched case-sensitively, so production's own
 casing — `Active`, `Pending-Approval` — fell through to null and rendered
 every state unmarked, including the ones the design spends colour on.
 
+## 12. The end-user portal is a different product — and not the one I built
+
+Velto's member area turned up at `/member/device-status`. `/member` itself
+404s, so that page is effectively the whole thing.
+
+```
+"InstaSafe agent not detected — It may not be installed or running."
+Sign Out · Retry · Admin Dashboard · Download for Windows
+Other platforms: Linux (.deb) · Linux (.rpm) · macOS · iOS · Android
+/storage/insta-check.exe · .deb · .rpm · .pkg + App Store / Play Store
+```
+
+It is **a gate, not an account area**. One question — is the agent installed
+and running on the machine you are sitting at — and if not, the download. No
+MFA page, no device list, no application list, no settings.
+
+I had built it as a three-card self-service portal, which is what a ZTNA
+end-user area sounds like it should be. Velto's instinct is better and the
+reason is obvious once seen: if the agent is not running, nothing connects, so
+nothing else on that page would matter.
+
+**Where enrolment goes, then.** Not a settings page, because there isn't one.
+It belongs in the sign-in flow: the administrator requires MFA, and the next
+time the employee signs in they are asked to enrol before being let through.
+That is now how it works.
+
+**What the admin side kept:** require MFA, see enrolment state, reset it. No
+enrol button — an administrator cannot scan a QR with a phone they are not
+holding, and that absence is the correct behaviour rather than a gap.
+
+The agent probe in our version is real: it tries the loopback port a desktop
+agent would listen on and reports what actually happened. Nothing answers in
+the demo, which is the state every machine without the agent is in. The
+download buttons explain what they would do rather than serving a 404, since a
+signed binary is not ours to ship.
+
+## 13. Bulk Ops and Graph — built, contents unconfirmed
+
+Every velto list carries both. Added to users, devices and the shared
+template.
+
+Bulk Ops is the persistent entry point to operations that previously appeared
+only once rows were ticked — there was no way to discover what a screen
+supported without selecting something first. Graph counts the current rows by
+one field, from the list's own data rather than a second query that could
+disagree with the table above it.
+
+**Unconfirmed:** velto's own Bulk Ops dialog could not be captured — the
+session expired before it opened. The button and its placement are
+production's; what the operations *are* comes from this console's existing
+bulk actions, and `ListTools.vue` says so in its header. Worth one look at
+velto to check.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
