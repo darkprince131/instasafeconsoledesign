@@ -226,22 +226,53 @@ the demo, which is the state every machine without the agent is in. The
 download buttons explain what they would do rather than serving a 404, since a
 signed binary is not ours to ship.
 
-## 13. Bulk Ops and Graph — built, contents unconfirmed
+## 13. Bulk Ops and Graph — captured, and both of my guesses were wrong
 
-Every velto list carries both. Added to users, devices and the shared
-template.
+**Bulk Ops is a CSV wizard, not operations on ticked rows.** Pick an
+operation, download a template, fill it in, upload it. The table selection is
+never used — the uploaded file *is* the list. The two models fail differently,
+which is the whole point: a selection acts on what you can see, a file acts on
+names you cannot.
 
-Bulk Ops is the persistent entry point to operations that previously appeared
-only once rows were ticked — there was no way to discover what a screen
-supported without selecting something first. Graph counts the current rows by
-one field, from the list's own data rather than a second query that could
-disagree with the table above it.
+```
+Bulk Operations for Users
+1. Select the bulk operation   [ Add users | Delete users | Activate users | Suspend users ]
+2. Make a list of users        CSV rules, which change with the operation
+3. Download sample Template    [Download Sample CSV]
+4. Upload the file             [Choose File]            [Upload]
+```
 
-**Unconfirmed:** velto's own Bulk Ops dialog could not be captured — the
-session expired before it opened. The button and its placement are
-production's; what the operations *are* comes from this console's existing
-bulk actions, and `ListTools.vue` says so in its header. Worth one look at
-velto to check.
+Devices offers `Activate · Suspend · Delete` — no Add, because devices enrol
+rather than being created. (Its dialog still heads step 2 "Make a list of
+**users**", which is a copy-paste slip in production.)
+
+The rules, as velto states them:
+
+- **Add** takes `First Name, Last Name, Login Id, E-Mail Id, Mobile Number,
+  Password`. Mandatory: First Name, Username, E-Mail ID. Authentication type
+  is deemed "Password + Certificate"; activation is
+  `immediately-on-provisioning` or `automatically-on-first-login`.
+- **Delete, Activate, Suspend** take one column, `username`.
+- **Locally created accounts only** — not ones imported from AD or LDAP.
+
+Rebuilt to match, with one addition: velto uploads and hopes. A file naming
+four hundred accounts to suspend is read back before it runs — every row
+resolved against what is actually in the tenant, with a reason — and nothing
+is written until that is confirmed.
+
+**Graph is not a chart either.** It swaps the table for a 3D force-directed
+scene in place, on black, and the button becomes **Table**. "Left-click:
+rotate, Mouse-wheel/middle-click: zoom, Right-click: pan."
+
+The interaction is right and is now copied exactly. The execution is not: ten
+unlabelled dots floating in space answer no question anybody asked, and
+rotating them in three dimensions answers it no better. Same toggle, same
+button flip, but laid out as labelled clusters around a chosen field, every
+node named and every cluster counted — and it says plainly when it is
+plotting one page rather than the whole set.
+
+**Also found:** `users.importCsv` has been in the API contract and in neither
+adapter since it was written, so the Import CSV button did nothing at all.
 
 ## 14. Authentication profiles were one screen with a filter — FIXED
 
