@@ -354,6 +354,48 @@ collection: ranked so a prefix beats a substring, chips for what is selected,
 a hint column to tell nine people called Priya apart, "add all matching" for
 the tedious case, and arrow keys throughout.
 
+## 17. Access rules could not express the commonest policy — FIXED
+
+Source was a single-value select over group names and destination a single
+application, so "these eight people may reach those two systems" had no form
+at all.
+
+Velto's model — both ends typed and multi-valued:
+
+```
+Source Type       User · User Group · Application
+Destination Type  Application · Application Group · Custom Application ·
+                  URL Filter · Content Filter · FileType Filter · Domain List
+Action            Allow · Deny · Bypass
+Columns           Name · Src Type · Source · Dst Type · Destination ·
+                  Enable Schedule · Actions
+Toolbar           Add · Bulk Add · CSV · Delete · Graph
+```
+
+Rebuilt to that. Rules now point at **ids** and keep the names only for
+display; the policy engine matches ids first and falls back to names, because
+rules written before the change have none and silently failing to match them
+would turn a working policy into a deny.
+
+## 18. Creating mid-sentence
+
+Writing a rule means naming a user and an application. If either did not exist
+the console sent you away to make it, losing the rule you were drafting —
+which is how people stop writing rules.
+
+A picker can now create. "Create «name»" opens the smallest form that makes a
+valid record of that kind, over the one already in front of you, prefilled
+with what was typed, and selects it on save. Users, user groups, applications
+and application groups.
+
+Not a wizard: a wizard earns its steps when their order matters, and "a user
+needs a name and an email" has no order.
+
+Verified end to end on the deployed backend: typed a name that did not exist,
+created the user without leaving the half-written rule, saved a rule with two
+sources — one existing, one just made — and the access explorer then resolved
+that user correctly through their group.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
