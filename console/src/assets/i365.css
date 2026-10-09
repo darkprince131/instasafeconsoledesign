@@ -1241,3 +1241,6 @@ html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(25
   box-shadow:0 1px 4px rgba(20,20,30,.45); cursor:grab;
 }
 .i-mappin span:active{ cursor:grabbing; }
+/* A week of toggles reads as a column, not a row: seven switches side by side
+   are unreadable at any width this sheet has. */
+.i-days{ display:flex; flex-direction:column; gap:7px; }

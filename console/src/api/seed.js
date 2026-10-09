@@ -434,10 +434,24 @@ export function seedDeviceChecks () {
 }
 
 export function seedTimeSchedules () {
+  /* A night shift is in here on purpose: its window wraps midnight, which is
+     the case a naive start<=now<=end comparison gets wrong. */
   return [
-    { id: 'ts_0001', name: 'Business hours', days: [1,2,3,4,5], startTime: '09:00', endTime: '18:00', timezone: 'Asia/Kolkata', createdAt: ago(300) },
-    { id: 'ts_0002', name: 'Extended hours', days: [1,2,3,4,5,6], startTime: '07:00', endTime: '22:00', timezone: 'Asia/Kolkata', createdAt: ago(300) },
-    { id: 'ts_0003', name: 'Always', days: [0,1,2,3,4,5,6], startTime: '00:00', endTime: '23:59', timezone: 'UTC', createdAt: ago(300) }
+    { id: 'ts_0001', name: 'Business hours', days: [1, 2, 3, 4, 5],
+      startTime: '09:00', endTime: '18:30',
+      timezone: '(UTC+05:30) Indian Standard Time', createdAt: ago(300) },
+    { id: 'ts_0002', name: 'Extended hours', days: [1, 2, 3, 4, 5, 6],
+      startTime: '07:00', endTime: '22:00',
+      timezone: '(UTC+05:30) Indian Standard Time', createdAt: ago(300) },
+    { id: 'ts_0003', name: 'Night shift', days: [1, 2, 3, 4, 5],
+      startTime: '22:00', endTime: '06:00',
+      timezone: '(UTC+05:30) Indian Standard Time', createdAt: ago(280) },
+    { id: 'ts_0004', name: 'Weekends only', days: [6, 0],
+      startTime: '08:00', endTime: '20:00',
+      timezone: '(UTC+00:00) Coordinated Universal Time', createdAt: ago(260) },
+    { id: 'ts_0005', name: 'Always', days: [0, 1, 2, 3, 4, 5, 6],
+      startTime: '00:00', endTime: '23:59',
+      timezone: '(UTC+00:00) Coordinated Universal Time', createdAt: ago(300) }
   ]
 }
 

@@ -52,8 +52,14 @@ export function evaluatePosture (checks, posture) {
 const hasId = (ids, want) =>
   Array.isArray(ids) && ids.length > 0 && (want || []).some(w => ids.includes(w))
 
-const nameIn = (field, name) =>
-  Array.isArray(field) ? field.includes(name) : field === name
+/* Either side may be a list: the rule's `source` is a comma-joined display
+   string or an array, and a user belongs to several groups. */
+const nameIn = (field, name) => {
+  const have = Array.isArray(field) ? field
+    : String(field || '').split(',').map(x => x.trim()).filter(Boolean)
+  const want = Array.isArray(name) ? name : [name]
+  return have.some(h => want.includes(h))
+}
 
 /**
  * Access evaluation.
@@ -66,7 +72,36 @@ const nameIn = (field, name) =>
  * A critical posture failure overrides an allow. It cannot override a deny,
  * because nothing should be able to.
  */
-export function evaluateAccess ({ user, application, groups, rules, postureVerdict }) {
+/**
+ * Does a schedule cover this moment?
+ *
+ * A rule can name a shift schedule, the access explorer prints "only during
+ * Business hours" underneath it, and nothing ever checked — the engine did
+ * not look at schedules at all, so a rule limited to office hours allowed at
+ * three in the morning. The screen said one thing and the engine did another,
+ * which is worse than not having the feature.
+ *
+ * Days are 0-6 from Sunday, matching Date#getDay. A window whose end is
+ * before its start runs through midnight, which is what a night shift is.
+ */
+export function scheduleCovers (schedule, at = new Date()) {
+  if (!schedule) return true                       // no schedule means always
+  const days = schedule.days
+  if (Array.isArray(days) && days.length && !days.includes(at.getDay())) return false
+
+  const mins = (t) => {
+    const [h, m] = String(t || '').split(':').map(Number)
+    return Number.isFinite(h) ? h * 60 + (m || 0) : null
+  }
+  const from = mins(schedule.startTime)
+  const to = mins(schedule.endTime)
+  if (from === null || to === null) return true
+
+  const now = at.getHours() * 60 + at.getMinutes()
+  return from <= to ? (now >= from && now <= to) : (now >= from || now <= to)
+}
+
+export function evaluateAccess ({ user, application, groups, rules, schedules, postureVerdict, at }) {
   if (!user || !application) {
     return { ok: false, error: 'Pick a user and an application.' }
   }
@@ -82,15 +117,34 @@ export function evaluateAccess ({ user, application, groups, rules, postureVerdi
   const considered = []
   let decision = null
 
+  const byName = new Map((schedules || []).map(s => [s.name, s]))
+  const when = at || new Date()
+
   for (const rule of ordered) {
+    /* Rules written in this console point at ids; rules that predate that
+       carry names only. Match ids first and fall back, because silently
+       failing to match an older rule turns a working policy into a deny. */
     const sourceHit =
-      (rule.sourceType === 'group' && userGroupNames.includes(rule.source)) ||
-      (rule.sourceType === 'user' && rule.source === user.username)
-    const destHit = rule.destType === 'application' && rule.dest === application.name
-    const matched = sourceHit && destHit
+      (rule.sourceType === 'group' &&
+        (hasId(rule.sourceIds, user.groups) || nameIn(rule.source, userGroupNames))) ||
+      (rule.sourceType === 'user' &&
+        (hasId(rule.sourceIds, [user.id]) || nameIn(rule.source, user.username)))
+
+    const destHit =
+      (rule.destType === 'application' || rule.destType === 'application-group') &&
+      (hasId(rule.destIds, [application.id]) || nameIn(rule.dest, application.name))
+
+    /* A rule outside its shift window is not a rule right now. It is reported
+       as considered-but-out-of-hours rather than dropped, because "why did
+       this not apply" is the question the explorer exists to answer. */
+    const sched = rule.schedule && rule.schedule !== 'Always' ? byName.get(rule.schedule) : null
+    const inWindow = scheduleCovers(sched, when)
+    const matched = sourceHit && destHit && inWindow
+
     considered.push({
       ...rule,
       matched,
+      outOfHours: sourceHit && destHit && !inWindow,
       skippedBy: matched && decision ? decision.id : null
     })
     if (matched && !decision) decision = rule

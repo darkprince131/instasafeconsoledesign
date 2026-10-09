@@ -59,6 +59,7 @@ function blankForm () {
   const out = {}
   for (const f of cfg.value?.form || []) {
     out[f.key] = f.type === 'switch' ? false
+      : f.type === 'days' ? []
       : f.type === 'pick' ? (f.multiple === false ? '' : [])
       : ''
   }
@@ -257,6 +258,19 @@ function onPickLocation (p) {
   if (!form.value.radiusMetres) form.value.radiusMetres = 500
 }
 
+/* Sunday first, matching Date#getDay, so the stored numbers mean what the
+   engine thinks they mean. */
+const DAYS = [
+  { n: 1, label: 'Monday' }, { n: 2, label: 'Tuesday' }, { n: 3, label: 'Wednesday' },
+  { n: 4, label: 'Thursday' }, { n: 5, label: 'Friday' },
+  { n: 6, label: 'Saturday' }, { n: 0, label: 'Sunday' }
+]
+
+function toggleDay (key, n) {
+  const have = Array.isArray(form.value[key]) ? form.value[key] : []
+  form.value[key] = have.includes(n) ? have.filter(x => x !== n) : [...have, n].sort()
+}
+
 function pickFilters (f) {
   if (typeof f.filters === 'function') return f.filters(form.value) || {}
   return f.filters || {}
@@ -421,8 +435,25 @@ onMounted(load)
                not a select. Membership is edited here, inside the parent's
                form, so a group and the users in it are one object you save
                once. -->
+          <!-- A toggle per day. The `days` array was in the model and in the
+               table and had no control anywhere, so a schedule could be
+               created without days and would then match nothing, for ever. -->
+          <div v-if="f.type === 'days'" class="i-field">
+            <label>{{ f.label }}<span v-if="f.required" class="i-req">*</span></label>
+            <div class="i-days">
+              <label v-for="d in DAYS" :key="d.n" class="i-sw">
+                <input
+                  type="checkbox"
+                  :checked="(form[f.key] || []).includes(d.n)"
+                  @change="toggleDay(f.key, d.n)"
+                ><span class="i-track" />{{ d.label }}
+              </label>
+            </div>
+            <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
+          </div>
+
           <LocationPicker
-            v-if="f.type === 'location'"
+            v-else-if="f.type === 'location'"
             :lat="form.lat" :lon="form.lon" :radius="form.radiusMetres"
             @pick="onPickLocation"
           />

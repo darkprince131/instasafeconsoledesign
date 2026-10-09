@@ -240,11 +240,14 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
       }
 
       if (name === 'accessRules.evaluate') {
-        const [user, application, groupsRes, rulesRes] = await Promise.all([
+        const [user, application, groupsRes, rulesRes, schedRes] = await Promise.all([
           request(`/users/${payload.userId}`),
           request(`/applications/${payload.applicationId}`),
           request('/groups', { params: { perPage: 0 } }),
-          request('/accessRules', { params: { perPage: 0 } })
+          request('/accessRules', { params: { perPage: 0 } }),
+          /* A rule can be limited to a shift. Without the schedules here the
+             engine cannot tell whether it is in its window. */
+          request('/timeSchedules', { params: { perPage: 0 } })
         ])
         let postureVerdict = null
         if (payload.posture) {
@@ -252,7 +255,8 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
           postureVerdict = evaluatePosture(checks, payload.posture)
         }
         const result = evaluateAccess({
-          user, application, groups: groupsRes.data, rules: rulesRes.data, postureVerdict
+          user, application, groups: groupsRes.data, rules: rulesRes.data,
+          schedules: schedRes.data, postureVerdict
         })
         if (result.ok) {
           await this.call('events.record', {

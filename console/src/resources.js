@@ -10,6 +10,30 @@
  */
 
 const dash = '—'
+
+/* Velto offers a full UTC-offset list rather than IANA names, which is the
+   right call for a field somebody picks from a dropdown: "(UTC+05:30) Indian
+   Standard Time" is readable and "Asia/Kolkata" is a lookup. */
+const TIMEZONES = [
+  '(UTC-11:00) Niue Time',
+  '(UTC-10:00) Hawaii-Aleutian Time',
+  '(UTC-08:00) Pacific Standard Time',
+  '(UTC-07:00) Mountain Standard Time',
+  '(UTC-06:00) Central Standard Time',
+  '(UTC-05:00) Eastern Standard Time',
+  '(UTC-03:00) Argentina Time',
+  '(UTC+00:00) Coordinated Universal Time',
+  '(UTC+01:00) Central European Time',
+  '(UTC+02:00) Eastern European Time',
+  '(UTC+03:00) Moscow Standard Time',
+  '(UTC+04:00) Gulf Standard Time',
+  '(UTC+05:30) Indian Standard Time',
+  '(UTC+07:00) Indochina Time',
+  '(UTC+08:00) China Standard Time',
+  '(UTC+09:00) Japan Standard Time',
+  '(UTC+10:00) Australian Eastern Time',
+  '(UTC+12:00) New Zealand Standard Time'
+]
 const fmtDate = (v) => v ? new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : dash
 const fmtAgo = (v) => {
   if (!v) return 'never'
@@ -384,26 +408,50 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Shift schedules.
+   *
+   * `days` was in the data model and rendered in the table, and the form had
+   * no control for it at all — so a schedule could be saved with no days,
+   * after which it matched nothing, for ever, silently. Velto's form has a
+   * toggle per day under "Schedule Days/Time", and that is what this is.
+   *
+   * One start and end for the whole schedule rather than per day: toggling a
+   * day in velto reveals no extra time fields, despite the label implying it.
+   * A window whose end precedes its start runs through midnight, which is how
+   * a night shift is expressed.
+   */
   '/time-schedules': {
-    singular: 'schedule',
-    formSubtitle: 'Access rules can reference a schedule; outside it they do not match.',
+    singular: 'shift schedule',
+    formSubtitle: 'A window access rules can be limited to. Outside it, a rule naming this schedule does not match.',
     form: [
-      { key: 'name', label: 'Schedule name', required: true, placeholder: 'Business hours' },
-      { key: 'startTime', label: 'From', placeholder: '09:00' },
-      { key: 'endTime', label: 'To', placeholder: '18:00' },
-      { key: 'timezone', label: 'Timezone',
-        options: ['Asia/Kolkata', 'UTC', 'Europe/London', 'America/New_York'] }
+      { key: 'name', label: 'Name', required: true, placeholder: 'morning_shift' },
+      { key: 'timezone', label: 'Timezone', required: true, options: TIMEZONES },
+      { key: 'startTime', label: 'Start time', required: true, placeholder: '09:00' },
+      { key: 'endTime', label: 'End time', required: true, placeholder: '18:30',
+        hint: 'An end before the start runs through midnight — which is what a night shift is.' },
+      { key: 'days', label: 'Schedule days', type: 'days', required: true,
+        hint: 'A schedule with no days selected matches nothing.' }
     ],
-    title: 'Time schedules',
-    subtitle: 'Access windows. Referenced by access rules, and genuinely enforced at evaluation.',
+    title: 'Shift schedules',
+    subtitle: 'Access windows. Referenced by access rules and enforced when one is evaluated.',
     resource: 'timeSchedules',
     primaryAction: 'Add schedule',
+    searchFields: ['name', 'timezone'],
+    emptyTitle: 'No shift schedules',
+    emptyBody: 'Add one to limit an access rule to certain days and hours.',
     columns: [
-      { key: 'name', label: 'Schedule', bold: true },
-      { key: 'days', label: 'Days', cell: (v) => (v || []).map(d => 'SMTWTFS'[d]).join(' ') , mono: true },
-      { key: 'startTime', label: 'From', mono: true },
-      { key: 'endTime', label: 'To', mono: true },
-      { key: 'timezone', label: 'Timezone' }
+      { key: 'name', label: 'Name', bold: true },
+      /* Velto prints "Mon, Tue, Wed, Thu, Fri,". The previous format mapped
+         onto SMTWTFS, where the two Ts and the two Ss are the same letter. */
+      { key: 'days', label: 'Days',
+        cell: (v) => (v || []).length
+          ? [1, 2, 3, 4, 5, 6, 0].filter(d => v.includes(d))
+              .map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')
+          : 'none' },
+      { key: 'startTime', label: 'Start time', mono: true },
+      { key: 'endTime', label: 'End time', mono: true },
+      { key: 'timezone', label: 'Timezone', dim: true }
     ]
   },
 

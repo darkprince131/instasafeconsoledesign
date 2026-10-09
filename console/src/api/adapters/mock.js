@@ -339,65 +339,41 @@ const handlers = {
    * the decision plus the rule that made it and every rule considered — which
    * is the question the real console cannot answer today.
    */
+  /**
+   * Access evaluation, through the shared engine.
+   *
+   * This used to be a second, hand-written copy of the matcher that happened
+   * to live here — the module imported `evaluateAccess` and then never called
+   * it. So every fix to the engine reached the deployed Postgres path and not
+   * this one, and the two could answer the same question differently. One
+   * engine now; this only fetches what it needs and records the outcome.
+   */
   async 'accessRules.evaluate' ({ userId, applicationId, at, posture: rawPosture }) {
     const posture = plain(rawPosture)
     const user = await db.get('users', userId)
     const app = await db.get('applications', applicationId)
     if (!user || !app) return { ok: false, error: 'Pick a user and an application.' }
 
-    const groups = await db.all('groups')
-    const rules = (await db.all('accessRules'))
-      .filter(r => r.enabled)
-      .sort((a, b) => a.priority - b.priority)
+    const [groups, rules, schedules] = await Promise.all([
+      db.all('groups'), db.all('accessRules'), db.all('timeSchedules')
+    ])
 
-    const userGroupNames = groups
-      .filter(g => (user.groups || []).includes(g.id) || g.name === user.department)
-      .map(g => g.name)
-
-    const considered = []
-    let decision = null
-
-    for (const rule of rules) {
-      const sourceHit =
-        (rule.sourceType === 'group' && userGroupNames.includes(rule.source)) ||
-        (rule.sourceType === 'user' && rule.source === user.username)
-      const destHit = rule.destType === 'application' && rule.dest === app.name
-      const hit = sourceHit && destHit
-      considered.push({ ...rule, matched: hit, skippedBy: hit && decision ? decision.id : null })
-      if (hit && !decision) decision = rule
-    }
-
-    // posture gate — a critical failure overrides an allow
     let postureVerdict = null
-    if (posture) {
-      postureVerdict = await handlers['deviceChecks.evaluate']({ posture })
+    if (posture) postureVerdict = await handlers['deviceChecks.evaluate']({ posture })
+
+    const result = evaluateAccess({
+      user, application: app, groups, rules, schedules, postureVerdict,
+      at: at ? new Date(at) : undefined
+    })
+
+    if (result.ok) {
+      await record(
+        result.outcome === 'allow' ? 'access.granted' : 'access.denied',
+        `${user.firstName} ${user.lastName} ${result.outcome === 'allow' ? 'reached' : 'was denied'} ${app.name}`,
+        { severity: result.outcome === 'allow' ? 'info' : 'warning', actor: user.username }
+      )
     }
-
-    let outcome = decision ? decision.action : 'deny'
-    let because = decision
-      ? `Rule #${decision.priority} "${decision.name}" (${decision.action})`
-      : 'No rule matched. Default policy is deny.'
-
-    if (outcome === 'allow' && postureVerdict?.verdict === 'blocked') {
-      outcome = 'deny'
-      because = `Rule #${decision.priority} allows this, but the device failed posture: ${postureVerdict.reason}`
-    }
-
-    await record(
-      outcome === 'allow' ? 'access.granted' : 'access.denied',
-      `${user.firstName} ${user.lastName} ${outcome === 'allow' ? 'reached' : 'was denied'} ${app.name}`,
-      { severity: outcome === 'allow' ? 'info' : 'warning', actor: user.username }
-    )
-
-    return {
-      ok: true, outcome, because,
-      user: { id: user.id, name: `${user.firstName} ${user.lastName}`, groups: userGroupNames },
-      application: { id: app.id, name: app.name, type: app.type },
-      decidedBy: decision || null,
-      considered,
-      posture: postureVerdict,
-      shadowed: considered.filter(c => c.matched && c.skippedBy)
-    }
+    return result
   },
 
   // ---- controllers ---------------------------------------------------
