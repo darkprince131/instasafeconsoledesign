@@ -447,12 +447,25 @@ Microsoft Windows and Mac OS) and the geo-fence field set.
   otherwise a Registry policy saves against macOS. Added the value field velto
   implies and does not label: what it asks for changes with the type instead
   of being a box called "value".
-- **Geo-fences** got the location search behind velto's "Want Map". It is not
-  a map and does not claim to be — drawing one means shipping border data or
-  fetching third-party tiles on every edit, and this console does neither. It
-  is a searchable gazetteer over the places the tenant reports from, plotted
-  on a graticule with the fence drawn to scale. The ring is a true ellipse,
-  since a degree of longitude narrows with latitude.
+- **Geo-fences** got a real map — on the second attempt. The first read the
+  field labels and never pressed "Want Map", so it shipped a graticule with
+  dots. Velto opens a **Google Map** with the fence drawn as a translucent
+  circle, a draggable pin and a location search over the top. The circle is
+  the point: a radius means nothing until you see what it covers.
+
+  Two mistakes, both corrected. The other was the unit — velto's field is
+  **Radius (In Meters)** and this stored kilometres, so every fence was a
+  thousand times the size it claimed. `radius_metres` now sits beside the old
+  `radius_km` rather than converting it; a silent unit change on live rows is
+  how a 500m fence becomes 500km.
+
+  Built on **Leaflet + OpenStreetMap**, not Google. The Google Maps JS API
+  needs a key tied to a billing account, and that key ships in client-side
+  JavaScript on a public demo where anyone can lift it. Leaflet is BSD, OSM
+  tiles are free with attribution, neither needs a key, and `L.circle` takes
+  metres. Geocoding is Nominatim — free, keyless, debounced to respect its
+  rate policy. Loaded on demand, since Leaflet is ~150KB and one screen needs
+  it.
 - **Gateways** got the licence wall. Add at the limit opens *"Maximum gateway
   limit reached"* instead of a form. A quota that only fails on save lets
   somebody fill in the whole thing and then be told it was wasted; this costs
