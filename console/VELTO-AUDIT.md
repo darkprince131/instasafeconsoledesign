@@ -396,6 +396,59 @@ created the user without leaving the half-written rule, saved a rule with two
 sources — one existing, one just made — and the access explorer then resolved
 that user correctly through their group.
 
+## 19. The remaining form sweep
+
+Six forms opened in velto. Two were materially wrong, two matched, two are
+captured but not yet built.
+
+**Applications — WRONG, now fixed.** One flat shape (name, host, port) for
+every type. Wrong in both directions: it asked a web application for a port it
+does not need, and never asked a database for its driver or a file share for
+its share name, without which neither can be reached.
+
+| Type | Fields |
+|---|---|
+| `FQDN` | domain name · ports (comma-separated, ranges allowed) |
+| `WEB` | URL · landing page · Direct Access · Use Internal IP |
+| `RDP` `SSH` `VNC` | IP address · port |
+| `DB` | **driver** · host · port |
+| `WFS` | host · **share** · **domain** |
+
+The data controls vary with the type too: `Block Copy Paste`, `Insert
+Watermark`, `Session Recording`, `Block Downloads`, plus a `Logo` upload. Each
+type offers only the ones that mean something — recording a file share does
+not.
+
+Columns: `Name · Type · IP / FQDN / URL / Host · Port / Landing Page`.
+Toolbar adds **Bulk Add**.
+
+**Device updates — WRONG, now fixed.** Built as "which agent version each
+platform should run". That is a guess at the name, not the feature. Velto
+pushes a *file*:
+
+```
+Name · Filename · File to be Pushed (upload) · Status · Arguments ·
+Install Schedule (Immediate | After-Reboot | Uninstall) ·
+Post Validation Check (Registry Key present | File present) · Check Value
+```
+
+The post-install check is the part worth having: a push without one reports
+success when the installer silently failed.
+
+**Matched already:** app blocker (`Name · OS · App Name`, OS limited to
+Microsoft Windows and Mac OS) and the geo-fence field set.
+
+**Captured, not built:**
+
+- **Device policy** types depend on OS — Windows gets `Registry · Script ·
+  Config · Command`, macOS and Linux get the last three. Registry being
+  Windows-only is correct and worth copying.
+- **Geo-fences** have a **Want Map** button and an "Enter a location" search,
+  so a fence can be placed on a map rather than by typing coordinates.
+- **Gateways** enforce a licence quota: Add opens *"Maximum Gateway limit
+  reached"* with a contact link rather than a form. Worth having — a quota
+  that only fails on save is worse than one that says so up front.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
