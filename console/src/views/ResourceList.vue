@@ -461,6 +461,7 @@ onMounted(load)
             v-else-if="f.type === 'pick'"
             v-model="form[f.key]"
             :resource="f.resource" :filters="pickFilters(f)"
+            :options="f.choices || null"
             :multiple="f.multiple !== false"
             :label="f.label" :required="f.required"
             :placeholder="f.placeholder || 'Search…'"

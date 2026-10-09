@@ -682,3 +682,31 @@ export function seedSoftwarePackages () {
     id: `pkg_${pad(i + 1)}`, name, version, platform, publisher, packageId, status
   }))
 }
+
+/**
+ * Risk profiles.
+ *
+ * Seeded at last: the screen was empty, so a feature that decides what the
+ * console does about a stolen credential showed nothing at all.
+ *
+ * The four below are deliberately graded, because the interesting thing about
+ * this screen is the gap between noticing and acting. Mailing an admin about
+ * a browser switch is reasonable; suspending an account for one is not, and
+ * the difference is the whole decision an admin makes here.
+ */
+export function seedRiskProfiles () {
+  return [
+    { id: 'rp_0001', name: 'Credential theft signals',
+      types: ['IP Switch', 'Browser Switch', 'Platform Switch', 'Login from Different Locations'],
+      action: 'Deny Access', createdAt: ago(200 + r() * 200) },
+    { id: 'rp_0002', name: 'Failed authentication',
+      types: ['Login Failure', 'MFA Failure'],
+      action: 'Email Admin', createdAt: ago(200 + r() * 200) },
+    { id: 'rp_0003', name: 'Untrusted device',
+      types: ['Device Check Failure', 'Device Bind Failure', 'Geo Bind Failure'],
+      action: 'Disconnect User', createdAt: ago(200 + r() * 200) },
+    { id: 'rp_0004', name: 'Policy violation',
+      types: ['User Access of Blocked Apps', 'Suspicious Activity', 'Long Inactivity Login'],
+      action: 'Suspend User', createdAt: ago(200 + r() * 200) }
+  ]
+}

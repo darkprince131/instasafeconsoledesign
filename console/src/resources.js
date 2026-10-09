@@ -14,6 +14,31 @@ const dash = '—'
 /* Velto offers a full UTC-offset list rather than IANA names, which is the
    right call for a field somebody picks from a dropdown: "(UTC+05:30) Indian
    Standard Time" is readable and "Asia/Kolkata" is a lookup. */
+/**
+ * The twelve risk events velto watches for, exactly as its picker lists them.
+ *
+ * Worth reading as a set: most are a *change* rather than a failure — a
+ * different browser, a different platform, a different IP, a login from
+ * somewhere new. That is the shape of a stolen credential, which is the thing
+ * these exist to catch.
+ */
+export const RISK_TYPES = [
+  'Login Failure',
+  'Device Check Failure',
+  'Device Bind Failure',
+  'Browser Switch',
+  'IP Switch',
+  'Long Inactivity Login',
+  'MFA Failure',
+  'Suspicious Activity',
+  'User Access of Blocked Apps',
+  'Platform Switch',
+  'Geo Bind Failure',
+  'Login from Different Locations'
+]
+
+export const RISK_ACTIONS = ['Email Admin', 'Deny Access', 'Suspend User', 'Disconnect User']
+
 const TIMEZONES = [
   '(UTC-11:00) Niue Time',
   '(UTC-10:00) Hawaii-Aleutian Time',
@@ -797,26 +822,46 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Risk profiles.
+   *
+   * This was invented: a weighted score built from posture, location and
+   * time, with four numbers to tune and a maximum to compare against. It
+   * reads plausibly and is not what the product does.
+   *
+   * Velto's model is simpler and better: a profile names some of twelve risk
+   * events, and one action to take when any of them happens. No weights, no
+   * threshold, nothing to tune — which matters, because a number like
+   * "maximum allowed score: 60" means nothing to the person setting it and
+   * cannot be explained to the person it locks out.
+   */
   '/risk-profiles': {
     singular: 'risk profile',
-    formSubtitle: 'A score built from device posture, location and time. Access rules can require a maximum.',
+    formSubtitle: 'Risk events to watch for, and what to do when one happens.',
     form: [
-      { key: 'name', label: 'Profile name', required: true, placeholder: 'Standard' },
-      { key: 'maxScore', label: 'Maximum allowed score', type: 'number', placeholder: '60' },
-      { key: 'weightPosture', label: 'Weight — device posture', type: 'number', placeholder: '50' },
-      { key: 'weightGeo', label: 'Weight — unusual location', type: 'number', placeholder: '30' },
-      { key: 'weightTime', label: 'Weight — outside hours', type: 'number', placeholder: '20' }
+      { key: 'name', label: 'Name', required: true, placeholder: 'High-risk sign-ins' },
+      { key: 'types', label: 'Types', type: 'pick', required: true,
+        choices: RISK_TYPES.map(t => ({ value: t, label: t })),
+        placeholder: 'Select risk types',
+        hint: 'Any one of these triggers the action below — they are not scored or combined.' },
+      { key: 'action', label: 'Action', required: true, options: RISK_ACTIONS,
+        hint: 'Suspend and Disconnect are not the same: one ends the session, the other locks the account.' }
     ],
     title: 'Risk profiles',
-    subtitle: 'How a session is scored, and the score above which it is refused.',
+    subtitle: 'What counts as risky, and what happens when it is seen.',
     resource: 'riskProfiles',
     primaryAction: 'Add profile',
+    searchFields: ['name', 'action'],
+    emptyTitle: 'No risk profiles',
+    emptyBody: 'Add one to act automatically on a failed device check, an IP switch or a sign-in from a new location.',
     columns: [
-      { key: 'name', label: 'Profile', bold: true },
-      { key: 'maxScore', label: 'Max score', align: 'right', mono: true },
-      { key: 'weightPosture', label: 'Posture', align: 'right', mono: true },
-      { key: 'weightGeo', label: 'Location', align: 'right', mono: true },
-      { key: 'weightTime', label: 'Time', align: 'right', mono: true }
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'types', label: 'Types',
+        cell: (v) => Array.isArray(v) ? (v.join(', ') || 'none') : (v || 'none') },
+      { key: 'action', label: 'Action',
+        /* Denying, suspending and disconnecting are interventions; mailing an
+           admin is a notification. Only the first three take a mark. */
+        pill: (v) => v && v !== 'Email Admin' ? 'bad' : null }
     ]
   },
 

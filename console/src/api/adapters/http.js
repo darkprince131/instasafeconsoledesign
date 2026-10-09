@@ -74,6 +74,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['authProfiles', seed.seedAuthProfiles()],
         ['deviceChecks', seed.seedDeviceChecks()],
         ['timeSchedules', seed.seedTimeSchedules()],
+        ['riskProfiles', seed.seedRiskProfiles()],
         ['geoFences', seed.seedGeoFences()],
         ['lockouts', seed.seedLockouts()],
         ['softwarePackages', seed.seedSoftwarePackages()],
