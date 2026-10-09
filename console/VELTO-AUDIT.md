@@ -510,6 +510,36 @@ A window whose end precedes its start runs through midnight, which is what a
 night shift is — the seed carries one, because that is the case a naive
 `start <= now <= end` gets wrong.
 
+## 21. Risk profiles were invented
+
+I had built a weighted score: a maximum allowed value and three weights for
+posture, location and time. It reads plausibly and is not what the product
+does.
+
+Velto: `Name · Types · Action`. A profile names some of **twelve risk events**
+and **one action**. No weights, no threshold, nothing to tune — which is the
+better design, because "maximum allowed score: 60" means nothing to the person
+setting it and cannot be explained to the person it locks out, whereas "an IP
+switch denies access" can.
+
+```
+Login Failure · Device Check Failure · Device Bind Failure · Browser Switch
+IP Switch · Long Inactivity Login · MFA Failure · Suspicious Activity
+User Access of Blocked Apps · Platform Switch · Geo Bind Failure
+Login from Different Locations
+```
+
+Actions: `Email Admin · Deny Access · Suspend User · Disconnect User`.
+
+Most of the twelve are a **change** rather than a failure — a different
+browser, platform, IP, or a login from somewhere new. That is the shape of a
+stolen credential, which is what they exist to catch.
+
+Rebuilt, and seeded: the screen had no rows, so a feature deciding what the
+console does about a stolen credential showed nothing at all. Only the three
+actions that intervene take a mark in the table; mailing an admin is a
+notification.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
