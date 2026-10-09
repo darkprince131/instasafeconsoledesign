@@ -438,16 +438,28 @@ success when the installer silently failed.
 **Matched already:** app blocker (`Name · OS · App Name`, OS limited to
 Microsoft Windows and Mac OS) and the geo-fence field set.
 
-**Captured, not built:**
+**Also captured — now built:**
 
-- **Device policy** types depend on OS — Windows gets `Registry · Script ·
-  Config · Command`, macOS and Linux get the last three. Registry being
-  Windows-only is correct and worth copying.
-- **Geo-fences** have a **Want Map** button and an "Enter a location" search,
-  so a fence can be placed on a map rather than by typing coordinates.
-- **Gateways** enforce a licence quota: Add opens *"Maximum Gateway limit
-  reached"* with a contact link rather than a form. Worth having — a quota
-  that only fails on save is worse than one that says so up front.
+- **Device policy** types depend on OS. Windows gets `Registry · Script ·
+  Config · Command`, macOS and Linux get the last three, because Registry is
+  a Windows idea. The shared form engine takes `options` as a function of the
+  form now and clears a dependent choice the new parent no longer offers —
+  otherwise a Registry policy saves against macOS. Added the value field velto
+  implies and does not label: what it asks for changes with the type instead
+  of being a box called "value".
+- **Geo-fences** got the location search behind velto's "Want Map". It is not
+  a map and does not claim to be — drawing one means shipping border data or
+  fetching third-party tiles on every edit, and this console does neither. It
+  is a searchable gazetteer over the places the tenant reports from, plotted
+  on a graticule with the fence drawn to scale. The ring is a true ellipse,
+  since a degree of longitude narrows with latitude.
+- **Gateways** got the licence wall. Add at the limit opens *"Maximum gateway
+  limit reached"* instead of a form. A quota that only fails on save lets
+  somebody fill in the whole thing and then be told it was wasted; this costs
+  one click. Declared in the resource config, so any screen can have one.
+
+**Still unknown:** the gateway Add form itself — velto's quota modal replaces
+it, so it could not be captured.
 
 ## Route coverage
 
