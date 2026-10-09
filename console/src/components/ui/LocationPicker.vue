@@ -1,196 +1,188 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 /**
- * Place a fence without typing coordinates.
+ * A real map, with the fence drawn on it.
  *
- * Velto puts a "Want Map" button beside the latitude and longitude fields,
- * and a location search above them. That is the right instinct: nobody knows
- * the decimal coordinates of their own office, and a field that demands them
- * is a field people guess at.
+ * Velto puts a Google Map behind "Want Map": a draggable pin, a translucent
+ * circle at the fence radius, and a location search over the top. The circle
+ * is the point — a radius in metres means nothing until you see what it
+ * covers, and "500" is either the car park or half the campus depending on
+ * where you are standing.
  *
- * What this is NOT is a map. Drawing one means either shipping a few hundred
- * kilobytes of borders or fetching tiles from a third party on every edit,
- * and this console loads neither. So it is honest about what it is: a
- * searchable gazetteer over the places this tenant actually has — the cities
- * its sessions and devices report from — plotted on a graticule with the
- * fence drawn to scale, so the radius is something you can see rather than a
- * number you hope is right.
+ * This uses Leaflet and OpenStreetMap rather than Google. Not for want of
+ * trying to match: the Google Maps JavaScript API needs a key tied to a
+ * billing account, and that key ships in client-side JavaScript on a public
+ * demo, where anyone can lift it and spend against the account behind it.
+ * Referrer restrictions reduce that without closing it. Leaflet is BSD, OSM
+ * tiles are free with attribution, neither needs a key, and L.circle takes
+ * its radius in metres — which is the unit velto stores.
  *
- * The radius ring is genuinely to scale. A degree of longitude narrows with
- * latitude, so the ring is an ellipse, and a 25km fence over Bengaluru is
- * visibly a different shape from one over Sydney.
+ * Geocoding is Nominatim, OSM's own, also free and also keyless. It asks for
+ * no more than one request a second, so the search is debounced rather than
+ * fired per keystroke.
  */
 
 const props = defineProps({
   lat: { type: [Number, String], default: null },
   lon: { type: [Number, String], default: null },
-  radiusKm: { type: [Number, String], default: 25 }
+  /** Metres, as velto stores it. */
+  radius: { type: [Number, String], default: 500 }
 })
 const emit = defineEmits(['pick'])
 
-/* The places this tenant reports from. Not a world gazetteer — these are the
-   cities its own sessions, devices and events carry, which is the set an
-   admin is actually going to fence. */
-const PLACES = [
-  ['Bengaluru', 'IN', 12.97, 77.59], ['Mumbai', 'IN', 19.08, 72.88],
-  ['Pune', 'IN', 18.52, 73.86], ['Delhi', 'IN', 28.61, 77.21],
-  ['Hyderabad', 'IN', 17.39, 78.49], ['Chennai', 'IN', 13.08, 80.27],
-  ['London', 'GB', 51.51, -0.13], ['Manchester', 'GB', 53.48, -2.24],
-  ['Frankfurt', 'DE', 50.11, 8.68], ['Berlin', 'DE', 52.52, 13.40],
-  ['Amsterdam', 'NL', 52.37, 4.90], ['Paris', 'FR', 48.86, 2.35],
-  ['Singapore', 'SG', 1.35, 103.82], ['Tokyo', 'JP', 35.68, 139.69],
-  ['New York', 'US', 40.71, -74.01], ['Austin', 'US', 30.27, -97.74],
-  ['San Francisco', 'US', 37.77, -122.42], ['Chicago', 'US', 41.88, -87.63],
-  ['Dubai', 'AE', 25.20, 55.27], ['Sydney', 'AU', -33.87, 151.21],
-  ['Melbourne', 'AU', -37.81, 144.96], ['Toronto', 'CA', 43.65, -79.38],
-  ['São Paulo', 'BR', -23.55, -46.63], ['Johannesburg', 'ZA', -26.20, 28.05]
-]
-
+const el = ref(null)
 const q = ref('')
+const results = ref([])
+const searching = ref(false)
 const open = ref(false)
+const failed = ref(false)
 
-const matches = computed(() => {
-  const t = q.value.trim().toLowerCase()
-  if (!t) return PLACES.slice(0, 8)
-  return PLACES.filter(([n, c]) =>
-    n.toLowerCase().includes(t) || c.toLowerCase() === t).slice(0, 8)
-})
+let map = null
+let marker = null
+let circle = null
 
-/* ---- the plot ---------------------------------------------------------- */
-const W = 620
-const H = 310
-const x = (lon) => ((Number(lon) + 180) / 360) * W
-const y = (lat) => ((90 - Number(lat)) / 180) * H
+const num = (v, d) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : d
+}
 
-const hasPoint = computed(() =>
-  props.lat !== null && props.lat !== '' && props.lon !== null && props.lon !== '')
+function draw () {
+  if (!map) return
+  const lat = num(props.lat, null)
+  const lon = num(props.lon, null)
+  if (lat === null || lon === null) {
+    if (marker) { marker.remove(); marker = null }
+    if (circle) { circle.remove(); circle = null }
+    return
+  }
+  const at = [lat, lon]
+  const r = Math.max(10, num(props.radius, 500))
 
-/** Kilometres to degrees, which is not the same in both directions. */
-const ring = computed(() => {
-  if (!hasPoint.value) return null
-  const km = Number(props.radiusKm) || 0
-  const dLat = km / 111
-  const dLon = km / (111 * Math.max(0.08, Math.cos(Number(props.lat) * Math.PI / 180)))
-  return {
-    cx: x(props.lon), cy: y(props.lat),
-    rx: Math.max(2.5, (dLon / 360) * W),
-    ry: Math.max(2.5, (dLat / 180) * H)
+  if (!marker) {
+    marker = L.marker(at, { draggable: true }).addTo(map)
+    /* Dragging the pin is the fastest way to nudge a fence onto the right
+       building, and it writes straight back into the form. */
+    marker.on('dragend', () => {
+      const p = marker.getLatLng()
+      emit('pick', { lat: round(p.lat), lon: round(p.lng) })
+    })
+  } else marker.setLatLng(at)
+
+  if (!circle) {
+    circle = L.circle(at, {
+      radius: r, color: '#5b4fd1', weight: 2, fillColor: '#5b4fd1', fillOpacity: 0.15
+    }).addTo(map)
+  } else {
+    circle.setLatLng(at)
+    circle.setRadius(r)
+  }
+
+  /* Frame the fence rather than the pin: a 50m circle and a 5km one need very
+     different zooms, and guessing one of them wrong makes the map useless. */
+  map.fitBounds(circle.getBounds(), { padding: [24, 24], maxZoom: 17 })
+}
+
+function round (n) { return Math.round(n * 1e6) / 1e6 }
+
+onMounted(async () => {
+  await nextTick()
+  try {
+    map = L.map(el.value, { attributionControl: true, scrollWheelZoom: true })
+      .setView([num(props.lat, 20), num(props.lon, 10)], props.lat ? 14 : 2)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map)
+
+    /* Clicking the map places the fence, which is what somebody reaches for
+       before they find any of the fields. */
+    map.on('click', (e) => emit('pick', { lat: round(e.latlng.lat), lon: round(e.latlng.lng) }))
+    draw()
+  } catch {
+    failed.value = true          // offline, blocked tiles: say so, do not hang
   }
 })
 
-function choose (p) {
-  const [name, cc, lat, lon] = p
+onUnmounted(() => { if (map) { map.remove(); map = null } })
+
+watch(() => [props.lat, props.lon, props.radius], draw)
+
+/* ---- search ------------------------------------------------------------ */
+let timer
+watch(q, (t) => {
+  clearTimeout(timer)
+  if (!t.trim() || t.trim().length < 3) { results.value = []; return }
+  searching.value = true
+  timer = setTimeout(() => lookup(t.trim()), 450)
+})
+
+async function lookup (t) {
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&q=' +
+      encodeURIComponent(t)
+    const res = await fetch(url, { headers: { Accept: 'application/json' } })
+    const json = await res.json()
+    if (q.value.trim() !== t) return
+    results.value = (json || []).map(r => ({
+      label: r.display_name, lat: Number(r.lat), lon: Number(r.lon)
+    }))
+  } catch {
+    results.value = []
+  } finally {
+    if (q.value.trim() === t) searching.value = false
+  }
+}
+
+function choose (r) {
   q.value = ''
+  results.value = []
   open.value = false
-  emit('pick', { city: name, countryCode: cc, lat, lon })
+  /* The first comma-separated part is the place; the rest is the postal tail
+     nobody wants in a field called City. */
+  emit('pick', { lat: round(r.lat), lon: round(r.lon), city: r.label.split(',')[0].trim() })
 }
-
-/** Clicking the plot places the fence where you clicked. */
-function onPlot (e) {
-  const box = e.currentTarget.getBoundingClientRect()
-  const lon = ((e.clientX - box.left) / box.width) * 360 - 180
-  const lat = 90 - ((e.clientY - box.top) / box.height) * 180
-  const near = nearest(lat, lon)
-  emit('pick', {
-    lat: Math.round(lat * 100) / 100,
-    lon: Math.round(lon * 100) / 100,
-    city: near ? near[0] : '',
-    countryCode: near ? near[1] : ''
-  })
-}
-
-/** Name the click after the closest known place, if it is close enough. */
-function nearest (lat, lon) {
-  let best = null, bestD = Infinity
-  for (const p of PLACES) {
-    const d = Math.hypot(p[2] - lat, p[3] - lon)
-    if (d < bestD) { bestD = d; best = p }
-  }
-  return bestD < 8 ? best : null
-}
-
-watch(() => props.lat, () => { open.value = false })
 </script>
 
 <template>
-  <div class="i-locpick">
-    <div class="i-field" style="margin-bottom:10px">
-      <label for="locq">Find a location</label>
-      <div class="i-pick" :class="{ 'is-open': open }">
-        <div class="i-pickbox" @click="open = true">
-          <i class="fa-solid fa-location-dot" aria-hidden="true"
-             style="color:var(--i-mute);font-size:12px" />
-          <input
-            id="locq" v-model="q" type="text" autocomplete="off"
-            placeholder="Search a city, or click the plot below"
-            @focus="open = true"
-          >
-        </div>
-        <div v-if="open" class="i-pickpop">
-          <button
-            v-for="p in matches" :key="p[0]"
-            type="button" class="i-pickrow" @click="choose(p)"
-          >
-            <span class="i-pickl">{{ p[0] }}</span>
-            <span class="i-pickh">{{ p[2].toFixed(2) }}, {{ p[3].toFixed(2) }}</span>
-          </button>
-          <p v-if="!matches.length" class="i-picknote">
-            No match. Click the plot to place it by hand.
-          </p>
-        </div>
+  <div class="i-field i-locpick">
+    <label for="locq">Find a location</label>
+
+    <div class="i-pick" :class="{ 'is-open': open && results.length }">
+      <div class="i-pickbox" @click="open = true">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"
+           style="color:var(--i-mute);font-size:12px" />
+        <input
+          id="locq" v-model="q" type="text" autocomplete="off"
+          placeholder="Search an address or place, or click the map"
+          @focus="open = true"
+        >
       </div>
-      <p class="i-hint">
-        The places this tenant reports from. Nobody knows their own office to
-        two decimal places.
-      </p>
+      <div v-if="open && (results.length || searching)" class="i-pickpop">
+        <button
+          v-for="r in results" :key="r.label"
+          type="button" class="i-pickrow" @click="choose(r)"
+        >
+          <span class="i-pickl">{{ r.label }}</span>
+        </button>
+        <p v-if="searching && !results.length" class="i-picknote">Searching…</p>
+      </div>
     </div>
 
-    <svg
-      :viewBox="`0 0 ${W} ${H}`" class="i-plot" role="img"
-      :aria-label="hasPoint
-        ? `Fence centred on ${lat}, ${lon} with a radius of ${radiusKm} kilometres`
-        : 'No location chosen yet'"
-      @click="onPlot"
-    >
-      <rect :width="W" :height="H" class="i-plotbg" />
+    <div ref="el" class="i-map" />
 
-      <!-- graticule, every 30° -->
-      <g class="i-plotgrid">
-        <line v-for="i in 11" :key="'v' + i" :x1="i * W / 12" :x2="i * W / 12" y1="0" :y2="H" />
-        <line v-for="i in 5" :key="'h' + i" x1="0" :x2="W" :y1="i * H / 6" :y2="i * H / 6" />
-      </g>
-      <line class="i-plotequator" x1="0" :x2="W" :y1="H / 2" :y2="H / 2" />
-
-      <!-- the places, so the plot has landmarks -->
-      <g>
-        <circle
-          v-for="p in PLACES" :key="p[0]"
-          :cx="x(p[3])" :cy="y(p[2])" r="1.8" class="i-plotcity"
-        />
-      </g>
-
-      <!-- the fence -->
-      <template v-if="ring">
-        <ellipse :cx="ring.cx" :cy="ring.cy" :rx="ring.rx" :ry="ring.ry" class="i-plotring" />
-        <circle :cx="ring.cx" :cy="ring.cy" r="3" class="i-plotpin" />
-      </template>
-
-      <text x="6" :y="H / 2 - 5" class="i-plotlabel">0°</text>
-      <text :x="W / 2 + 5" :y="12" class="i-plotlabel">0°</text>
-    </svg>
-
-    <p class="i-hint">
-      <template v-if="hasPoint">
-        Centred on <code class="i-tech">{{ Number(lat).toFixed(2) }}, {{ Number(lon).toFixed(2) }}</code>,
-        radius {{ radiusKm }} km — drawn to scale, which is why a fence near
-        the equator is rounder than one near a pole.
-      </template>
-      <template v-else>
-        Not a map: this console ships no border data and fetches no tiles. It
-        is a graticule with the places this tenant knows, which is enough to
-        put a fence somewhere deliberate.
-      </template>
+    <p v-if="failed" class="i-hint">
+      The map could not load — tiles are fetched from OpenStreetMap and
+      something is blocking them. The latitude, longitude and radius fields
+      below still work.
+    </p>
+    <p v-else class="i-hint">
+      Click the map or drag the pin to move the fence; the circle is the radius
+      below, drawn to scale. Map data from OpenStreetMap, which needs no API
+      key — Google's does, and that key would be readable by anyone using this
+      demo.
     </p>
   </div>
 </template>

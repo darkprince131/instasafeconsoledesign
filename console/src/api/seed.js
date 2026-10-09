@@ -446,7 +446,11 @@ export function seedGeoFences () {
     id: `gf_${pad(i + 1, 4)}`,
     name: `${city} office`,
     city, countryCode: cc, lat, lon,
-    radiusKm: 25, action: 'allow', enabled: true, createdAt: ago(200)
+    /* Metres, as velto stores them, and varied on purpose: 250m is a
+       building, 1.2km a campus, 5km a city centre. A column of identical
+       numbers teaches nobody what the field is for. */
+    radiusMetres: [250, 1200, 500, 5000][i] || 500,
+    action: 'allow', enabled: true, createdAt: ago(200)
   }))
 }
 

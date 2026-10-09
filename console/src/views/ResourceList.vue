@@ -1,12 +1,15 @@
 <script setup>
-import { ref, computed, watch, inject, onMounted } from 'vue'
+import { ref, computed, watch, inject, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
 import ListTools from '../components/ui/ListTools.vue'
 import PickList from '../components/ui/PickList.vue'
-import LocationPicker from '../components/ui/LocationPicker.vue'
+/* Leaflet is ~150KB and exactly one screen needs it. Loaded on demand, so
+   the chunk that carries the other 53 list screens does not grow by half
+   again for a map they never show. */
+const LocationPicker = defineAsyncComponent(() => import('../components/ui/LocationPicker.vue'))
 import GraphView from '../components/ui/GraphView.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
@@ -251,7 +254,7 @@ function onPickLocation (p) {
   form.value.lon = p.lon
   if (p.city) form.value.city = p.city
   if (p.countryCode) form.value.countryCode = p.countryCode
-  if (!form.value.radiusKm) form.value.radiusKm = 25
+  if (!form.value.radiusMetres) form.value.radiusMetres = 500
 }
 
 function pickFilters (f) {
@@ -420,7 +423,7 @@ onMounted(load)
                once. -->
           <LocationPicker
             v-if="f.type === 'location'"
-            :lat="form.lat" :lon="form.lon" :radius-km="form.radiusKm"
+            :lat="form.lat" :lon="form.lon" :radius="form.radiusMetres"
             @pick="onPickLocation"
           />
           <PickList

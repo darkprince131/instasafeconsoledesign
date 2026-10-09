@@ -385,7 +385,12 @@ async function ensureSchema () {
     ['applications', 'driver', 'text'],
     ['applications', 'share', 'text'],
     ['applications', 'domain', 'text'],
-    ['applications', 'block_downloads', 'boolean not null default false']
+    ['applications', 'block_downloads', 'boolean not null default false'],
+    /* Velto stores a fence radius in metres and this stored kilometres, so
+       every fence was a thousand times the size it claimed. Kept beside the
+       old column rather than converting it: a silent unit change on live
+       rows is how a 500m fence becomes 500km. */
+    ['geo_fences', 'radius_metres', 'integer not null default 500']
   ]) {
     await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
   }

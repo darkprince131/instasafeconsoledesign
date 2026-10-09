@@ -1222,3 +1222,14 @@ html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(25
 .i-plotring{ fill:var(--i-v600); fill-opacity:.16; stroke:var(--i-v600); stroke-width:1.5; }
 .i-plotpin{ fill:var(--i-v600); stroke:var(--i-canvas); stroke-width:1.5; }
 .i-plotlabel{ font-family:var(--i-sans); font-size:9px; fill:var(--i-mute); }
+/* the map */
+.i-map{
+  height:340px; margin-top:8px; border-radius:var(--i-r-ctl);
+  border:1px solid var(--i-rule-strong); overflow:hidden; z-index:0;
+}
+.i-map .leaflet-control-attribution{ font-size:10px; }
+/* Leaflet panes sit at z-index 400+ by default, which would ride over the
+   sheet they live inside. */
+.i-map .leaflet-pane,
+.i-map .leaflet-top,
+.i-map .leaflet-bottom{ z-index:1; }

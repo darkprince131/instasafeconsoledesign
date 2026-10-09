@@ -414,12 +414,18 @@ export const RESOURCES = {
        with a location search and a "Want Map" button so nobody has to know
        their own office to two decimal places. The picker below is that,
        honestly scoped — see LocationPicker.vue. */
+    /* Velto: Name, Radius (In Meters), Latitude, Longitude, with a Google Map
+       behind "Want Map" showing the fence as a circle. Metres, not
+       kilometres — this stored km, so every fence was a thousand times the
+       size it claimed. */
     form: [
       { key: 'name', label: 'Fence name', required: true, placeholder: 'Pune office' },
+      { key: 'radiusMetres', label: 'Radius in metres', type: 'number', required: true,
+        placeholder: '500',
+        hint: 'Drawn on the map above as you change it.' },
       { key: 'location', type: 'location', label: 'Location' },
       { key: 'lat', label: 'Latitude', required: true, placeholder: '18.52' },
       { key: 'lon', label: 'Longitude', required: true, placeholder: '73.86' },
-      { key: 'radiusKm', label: 'Radius in km', type: 'number', placeholder: '25' },
       { key: 'city', label: 'City', placeholder: 'Filled in by the search' },
       { key: 'countryCode', label: 'Country code', placeholder: 'IN' },
       { key: 'action', label: 'Action', options: ['allow', 'deny'] },
@@ -431,10 +437,11 @@ export const RESOURCES = {
     primaryAction: 'Add geo-fence',
     columns: [
       { key: 'name', label: 'Fence', bold: true },
-      { key: 'city', label: 'City' },
-      { key: 'countryCode', label: 'Country', mono: true },
-      { key: 'radiusKm', label: 'Radius', cell: (v) => `${v} km`, align: 'right', mono: true },
-      { key: 'action', label: 'Action', upper: true },
+      { key: 'lat', label: 'Latitude', mono: true },
+      { key: 'lon', label: 'Longitude', mono: true },
+      { key: 'radiusMetres', label: 'Fence radius (metres)', align: 'right', num: true },
+      { key: 'city', label: 'City', dim: true },
+      { key: 'action', label: 'Action', pill: (v) => v === 'deny' ? 'bad' : null },
       { key: 'enabled', label: 'Enabled', bool: true }
     ]
   },
