@@ -3,6 +3,7 @@ import { ref, computed, watch, inject, onMounted } from 'vue'
 import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
 import DataTable from '../../components/ui/DataTable.vue'
+import PickList from '../../components/ui/PickList.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 import Sheet from '../../components/ui/Sheet.vue'
@@ -39,14 +40,15 @@ const SOURCE_TYPES = [
   { key: 'group', label: 'User group' },
   { key: 'application', label: 'Application' }
 ]
+/* Velto's destination list, in its order. */
 const DEST_TYPES = [
   { key: 'application', label: 'Application' },
   { key: 'application-group', label: 'Application group' },
   { key: 'custom-application', label: 'Custom application' },
-  { key: 'url', label: 'URL filter' },
-  { key: 'content', label: 'Content filter' },
-  { key: 'filetype', label: 'File type filter' },
-  { key: 'domainlist', label: 'Domain list' }
+  { key: 'url-filter', label: 'URL filter' },
+  { key: 'content-filter', label: 'Content filter' },
+  { key: 'filetype-filter', label: 'File type filter' },
+  { key: 'domain-list', label: 'Domain list' }
 ]
 const ACTIONS = [
   { key: 'allow', label: 'Allow', hint: 'Traffic matching this rule is permitted.' },
@@ -61,12 +63,46 @@ const needsAddress = (t) => t === 'application' || t === 'custom-application'
 function blank () {
   return {
     name: '', priority: null,
-    sourceType: 'group', source: '',
-    destType: 'application', dest: '',
+    sourceType: 'user', sourceIds: [], source: [],
+    destType: 'application', destIds: [], dest: [],
     action: 'allow', schedule: 'Always', enabled: true,
     sourceAddress: '', destAddress: '', service: ''
   }
 }
+
+/**
+ * What each end of a rule points at.
+ *
+ * Velto's lists. Source is a person, a group of people, or an application
+ * acting on its own behalf; destination is an application, a group of them,
+ * or one of the four filter kinds. The pairing is the whole policy: this
+ * screen previously offered a single-value select over group names, so
+ * "these eight people may reach those two applications" — the commonest rule
+ * anybody writes — could not be expressed at all.
+ */
+const SOURCE_PICK = {
+  user: { resource: 'users', label: 'Users', labelKey: 'username', hintKey: 'department',
+          placeholder: 'Search by name, username or department', create: true },
+  group: { resource: 'groups', label: 'User groups', labelKey: 'name', hintKey: 'authType',
+           placeholder: 'Search user groups', create: true },
+  application: { resource: 'applications', label: 'Applications', labelKey: 'name', hintKey: 'host',
+                 placeholder: 'Search applications', create: true }
+}
+const DEST_PICK = {
+  application: { resource: 'applications', label: 'Applications', labelKey: 'name', hintKey: 'host',
+                 placeholder: 'Search applications', create: true },
+  'application-group': { resource: 'appGroups', label: 'Application groups', labelKey: 'name', hintKey: 'type',
+                         placeholder: 'Search application groups', create: true },
+  'url-filter': { resource: 'urlFilters', label: 'URL filters', labelKey: 'name', placeholder: 'Search URL filters' },
+  'content-filter': { resource: 'contentFilters', label: 'Content filters', labelKey: 'name', placeholder: 'Search content filters' },
+  'filetype-filter': { resource: 'fileTypeFilters', label: 'File type filters', labelKey: 'name', placeholder: 'Search file type filters' },
+  'domain-list': { resource: 'domainLists', label: 'Domain lists', labelKey: 'name', placeholder: 'Search domain lists' }
+}
+const sourcePick = computed(() => SOURCE_PICK[form.value.sourceType] || SOURCE_PICK.user)
+/* Custom application is the one destination with nothing to pick: it is an
+   address and a service typed by hand, which is what the fields below are
+   for. */
+const destPick = computed(() => DEST_PICK[form.value.destType] || null)
 
 const sources = ref([])
 const applications = ref([])
@@ -85,8 +121,12 @@ const columns = [
   { key: 'name', label: 'Rule', bold: true },
   { key: 'sourceType', label: 'Source type',
     cell: (v) => SOURCE_TYPES.find(s => s.key === v)?.label || v },
-  { key: 'source', label: 'Source' },
-  { key: 'dest', label: 'Destination' },
+  { key: 'source', label: 'Source',
+    cell: (v) => Array.isArray(v) ? (v.join(', ') || '—') : (v || '—') },
+  { key: 'destType', label: 'Dst type',
+    cell: (v) => DEST_TYPES.find(d => d.key === v)?.label || v },
+  { key: 'dest', label: 'Destination',
+    cell: (v) => Array.isArray(v) ? (v.join(', ') || '—') : (v || '—') },
   { key: 'schedule', label: 'Schedule', dim: true },
   { key: 'action', label: 'Action',
     cell: (v) => v.charAt(0).toUpperCase() + v.slice(1),
@@ -108,8 +148,8 @@ watch(search, () => { clearTimeout(timer); timer = setTimeout(() => { page.value
 watch([page, perPage], load)
 function onSort (k, d) { sort.value = k; dir.value = d; page.value = 1; load() }
 
-watch(() => form.value.sourceType, () => { form.value.source = '' })
-watch(() => form.value.destType, () => { form.value.dest = '' })
+watch(() => form.value.sourceType, () => { form.value.sourceIds = [] })
+watch(() => form.value.destType, () => { form.value.destIds = [] })
 
 async function openAdd () {
   form.value = blank()
@@ -121,21 +161,37 @@ async function openAdd () {
 }
 
 function openEdit (row) {
-  form.value = { ...blank(), ...row }
+  form.value = {
+    ...blank(), ...row,
+    source: typeof row.source === 'string' ? row.source.split(', ').filter(Boolean) : (row.source || []),
+    dest: typeof row.dest === 'string' ? row.dest.split(', ').filter(Boolean) : (row.dest || []),
+    sourceIds: row.sourceIds || [], destIds: row.destIds || []
+  }
   editingId.value = row.id
   sheetOpen.value = true
 }
 
 async function save () {
   if (!form.value.name) { toast('Give the rule a name', 'bad'); return }
-  if (!form.value.source || !form.value.dest) { toast('Pick a source and a destination', 'bad'); return }
+  if (!form.value.sourceIds?.length || !form.value.destIds?.length) {
+    toast('Pick at least one source and one destination', 'bad'); return
+  }
   saving.value = true
+  /* `source` and `dest` are text columns holding the names for display; the
+     picker gives them as arrays. Joined here rather than stored as arrays,
+     because changing a NOT NULL text column's type on a live table to gain
+     nothing but a comma is not worth the migration. */
+  const payload = {
+    ...form.value,
+    source: [].concat(form.value.source || []).join(', '),
+    dest: [].concat(form.value.dest || []).join(', ')
+  }
   try {
     if (editingId.value) {
-      await api.accessRules.update(editingId.value, { ...form.value })
+      await api.accessRules.update(editingId.value, payload)
       toast(form.value.name + ' updated')
     } else {
-      await api.accessRules.create({ ...form.value })
+      await api.accessRules.create(payload)
       toast(form.value.name + ' created')
     }
     sheetOpen.value = false
@@ -272,14 +328,15 @@ onMounted(async () => {
               <option v-for="t in SOURCE_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
             </select>
           </div>
-          <div class="i-field">
-            <label for="sv">Source <span class="i-req">*</span></label>
-            <select v-if="sourceOptions.length" id="sv" class="i-ctl" v-model="form.source">
-              <option value="">Select…</option>
-              <option v-for="o in sourceOptions" :key="o">{{ o }}</option>
-            </select>
-            <input v-else id="sv" class="i-ctl" v-model="form.source" placeholder="username">
-          </div>
+          <PickList
+            v-model="form.sourceIds"
+            v-model:labels="form.source"
+            :resource="sourcePick.resource"
+            :label="sourcePick.label" required multiple
+            :label-key="sourcePick.labelKey" :hint-key="sourcePick.hintKey || ''"
+            :placeholder="sourcePick.placeholder"
+            :allow-create="!!sourcePick.create"
+          />
         </div>
         <div v-if="needsAddress(form.sourceType)" class="i-frow">
           <div class="i-field">
@@ -300,14 +357,16 @@ onMounted(async () => {
               <option v-for="t in DEST_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
             </select>
           </div>
-          <div class="i-field">
-            <label for="dv">Destination <span class="i-req">*</span></label>
-            <select v-if="destOptions.length" id="dv" class="i-ctl" v-model="form.dest">
-              <option value="">Select…</option>
-              <option v-for="o in destOptions" :key="o">{{ o }}</option>
-            </select>
-            <input v-else id="dv" class="i-ctl" v-model="form.dest" placeholder="name or pattern">
-          </div>
+          <PickList
+            v-if="destPick"
+            v-model="form.destIds"
+            v-model:labels="form.dest"
+            :resource="destPick.resource"
+            :label="destPick.label" required multiple
+            :label-key="destPick.labelKey" :hint-key="destPick.hintKey || ''"
+            :placeholder="destPick.placeholder"
+            :allow-create="!!destPick.create"
+          />
         </div>
         <div v-if="needsAddress(form.destType)" class="i-frow">
           <div class="i-field">

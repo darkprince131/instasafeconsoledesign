@@ -278,10 +278,16 @@ export function seedAppServices () {
 export function seedAccessRules (groups, apps) {
   const out = []
   let n = 1
+  /* Rules carry ids as well as names now: the id is what the engine matches
+     on, the name is what a table can print without resolving anything. */
+  const groupId = (name) => groups.find(g => g.name === name)?.id
+  const appId = (name) => apps.find(a => a.name === name)?.id
   const rule = (sourceType, source, destType, dest, action, extra = {}) => out.push({
     id: `acl_${pad(n, 4)}`,
     name: `${source} → ${dest}`,
     sourceType, source, destType, dest, action,
+    sourceIds: [sourceType === 'group' ? groupId(source) : source].filter(Boolean),
+    destIds: [appId(dest)].filter(Boolean),
     priority: n++,
     enabled: true,
     schedule: extra.schedule || 'Always',

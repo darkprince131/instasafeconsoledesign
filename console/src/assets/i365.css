@@ -1198,3 +1198,13 @@ html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(25
   border:0; background:none; padding:0; font:inherit; font-size:inherit;
   color:var(--i-v700); text-decoration:underline; cursor:pointer;
 }
+/* "Create …" sits apart from the matches: it is a different kind of action. */
+.i-pickcreate{
+  border-top:1px solid var(--i-rule); margin-top:4px; border-radius:0 0 5px 5px;
+  color:var(--i-v700);
+}
+.i-pickcreate i{ font-size:10px; }
+.i-pickcreate .i-pickl{ color:var(--i-v700); }
+/* A sheet opened from inside a sheet sits above it, with its own scrim. */
+.i-scrim.is-nested{ z-index:74; }
+.i-sheet.is-nested{ z-index:75; }

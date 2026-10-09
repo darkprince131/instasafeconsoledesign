@@ -372,7 +372,9 @@ async function ensureSchema () {
     ['groups', 'device_updates', 'boolean not null default false'],
     ['groups', 'geo_binding', 'boolean not null default false'],
     ['groups', 'ip_restriction', 'boolean not null default false'],
-    ['groups', 'auto_suspend', 'boolean not null default false']
+    ['groups', 'auto_suspend', 'boolean not null default false'],
+    ['access_rules', 'source_ids', 'text[]'],
+    ['access_rules', 'dest_ids', 'text[]']
   ]) {
     await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
   }

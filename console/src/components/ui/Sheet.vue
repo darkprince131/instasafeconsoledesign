@@ -5,6 +5,9 @@
  */
 defineProps({
   open: Boolean,
+  /* A sheet opened from inside another sheet. Teleport gives this component
+     two roots, so a fallthrough class cannot reach either one. */
+  nested: Boolean,
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
   width: { type: String, default: '560px' }
@@ -16,9 +19,9 @@ function onKey (e) { if (e.key === 'Escape') emit('update:open', false) }
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="i-scrim" @click="emit('update:open', false)" />
+    <div v-if="open" class="i-scrim" :class="{ 'is-nested': nested }" @click="emit('update:open', false)" />
     <aside
-      v-if="open" class="i-sheet" role="dialog" aria-modal="true"
+      v-if="open" class="i-sheet" :class="{ 'is-nested': nested }" role="dialog" aria-modal="true"
       :style="{ width: `min(${width},100vw)` }"
       @keydown="onKey"
     >

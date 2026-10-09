@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import QuickCreate from './QuickCreate.vue'
 
 /**
  * A search-first picker, single or multiple.
@@ -39,11 +40,19 @@ const props = defineProps({
   hint: { type: String, default: '' },
   required: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
-  id: { type: String, default: () => `pl_${Math.random().toString(36).slice(2, 8)}` }
+  id: { type: String, default: () => `pl_${Math.random().toString(36).slice(2, 8)}` },
+  /* Offers "Create …" in the list. On for anything a person might legitimately
+     not have made yet; off where inventing a record mid-sentence makes no
+     sense, like picking which gateway an existing rule runs on. */
+  allowCreate: { type: Boolean, default: false }
 })
 
 /** string for single, string[] for multiple. */
 const model = defineModel({ default: null })
+/* The labels behind the chosen ids. A table showing "usr_00042" helps nobody,
+   and the alternative is every parent re-fetching the collection purely to
+   turn ids back into names it already had on screen. */
+const labels = defineModel('labels', { default: null })
 
 const all = ref([])
 const loading = ref(false)
@@ -60,6 +69,11 @@ const selected = computed(() => {
 
 const byValue = computed(() => new Map(all.value.map(o => [o.value, o])))
 const chips = computed(() => selected.value.map(v => byValue.value.get(v) || { value: v, label: v }))
+
+watch(chips, (c) => {
+  if (labels.value === undefined) return
+  labels.value = c.map(x => x.label)
+}, { deep: true })
 
 /**
  * Rank: something starting with the term beats something merely containing
@@ -146,7 +160,28 @@ function onKey (e) {
   }
 }
 
-function onDocClick (e) { if (box.value && !box.value.contains(e.target)) open.value = false }
+/* ---- create without leaving ------------------------------------------- */
+const creating = ref(false)
+
+function startCreate () {
+  open.value = false
+  creating.value = true
+}
+
+/** The new record joins the list and is selected, so the sentence continues. */
+function onCreated (rec) {
+  if (!rec) return
+  const o = {
+    value: rec[props.valueKey],
+    label: [rec.firstName, rec.lastName].filter(Boolean).join(' ') || rec[props.labelKey] || rec.username || rec.id,
+    hint: props.hintKey ? rec[props.hintKey] : (rec.username || '')
+  }
+  all.value = [o, ...all.value]
+  q.value = ''
+  choose(o)
+}
+
+function onDocClick (e) { if (box.value && !box.value.contains(e.target) && !creating.value) open.value = false }
 onMounted(() => document.addEventListener('mousedown', onDocClick))
 onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
 
@@ -200,6 +235,19 @@ function selectAllShown () {
           <span v-if="o.hint" class="i-pickh">{{ o.hint }}</span>
         </button>
 
+        <!-- The record you need may not exist yet. Sending somebody to
+             another screen to make it loses whatever they were drafting. -->
+        <button
+          v-if="allowCreate && !loading"
+          type="button" class="i-pickrow i-pickcreate" @click="startCreate"
+        >
+          <i class="fa-solid fa-plus" aria-hidden="true" />
+          <span class="i-pickl">
+            <template v-if="q.trim()">Create “{{ q.trim() }}”</template>
+            <template v-else>Create a new one</template>
+          </span>
+        </button>
+
         <p v-if="loading" class="i-picknote">Loading…</p>
         <p v-else-if="!matches.length" class="i-picknote">
           <template v-if="q.trim()">Nothing matches <strong>{{ q }}</strong>.</template>
@@ -211,6 +259,12 @@ function selectAllShown () {
         </p>
       </div>
     </div>
+
+    <QuickCreate
+      v-if="allowCreate"
+      v-model:open="creating" :resource="resource" :seed="q.trim()"
+      @created="onCreated"
+    />
 
     <p v-if="multiple && chips.length" class="i-hint">
       {{ chips.length }} selected.

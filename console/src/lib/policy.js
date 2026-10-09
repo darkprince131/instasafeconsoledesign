@@ -45,6 +45,16 @@ export function evaluatePosture (checks, posture) {
   }
 }
 
+/* A rule now names what it points at by id, and carries the names only so a
+   table has something to print. Ids are matched first; the name comparison
+   stays because rules seeded or imported before the change have no ids, and
+   silently refusing to match them would turn a working policy into a deny. */
+const hasId = (ids, want) =>
+  Array.isArray(ids) && ids.length > 0 && (want || []).some(w => ids.includes(w))
+
+const nameIn = (field, name) =>
+  Array.isArray(field) ? field.includes(name) : field === name
+
 /**
  * Access evaluation.
  *
