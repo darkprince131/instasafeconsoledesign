@@ -142,7 +142,7 @@ onMounted(load)
         <div class="i-stat">
           <div class="i-k">Sessions counted</div>
           <div class="i-v">{{ sessions.length.toLocaleString() }}</div>
-          <div class="i-n">live right now</div>
+          <div class="i-n">counted for this total</div>
         </div>
       </section>
 

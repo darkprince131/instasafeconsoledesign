@@ -309,6 +309,51 @@ One addition beyond velto: LDAP's **Protocol** column takes a coral mark on
 `TCP`. Port 389 over TCP is a plaintext bind, and it is the only value on that
 screen that is a security decision rather than a setting.
 
+## 15. Membership could not be edited at all — FIXED
+
+Neither "put a user in a group" nor "put an application in an application
+group" existed. Application groups had a name and a description and nothing
+else, so the screen was a list of empty labels and every access rule pointing
+at one pointed at nothing.
+
+Velto's model: **membership is a searchable multi-select inside the parent's
+form** — `Select Users…`, `Select Applications…` — so a group and what is in
+it are one object saved once, rather than a shell you then populate from
+somewhere else.
+
+**Application groups** also carry a **type**, and hold members of that type
+only:
+
+| Type | Holds |
+|---|---|
+| `NET` | IP address / network + Service-Port / Port Range, repeatable via **Add More** |
+| `FQDN` `WEB` `RDP` `SSH` `VNC` `DB` `WFS` | applications of that same type, multi-select |
+
+Toolbar is `Add · Bulk Add · CSV · Delete`. Columns are
+`Name · Type · IP-Network & Service - Port / Port Range / Application`.
+
+**User groups** columns: `Group · Auth-Type · Members · Access Rules · Two
+Factor Authentication · Device Binding · Device Checks`. Form: Name, Location,
+Description, SAML IDP Profile, **Users**, then thirteen policy switches — this
+console had three of them.
+
+Both rebuilt. The application picker narrows by the type chosen above it,
+because a WEB group offering an SSH host is an error the form should not
+permit. `groups` gained `member_ids` and the missing columns; without them the
+field is dropped on save with a 200.
+
+## 16. Long selects are not controls — FIXED
+
+The access explorer put 1,821 users in a `<select>`. You cannot scan it, you
+cannot type past the first letter, and reaching a name means dragging a
+scrollbar. A native select is right for eight options and wrong for eight
+hundred.
+
+Replaced with a search-first picker used everywhere a choice comes from a real
+collection: ranked so a prefix beats a substring, chips for what is selected,
+a hint column to tell nine people called Priya apart, "add all matching" for
+the tedious case, and arrow keys throughout.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
