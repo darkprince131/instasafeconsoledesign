@@ -88,8 +88,8 @@ const matches = computed(() => {
   const hits = []
   for (const o of pool) {
     const l = o.label.toLowerCase()
-    const h = (o.hint || '').toLowerCase()
-    const rank = l.startsWith(t) ? 0 : l.includes(t) ? 1 : h.includes(t) ? 2 : -1
+    const blob = o.search || `${l} ${(o.hint || '').toLowerCase()}`
+    const rank = l.startsWith(t) ? 0 : l.includes(t) ? 1 : blob.includes(t) ? 2 : -1
     if (rank >= 0) hits.push({ o, rank })
   }
   return hits.sort((a, b) => a.rank - b.rank).slice(0, 50).map(x => x.o)
@@ -107,11 +107,23 @@ async function load () {
     const api = (await import('../../api')).default
     const res = await api[props.resource].list({ perPage: 0, filters: props.filters })
     if (mine !== loadToken) return        // a newer request already won
-    all.value = (res.data || []).map(r => ({
-      value: r[props.valueKey],
-      label: [r.firstName, r.lastName].filter(Boolean).join(' ') || r[props.labelKey] || r.username || r.id,
-      hint: props.hintKey ? r[props.hintKey] : (r.username && r.username !== r[props.labelKey] ? r.username : '')
-    }))
+    all.value = (res.data || []).map(r => {
+      const label = [r.firstName, r.lastName].filter(Boolean).join(' ') ||
+        r[props.labelKey] || r.username || r.id
+      const hint = props.hintKey ? r[props.hintKey]
+        : (r.username && r.username !== r[props.labelKey] ? r.username : '')
+      /* Everything worth typing, whether or not it is on screen.
+         The access explorer shows a department as the hint, so searching a
+         username matched nothing — and because no match still leaves the
+         unfiltered list, it quietly selected whoever happened to be first.
+         A search that silently gives you the wrong person is worse than one
+         that finds nobody. */
+      return {
+        value: r[props.valueKey], label, hint,
+        search: [label, hint, r.username, r.email, r.name, r.host, r.type]
+          .filter(Boolean).join(' ').toLowerCase()
+      }
+    })
   } catch {
     if (mine === loadToken) all.value = []
   } finally {
