@@ -1233,3 +1233,11 @@ html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(25
 .i-map .leaflet-pane,
 .i-map .leaflet-top,
 .i-map .leaflet-bottom{ z-index:1; }
+/* Our own pin: no image assets to lose in a bundle. */
+.i-mappin{ background:none; border:0; }
+.i-mappin span{
+  display:block; width:16px; height:16px; border-radius:50%;
+  background:var(--i-v600); border:3px solid #fff;
+  box-shadow:0 1px 4px rgba(20,20,30,.45); cursor:grab;
+}
+.i-mappin span:active{ cursor:grabbing; }

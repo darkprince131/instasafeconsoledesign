@@ -33,6 +33,13 @@ const props = defineProps({
 })
 const emit = defineEmits(['pick'])
 
+const PIN = L.divIcon({
+  className: 'i-mappin',
+  html: '<span></span>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+})
+
 const el = ref(null)
 const q = ref('')
 const results = ref([])
@@ -62,7 +69,10 @@ function draw () {
   const r = Math.max(10, num(props.radius, 500))
 
   if (!marker) {
-    marker = L.marker(at, { draggable: true }).addTo(map)
+    /* Leaflet's default marker is three PNGs resolved from the stylesheet's
+       own URL, which a bundler rewrites and the icon then 404s — the familiar
+       broken-image pin. A div icon needs no assets and matches the console. */
+    marker = L.marker(at, { draggable: true, icon: PIN }).addTo(map)
     /* Dragging the pin is the fastest way to nudge a fence onto the right
        building, and it writes straight back into the form. */
     marker.on('dragend', () => {
