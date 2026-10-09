@@ -434,8 +434,18 @@ html[data-i-theme="dark"] .i-cmdpop{ box-shadow:none; outline:1px solid rgba(255
   border-top:1px solid var(--i-rule); border-bottom:1px solid var(--i-rule);
   margin:0 0 26px;
 }
-.i-stat{ padding:var(--i-s5) var(--i-s6) var(--i-s5) 0; border-right:1px solid var(--i-rule); }
-.i-stat:last-child{ border-right:0; }
+/* Padding on both sides, not just the right.
+   These had `padding-left: 0`, which is correct for the first card — it
+   bleeds to the page gutter like every row in this console — and wrong for
+   every other one, whose text then sat flush against the divider line of the
+   card before it. The separator needs air on both sides or it reads as an
+   underline on the text rather than a boundary between two things. */
+.i-stat{
+  padding:var(--i-s5) var(--i-s6);
+  border-right:1px solid var(--i-rule);
+}
+.i-stat:first-child{ padding-left:0; }
+.i-stat:last-child{ border-right:0; padding-right:0; }
 .i-stat .i-k{ font-size:var(--i-t-micro); color:var(--i-mute); margin-bottom:4px; }
 .i-stat .i-v{
   font-size:25px; font-weight:400; letter-spacing:-.022em;
@@ -450,9 +460,10 @@ html[data-i-theme="dark"] .i-cmdpop{ box-shadow:none; outline:1px solid rgba(255
 }
 .i-col > :last-child{ margin-bottom:0; }
 .i-col{
-  padding:var(--i-s5) var(--i-s6) var(--i-s5) 0;
+  padding:var(--i-s5) var(--i-s6);
   border-top:1px solid var(--i-rule); border-right:1px solid var(--i-rule);
 }
+.i-col:first-child{ padding-left:0; }
 .i-col:last-child{ border-right:0; padding-right:0; }
 .i-chead{ display:flex; align-items:baseline; gap:var(--i-s3); margin-bottom:var(--i-s4); }
 .i-chead h2{ margin:0; font-size:13px; font-weight:500; letter-spacing:-.006em; color:var(--i-ink); }
@@ -895,6 +906,8 @@ html[data-i-theme="dark"] .i-segb.is-on{ background:var(--i-raise,#232329); }
 }
 @media (max-width:991.98px){ .i-agrid{ grid-template-columns:1fr; } }
 .i-apanel{ min-width:0; }
+/* A grid row that wraps onto a second line must not start under the divider */
+.i-cols .i-barrow:last-child{ padding-bottom:0; }
 .i-apanel h3{
   margin:0; font-size:var(--i-t-body); font-weight:500;
   letter-spacing:var(--i-tr-body); color:var(--i-ink);
@@ -1128,3 +1141,60 @@ html[data-i-theme="dark"] .i-gbartrack{ background:rgba(255,255,255,.07); }
   padding-top:var(--i-s5);
 }
 @media (max-width:991.98px){ .i-trends{ grid-template-columns:1fr; } }
+
+/* ================== 20 · picker ================== */
+/* A native select is right for eight options and wrong for eight hundred.
+   This is what the long ones become: type to narrow, chips for what is in. */
+.i-pick{ position:relative; }
+.i-pickbox{
+  display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+  min-height:34px; padding:4px 8px; cursor:text;
+  border:1px solid var(--i-rule-strong); border-radius:var(--i-r-ctl);
+  background:var(--i-canvas); transition:border-color .16s ease;
+}
+.i-pickbox:hover{ border-color:var(--i-dim); }
+.i-pick.is-open .i-pickbox,
+.i-pickbox:focus-within{ border-color:var(--i-v600); box-shadow:0 0 0 3px var(--i-v50); }
+.i-pick.is-disabled .i-pickbox{ background:var(--i-tint); cursor:not-allowed; }
+.i-pickbox input{
+  flex:1; min-width:90px; border:0; outline:0; background:transparent;
+  font:inherit; font-size:var(--i-t-meta); color:var(--i-ink); padding:3px 0;
+}
+.i-pickbox input::placeholder{ color:var(--i-mute); }
+
+.i-pickchip{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:2px 4px 2px 8px; border-radius:99px;
+  background:var(--i-v50); color:var(--i-v700); font-size:var(--i-t-micro);
+}
+.i-pickx{
+  display:grid; place-items:center; width:15px; height:15px; border:0;
+  border-radius:50%; background:transparent; color:var(--i-v700);
+  font-size:9px; cursor:pointer;
+}
+.i-pickx:hover{ background:rgba(91,79,209,.16); }
+
+.i-pickpop{
+  position:absolute; top:calc(100% + 5px); left:0; right:0; z-index:70;
+  padding:4px; max-height:280px; overflow:auto;
+  border:1px solid var(--i-rule-strong); border-radius:var(--i-r-float);
+  background:var(--i-canvas); box-shadow:var(--i-float-lg);
+}
+html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(255,255,255,.09); }
+.i-pickall{ padding:3px 4px 6px; border-bottom:1px solid var(--i-rule); margin-bottom:4px; }
+.i-pickrow{
+  display:flex; align-items:baseline; gap:9px; width:100%;
+  padding:7px 9px; border:0; border-radius:5px; background:transparent;
+  font:inherit; text-align:left; color:var(--i-ink); cursor:pointer;
+}
+.i-pickrow.is-active{ background:var(--i-v50); }
+.i-pickl{ font-size:var(--i-t-meta); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.i-pickh{
+  margin-left:auto; font-family:var(--i-mono); font-size:var(--i-t-micro);
+  color:var(--i-mute); flex:none;
+}
+.i-picknote{ margin:0; padding:9px; font-size:var(--i-t-meta); color:var(--i-mute); }
+.i-linkbtn{
+  border:0; background:none; padding:0; font:inherit; font-size:inherit;
+  color:var(--i-v700); text-decoration:underline; cursor:pointer;
+}

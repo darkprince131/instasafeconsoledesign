@@ -127,7 +127,12 @@ export function seedGroups () {
   ]
   return rows.map(([id, name, authType]) => ({
     id, name, authType,
-    members: 0,                       // filled in by seedUsers
+    members: 0,                       // filled in by linkUsersToGroups
+    memberIds: [],                    // and so is this: the count alone could
+                                      // not answer "who is in this group"
+    location: pick(['Mumbai', 'Bengaluru', 'London', 'Singapore']),
+    description: `${name} team`,
+    deviceUpdates: false, geoBinding: false, ipRestriction: false, autoSuspend: false,
     twoFactor: name !== 'Contractors',
     deviceBinding: !['Contractors', 'Sales'].includes(name),
     deviceChecks: ['Administrators', 'Engineering', 'Finance', 'Executives', 'Security'].includes(name),
@@ -143,6 +148,7 @@ export function linkUsersToGroups (users, groups) {
     const g = byName[u.isAdmin ? 'Administrators' : u.department]
     if (!g) continue
     u.groups = [g.id]
+    g.memberIds.push(u.id)
     g.members += 1
   }
   return { users, groups }
@@ -193,6 +199,33 @@ export function seedDevices (users, count = 2140) {
 }
 
 // --------------------------------------------------------- applications
+/**
+ * Application groups, with members.
+ *
+ * These did not exist in the seed at all, so the screen was empty and every
+ * access rule pointing at a group pointed at nothing. A group holds
+ * applications of one type, which is velto's rule and the reason the picker
+ * narrows by it.
+ */
+export function seedAppGroups (apps) {
+  const byType = {}
+  for (const a of apps) (byType[a.type] ||= []).push(a)
+  const defs = [
+    ['Internal web apps', 'WEB', 'web', 'Everything behind the corporate SSO'],
+    ['Production servers', 'SSH', 'ssh', 'Shell access to the production estate'],
+    ['Windows jump hosts', 'RDP', 'rdp', 'Desktops reached over RDP'],
+    ['Support consoles', 'VNC', 'vnc', 'Screens the support team drives directly']
+  ]
+  return defs
+    .filter(([, , t]) => (byType[t] || []).length)
+    .map(([name, type, t, description], i) => ({
+      id: `apg_${pad(i + 1, 4)}`,
+      name, type, description,
+      memberIds: byType[t].map(a => a.id),
+      createdAt: ago(100 + r() * 300)
+    }))
+}
+
 export function seedApplications () {
   /* Columns: name, type, host, port, owner, recording, blockCopyPaste, watermark.
      The session controls are set deliberately rather than randomly: these three

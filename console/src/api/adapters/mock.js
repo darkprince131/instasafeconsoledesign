@@ -51,6 +51,7 @@ async function reseed () {
   await db.putMany('groups', groups)
   await db.putMany('devices', devices)
   await db.putMany('applications', apps)
+  await db.putMany('appGroups', seed.seedAppGroups(apps))
   await db.putMany('appServices', seed.seedAppServices())
   await db.putMany('accessRules', seed.seedAccessRules(groups, apps))
   await db.putMany('controllers', seed.seedControllers())

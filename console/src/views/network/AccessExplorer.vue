@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, inject } from 'vue'
+import { ref, onMounted, inject , watch} from 'vue'
+import PickList from '../../components/ui/PickList.vue'
 import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
 
@@ -56,6 +57,11 @@ onMounted(async () => {
   appId.value = a.data.find(x => x.name === 'Finance DB')?.id || a.data[0]?.id || ''
   run()
 })
+
+/* The pickers write straight to the model, so the evaluation follows the
+   selection rather than a change event on a select that no longer exists. */
+watch([userId, appId], () => { if (userId.value && appId.value) run() })
+
 </script>
 
 <template>
@@ -76,25 +82,27 @@ onMounted(async () => {
     <div class="row g-4">
       <div class="col-12 col-lg-5">
         <div class="i-formsec">
+          <!-- Not a select.
+               This held every user in the tenant — 1,821 of them in a control
+               you cannot scan, cannot type into beyond the first letter, and
+               have to drag a scrollbar through. The question this screen
+               answers always starts from a person somebody has in mind, so
+               the control has to start from their name. -->
           <div class="i-frow" style="grid-template-columns:1fr">
-            <div class="i-field">
-              <label for="u">User</label>
-              <select id="u" class="i-ctl" v-model="userId" @change="run">
-                <option v-for="u in users" :key="u.id" :value="u.id">
-                  {{ u.firstName }} {{ u.lastName }} — {{ u.department }}
-                </option>
-              </select>
-            </div>
+            <PickList
+              v-model="userId"
+              resource="users" :multiple="false"
+              label="User" label-key="username" hint-key="department"
+              placeholder="Search by name, username or department"
+            />
           </div>
           <div class="i-frow" style="grid-template-columns:1fr">
-            <div class="i-field">
-              <label for="a">Application</label>
-              <select id="a" class="i-ctl" v-model="appId" @change="run">
-                <option v-for="a in apps" :key="a.id" :value="a.id">
-                  {{ a.name }} ({{ a.type.toUpperCase() }})
-                </option>
-              </select>
-            </div>
+            <PickList
+              v-model="appId"
+              resource="applications" :multiple="false"
+              label="Application" label-key="name" hint-key="host"
+              placeholder="Search applications"
+            />
           </div>
 
           <label class="i-sw mt-2">

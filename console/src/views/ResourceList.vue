@@ -5,6 +5,7 @@ import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
 import ListTools from '../components/ui/ListTools.vue'
+import PickList from '../components/ui/PickList.vue'
 import GraphView from '../components/ui/GraphView.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
@@ -52,7 +53,11 @@ const editable = computed(() => Array.isArray(cfg.value?.form) && cfg.value.form
 
 function blankForm () {
   const out = {}
-  for (const f of cfg.value?.form || []) out[f.key] = f.type === 'switch' ? false : ''
+  for (const f of cfg.value?.form || []) {
+    out[f.key] = f.type === 'switch' ? false
+      : f.type === 'pick' ? (f.multiple === false ? '' : [])
+      : ''
+  }
   return out
 }
 
@@ -192,6 +197,18 @@ async function removeSelected () {
  * depend on. A fake "Synced 412 users" would be the one thing on this screen
  * that is not true.
  */
+/**
+ * A picker can narrow on what has already been filled in.
+ *
+ * An application group of type WEB should offer web applications and nothing
+ * else — offering all of them and failing on save is the version that wastes
+ * somebody's afternoon. `filters` may therefore be a function of the form.
+ */
+function pickFilters (f) {
+  if (typeof f.filters === 'function') return f.filters(form.value) || {}
+  return f.filters || {}
+}
+
 function runTool (t) {
   const says = {
     sync: 'Sync would bind to the directory with the stored credentials and pull accounts and group membership. It needs a reachable domain controller, so it does nothing here.',
@@ -347,7 +364,23 @@ onMounted(load)
     >
       <div class="i-formsec">
         <div v-for="f in cfg.form" :key="f.key" class="i-frow" style="grid-template-columns:1fr">
-          <div class="i-field">
+          <!-- A field that picks from a collection gets a searchable picker,
+               not a select. Membership is edited here, inside the parent's
+               form, so a group and the users in it are one object you save
+               once. -->
+          <PickList
+            v-if="f.type === 'pick'"
+            v-model="form[f.key]"
+            :resource="f.resource" :filters="pickFilters(f)"
+            :multiple="f.multiple !== false"
+            :label="f.label" :required="f.required"
+            :placeholder="f.placeholder || 'Search…'"
+            :hint="f.hint || ''"
+            :label-key="f.labelKey || 'name'"
+            :value-key="f.valueKey || 'id'"
+            :hint-key="f.hintKey || ''"
+          />
+          <div v-else class="i-field">
             <label v-if="f.type !== 'switch'" :for="'rf_' + f.key">
               {{ f.label }}<span v-if="f.required" class="i-req">*</span>
             </label>

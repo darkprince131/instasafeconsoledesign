@@ -66,6 +66,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
       const batches = [
         ['groups', groups],
         ['applications', applications],
+        ['appGroups', seed.seedAppGroups(applications)],
         ['appServices', seed.seedAppServices()],
         ['accessRules', seed.seedAccessRules(groups, applications)],
         ['controllers', seed.seedControllers()],

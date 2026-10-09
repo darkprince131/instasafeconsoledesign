@@ -362,7 +362,17 @@ async function ensureSchema () {
     ['auth_profiles', 'redirect_uri', 'text'],
     ['auth_profiles', 'issuer_url', 'text'],
     ['auth_profiles', 'primary_auth', 'text'],
-    ['auth_profiles', 'fallback_auth', 'text']
+    ['auth_profiles', 'fallback_auth', 'text'],
+    /* Group membership, edited from the group's side. `members` was only ever
+       a count, so there was nothing to store when somebody actually picked
+       the people — the field would have been dropped on save, silently. */
+    ['groups', 'member_ids', 'text[]'],
+    ['groups', 'location', 'text'],
+    ['groups', 'description', 'text'],
+    ['groups', 'device_updates', 'boolean not null default false'],
+    ['groups', 'geo_binding', 'boolean not null default false'],
+    ['groups', 'ip_restriction', 'boolean not null default false'],
+    ['groups', 'auto_suspend', 'boolean not null default false']
   ]) {
     await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
   }

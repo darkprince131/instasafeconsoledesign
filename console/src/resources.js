@@ -273,14 +273,27 @@ export const RESOURCES = {
 
   '/usergroups': {
     singular: 'group',
-    formSubtitle: 'Policy set here is inherited by every member.',
+    formSubtitle: 'Policy set here is inherited by every member. Membership is part of the group, so both are saved together.',
+    /* Velto's field set. The one that was missing is `members`: without it
+       there was no way to put a user in a group from the group's side at all,
+       which is the side an admin works from when onboarding a team. */
     form: [
       { key: 'name', label: 'Group name', required: true, placeholder: 'Finance' },
+      { key: 'location', label: 'Location', placeholder: 'Mumbai' },
+      { key: 'description', label: 'Description', placeholder: 'What this group is for' },
       { key: 'authType', label: 'Authentication type',
         options: ['Local', 'Azure AD', 'RADIUS', 'LDAP', 'SAML', 'Google'] },
+      { key: 'memberIds', label: 'Users', type: 'pick', resource: 'users',
+        placeholder: 'Search by name, username or email',
+        labelKey: 'username', hintKey: 'username',
+        hint: 'Type to narrow. A native list of 1,821 names is not a control anybody can use.' },
       { key: 'twoFactor', label: 'Require two-factor', type: 'switch' },
       { key: 'deviceBinding', label: 'Bind members to their first device', type: 'switch' },
-      { key: 'deviceChecks', label: 'Run device posture checks', type: 'switch' }
+      { key: 'deviceChecks', label: 'Run device posture checks', type: 'switch' },
+      { key: 'deviceUpdates', label: 'Push device updates', type: 'switch' },
+      { key: 'geoBinding', label: 'Bind to a geography', type: 'switch' },
+      { key: 'ipRestriction', label: 'Restrict by source IP', type: 'switch' },
+      { key: 'autoSuspend', label: 'Auto-suspend idle members', type: 'switch' }
     ],
     title: 'User groups',
     subtitle: 'Groups carry policy. A user inherits every rule attached to every group they are in.',
@@ -542,19 +555,49 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Application groups.
+   *
+   * This had a name and a description and no way to put an application in
+   * one, which made the screen a list of empty labels — and the thing an
+   * access rule points at was therefore always empty.
+   *
+   * Velto's model: a group has a **type**, and it holds members of that type.
+   * NET groups hold addresses and the services reachable on them; every other
+   * type holds applications of that same type, chosen from a searchable list.
+   * A group does not mix types, which is why the picker narrows by it.
+   */
   '/application-groups': {
     singular: 'application group',
-    formSubtitle: 'Group applications so one access rule can cover several.',
+    formSubtitle: 'A group has a type and holds members of that type. One access rule pointing here covers all of them.',
     form: [
-      { key: 'name', label: 'Group name', required: true, placeholder: 'Finance systems' },
-      { key: 'description', label: 'Description', placeholder: 'Everything the finance team needs' }
+      { key: 'name', label: 'Group name', required: true, placeholder: 'Analytics-apps' },
+      { key: 'type', label: 'Type', required: true,
+        options: ['WEB', 'FQDN', 'RDP', 'SSH', 'VNC', 'DB', 'WFS', 'NET'],
+        hint: 'Decides what the group can contain. NET holds addresses and ports; the rest hold applications of that kind.' },
+      { key: 'memberIds', label: 'Applications', type: 'pick', resource: 'applications',
+        placeholder: 'Search applications',
+        labelKey: 'name', hintKey: 'host',
+        /* Narrowed by the type chosen above: a WEB group offering an SSH
+           host is an error the form should not let you make. NET groups hold
+           addresses rather than applications, so the picker goes quiet. */
+        filters: (form) => form.type && form.type !== 'NET'
+          ? { type: String(form.type).toLowerCase() } : { type: '__none__' },
+        hint: 'Only applications of the type chosen above belong in the group.' },
+      { key: 'description', label: 'Description', placeholder: 'What this group is for' }
     ],
     title: 'Application groups',
     subtitle: 'A rule pointing at a group covers every application in it.',
     resource: 'appGroups',
     primaryAction: 'Add group',
+    searchFields: ['name', 'type', 'description'],
+    emptyTitle: 'No application groups',
+    emptyBody: 'Group applications of one type so a single access rule can cover all of them.',
     columns: [
       { key: 'name', label: 'Group', bold: true },
+      { key: 'type', label: 'Type' },
+      { key: 'memberIds', label: 'Applications', align: 'right', num: true,
+        cell: (v) => Array.isArray(v) ? v.length : 0 },
       { key: 'description', label: 'Description', dim: true },
       { key: 'createdAt', label: 'Created', cell: fmtDate, dim: true }
     ]
