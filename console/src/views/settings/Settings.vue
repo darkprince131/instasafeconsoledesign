@@ -140,29 +140,64 @@ const PAGES = {
     ],
     testLabel: 'Send a test email'
   },
+  /**
+   * User settings.
+   *
+   * This was largely invented — concurrent sessions, devices per user, lockout
+   * thresholds. Velto's is a different list, and a more revealing one: most of
+   * it is about *where* a person is connecting from rather than how many times
+   * they may try. Four separate public-IP lists, a browser deny-list, and
+   * three timeouts.
+   *
+   * The IP fields are textareas because they hold several addresses. A
+   * single-line input for four of them makes you scroll a box to see what is
+   * already in it, which is how an allow-list ends up with a duplicate nobody
+   * noticed.
+   */
   '/user-settings': {
     title: 'User settings',
     subtitle: 'Defaults applied to every user unless their profile overrides them.',
     sections: [
-      ['Sessions', [
-        ['portalTimeout', 'Portal session timeout (minutes)', 'number', '30'],
-        ['agentIdle', 'Agent idle timeout (minutes)', 'number', '60'],
-        ['forceDisconnect', 'Disconnect on policy change', 'switch', true,
-          'When a rule changes, drop sessions it would no longer permit instead of waiting for them to end.']
+      ['Email settings', [
+        ['welcomeAdUsers', 'Send welcome emails to AD users', 'switch', false],
+        ['welcomeBulkUsers', 'Send welcome emails to bulk local users', 'switch', false]
       ]],
-      ['Inactive accounts', [
-        ['inactiveDays', 'Suspend after days idle', 'number', '90'],
-        ['inactiveNotify', 'Warn the user first', 'switch', true]
+      ['Inactive users', [
+        ['inactiveWarnDays', 'Warn after days idle', 'number', '60'],
+        ['inactiveSuspendDays', 'Suspend after days idle', 'number', '90'],
+        ['inactiveDeleteDays', 'Delete after days idle', 'number', '365',
+          'Deletion is not reversible, so it should be the longest of the three — and well clear of anyone on parental or medical leave.']
       ]],
       ['Authentication controls', [
-        ['maxFailed', 'Failed attempts before lockout', 'number', '5'],
-        ['lockoutMinutes', 'Lockout duration (minutes)', 'number', '15'],
-        ['requireMfa', 'Require MFA for every user', 'switch', false,
-          'Overrides per-profile settings. Turning this on locks out anyone not yet enrolled.']
+        ['bypassMfaIps', 'Bypass MFA from public IPs', 'textarea', '',
+          'Comma-separated. Every address here is somewhere multi-factor stops applying, so the list is worth keeping short.',
+          '203.0.113.10, 198.51.100.0/24']
+      ]],
+      ['Elevated access controls', [
+        ['webElevatedAccess', 'Web based elevated access', 'switch', false]
       ]],
       ['Access controls', [
-        ['allowConcurrent', 'Allow concurrent sessions', 'switch', true],
-        ['maxDevices', 'Devices per user', 'number', '3']
+        ['deviceComplianceWeb', 'Device compliance for web access', 'switch', true,
+          'Applies the posture checks to browser sessions, not only to the agent.'],
+        ['directAccessIps', 'Allow direct access from public IPs', 'textarea', '',
+          'Comma-separated. These bypass the gateway.', '203.0.113.10'],
+        ['adminAccessIps', 'Limit admin access to public IPs', 'textarea', '',
+          'Comma-separated. Empty means admins may sign in from anywhere.', '203.0.113.10'],
+        ['userAccessIps', 'Limit user access to public IPs', 'textarea', '',
+          'Comma-separated. Empty means no restriction.', '203.0.113.0/24'],
+        ['disallowedBrowsers', 'Disallowed browsers for users', 'textarea', '',
+          'Comma-separated.', 'Internet Explorer, Opera Mini']
+      ]],
+      ['Force user disconnect', [
+        ['forceDisconnectHours', 'Disconnect the agent after (hours)', 'number', '12',
+          'A hard cap on session length, whatever the user is doing.']
+      ]],
+      ['Agent idle timeout', [
+        ['agentIdleValue', 'Log idle agents out after', 'number', '30'],
+        ['agentIdleUnit', 'Unit', 'select', 'Minutes', '', ['Minutes', 'Hours']]
+      ]],
+      ['Portal session timeout', [
+        ['portalTimeoutMinutes', 'Log portal users out after (minutes)', 'number', '30']
       ]]
     ]
   },
@@ -279,9 +314,18 @@ onMounted(load)
               >
                 <option v-for="o in f[5]" :key="o">{{ o }}</option>
               </select>
+              <!-- IP allow-lists and browser lists are many short lines, not
+                   one long one. A single-line input for four addresses makes
+                   you scroll a text box to check what is in it. -->
+              <textarea
+                v-else-if="f[2] === 'textarea'" :id="'s_' + f[0]" class="i-ctl i-tech"
+                rows="2" v-model="form[f[0]]" :disabled="cfg.readOnly"
+                :placeholder="f[5] || ''"
+              />
               <input
                 v-else :id="'s_' + f[0]" class="i-ctl" :type="f[2]"
                 v-model="form[f[0]]" :disabled="cfg.readOnly"
+                :placeholder="f[5] || ''"
               >
             </template>
             <p v-if="f[4]" class="i-hint">{{ f[4] }}</p>

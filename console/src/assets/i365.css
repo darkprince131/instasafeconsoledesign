@@ -1244,3 +1244,7 @@ html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(25
 /* A week of toggles reads as a column, not a row: seven switches side by side
    are unreadable at any width this sheet has. */
 .i-days{ display:flex; flex-direction:column; gap:7px; }
+/* A time input is a fixed-width thing; letting it stretch across the sheet
+   leaves the value marooned at the left of an empty box. */
+.i-ctl[type="time"],
+.i-ctl[type="date"]{ width:auto; min-width:150px; font-variant-numeric:tabular-nums; }

@@ -452,8 +452,14 @@ export const RESOURCES = {
     form: [
       { key: 'name', label: 'Name', required: true, placeholder: 'morning_shift' },
       { key: 'timezone', label: 'Timezone', required: true, options: TIMEZONES },
-      { key: 'startTime', label: 'Start time', required: true, placeholder: '09:00' },
-      { key: 'endTime', label: 'End time', required: true, placeholder: '18:30',
+      /* `type="time"` rather than a text box.
+         Typing a time into a plain input means guessing the format it wants
+         and finding out on save; the native control accepts keyboard entry,
+         offers a picker, respects the locale's 12- or 24-hour convention and
+         will not let through 25:70. No dependency, and it is the one input
+         every phone already knows how to render well. */
+      { key: 'startTime', label: 'Start time', type: 'time', required: true },
+      { key: 'endTime', label: 'End time', type: 'time', required: true,
         hint: 'An end before the start runs through midnight — which is what a night shift is.' },
       { key: 'days', label: 'Schedule days', type: 'days', required: true,
         hint: 'A schedule with no days selected matches nothing.' }
