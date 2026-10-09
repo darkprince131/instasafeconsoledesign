@@ -331,8 +331,21 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Gateways, with the licence quota velto enforces.
+   *
+   * Pressing Add on a tenant at its limit opens "Maximum Gateway limit
+   * reached" with a contact link, not a form. That is better than it sounds:
+   * a quota that only fails on save lets somebody fill in a form, press
+   * Save, and be told the work was wasted. Saying so before the form opens
+   * costs them one click instead.
+   */
   '/gateways': {
     singular: 'gateway',
+    limit: { max: 4, of: 'gateways',
+      title: 'Maximum gateway limit reached',
+      body: 'This tenant is licensed for 4 gateways and is running 4. Gateways are licensed separately from user seats.',
+      action: 'Contact InstaSafe' },
     formSubtitle: 'Where traffic enters. A gateway has to be reachable before a rule using it can work.',
     form: [
       { key: 'name', label: 'Gateway name', required: true, placeholder: 'gw-mum-02' },
@@ -397,11 +410,18 @@ export const RESOURCES = {
   '/geo-fences': {
     singular: 'geo-fence',
     formSubtitle: 'A circle on the map. A sign-in from outside it is evaluated against the action.',
+    /* Velto's fields are Name, Radius (In Meters), Latitude and Longitude,
+       with a location search and a "Want Map" button so nobody has to know
+       their own office to two decimal places. The picker below is that,
+       honestly scoped — see LocationPicker.vue. */
     form: [
       { key: 'name', label: 'Fence name', required: true, placeholder: 'Pune office' },
-      { key: 'city', label: 'City', placeholder: 'Pune' },
-      { key: 'countryCode', label: 'Country code', placeholder: 'IN' },
+      { key: 'location', type: 'location', label: 'Location' },
+      { key: 'lat', label: 'Latitude', required: true, placeholder: '18.52' },
+      { key: 'lon', label: 'Longitude', required: true, placeholder: '73.86' },
       { key: 'radiusKm', label: 'Radius in km', type: 'number', placeholder: '25' },
+      { key: 'city', label: 'City', placeholder: 'Filled in by the search' },
+      { key: 'countryCode', label: 'Country code', placeholder: 'IN' },
       { key: 'action', label: 'Action', options: ['allow', 'deny'] },
       { key: 'enabled', label: 'Fence is enabled', type: 'switch' }
     ],
@@ -603,26 +623,52 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Device policy.
+   *
+   * Velto's form is Name, Status, Description, OS and Type — and the Type
+   * list depends on the OS: Windows offers Registry, Script, Config and
+   * Command, while macOS and Linux offer the last three. Registry is a
+   * Windows idea, and offering it beside macOS is offering something that
+   * cannot work.
+   *
+   * This had four invented booleans instead, which described a posture check
+   * rather than a policy. The value field below is the one velto implies and
+   * does not label well: a Registry policy needs a key path, a Script needs a
+   * script, a Command needs a command line. What it asks for changes with the
+   * type, because otherwise it is a box called "value" that nobody can fill
+   * in correctly.
+   */
   '/device-policy': {
     singular: 'device policy',
-    formSubtitle: 'A named bundle of device requirements that users and groups can be assigned.',
+    formSubtitle: 'Something the agent applies to a device: a registry key, a script, a config file or a command.',
     form: [
       { key: 'name', label: 'Policy name', required: true, placeholder: 'Contractor laptops' },
-      { key: 'requireEncryption', label: 'Require disk encryption', type: 'switch' },
-      { key: 'requireAntivirus', label: 'Require antivirus', type: 'switch' },
-      { key: 'blockJailbroken', label: 'Block jailbroken devices', type: 'switch' },
-      { key: 'maxAgentAge', label: 'Maximum agent age in days', type: 'number', placeholder: '90' }
+      { key: 'status', label: 'Status', options: ['Enabled', 'Disabled'] },
+      { key: 'description', label: 'Description', placeholder: 'What this policy is for' },
+      { key: 'os', label: 'Operating system', required: true,
+        options: ['Windows', 'macOS', 'Linux'] },
+      { key: 'type', label: 'Type', required: true,
+        /* Registry only exists on Windows. */
+        options: (form) => form.os === 'Windows'
+          ? ['Registry', 'Script', 'Config', 'Command']
+          : ['Script', 'Config', 'Command'],
+        hint: 'Registry is Windows only. The field below changes with this.' },
+      { key: 'value', label: 'Value', type: 'textarea',
+        label2: true,
+        placeholder: 'HKLM\\SOFTWARE\\Policies\\… or the script to run',
+        hint: 'A registry path, a script, the contents of a config file, or a command line — whichever the type above names.' }
     ],
     title: 'Device policy',
     subtitle: 'Requirements a device has to meet before its user can connect.',
     resource: 'devicePolicies',
     primaryAction: 'Add policy',
     columns: [
-      { key: 'name', label: 'Policy', bold: true },
-      { key: 'requireEncryption', label: 'Encryption', bool: true },
-      { key: 'requireAntivirus', label: 'Antivirus', bool: true },
-      { key: 'blockJailbroken', label: 'Block jailbroken', bool: true },
-      { key: 'maxAgentAge', label: 'Max agent age', align: 'right', mono: true }
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'os', label: 'OS' },
+      { key: 'type', label: 'Type' },
+      { key: 'description', label: 'Description', dim: true },
+      { key: 'status', label: 'Status', pill: statusPill }
     ]
   },
 

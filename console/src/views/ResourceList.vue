@@ -6,6 +6,7 @@ import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
 import ListTools from '../components/ui/ListTools.vue'
 import PickList from '../components/ui/PickList.vue'
+import LocationPicker from '../components/ui/LocationPicker.vue'
 import GraphView from '../components/ui/GraphView.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
@@ -61,7 +62,25 @@ function blankForm () {
   return out
 }
 
+/**
+ * A quota that stops you before the form, not after it.
+ *
+ * Letting somebody fill in a gateway and then refusing it on save wastes the
+ * whole form. Velto opens a modal instead of the form, which costs one click
+ * and no work.
+ */
+const limitHit = ref(false)
+const atLimit = computed(() => {
+  const l = cfg.value?.limit
+  return !!l && (total.value || 0) >= l.max
+})
+
 function openAdd () {
+  if (atLimit.value) { limitHit.value = true; return }
+  return reallyOpenAdd()
+}
+
+function reallyOpenAdd () {
   form.value = blankForm()
   editingId.value = null
   sheetOpen.value = true
@@ -204,6 +223,37 @@ async function removeSelected () {
  * else — offering all of them and failing on save is the version that wastes
  * somebody's afternoon. `filters` may therefore be a function of the form.
  */
+/**
+ * A field's choices can depend on another field.
+ *
+ * Device policy is the case: a Registry check is a Windows idea, so offering
+ * it beside macOS is offering something that cannot work. `options` may
+ * therefore be a function of the form, the same way `filters` already is.
+ */
+function fieldOptions (f) {
+  const o = typeof f.options === 'function' ? f.options(form.value) : f.options
+  return Array.isArray(o) ? o : []
+}
+
+/* Clear a dependent choice that the new parent value no longer offers,
+   rather than saving a Registry policy against macOS. */
+watch(() => JSON.stringify(form.value), () => {
+  for (const f of cfg.value?.form || []) {
+    if (typeof f.options !== 'function') continue
+    const allowed = fieldOptions(f)
+    if (form.value[f.key] && !allowed.includes(form.value[f.key])) form.value[f.key] = ''
+  }
+})
+
+/** The search and the plot both write straight into the form's own fields. */
+function onPickLocation (p) {
+  form.value.lat = p.lat
+  form.value.lon = p.lon
+  if (p.city) form.value.city = p.city
+  if (p.countryCode) form.value.countryCode = p.countryCode
+  if (!form.value.radiusKm) form.value.radiusKm = 25
+}
+
 function pickFilters (f) {
   if (typeof f.filters === 'function') return f.filters(form.value) || {}
   return f.filters || {}
@@ -368,8 +418,13 @@ onMounted(load)
                not a select. Membership is edited here, inside the parent's
                form, so a group and the users in it are one object you save
                once. -->
+          <LocationPicker
+            v-if="f.type === 'location'"
+            :lat="form.lat" :lon="form.lon" :radius-km="form.radiusKm"
+            @pick="onPickLocation"
+          />
           <PickList
-            v-if="f.type === 'pick'"
+            v-else-if="f.type === 'pick'"
             v-model="form[f.key]"
             :resource="f.resource" :filters="pickFilters(f)"
             :multiple="f.multiple !== false"
@@ -389,8 +444,12 @@ onMounted(load)
             </label>
             <select v-else-if="f.options" :id="'rf_' + f.key" class="i-ctl" v-model="form[f.key]">
               <option value="">Select…</option>
-              <option v-for="o in f.options" :key="o">{{ o }}</option>
+              <option v-for="o in fieldOptions(f)" :key="o">{{ o }}</option>
             </select>
+            <textarea
+              v-else-if="f.type === 'textarea'" :id="'rf_' + f.key" class="i-ctl i-tech"
+              rows="4" v-model="form[f.key]" :placeholder="f.placeholder || ''"
+            />
             <input
               v-else :id="'rf_' + f.key" class="i-ctl"
               :type="f.type || 'text'" v-model="form[f.key]" :placeholder="f.placeholder || ''"
@@ -408,6 +467,19 @@ onMounted(load)
         </div>
       </template>
     </Sheet>
+
+    <!-- the licence wall -->
+    <ConfirmModal
+      v-if="cfg?.limit"
+      v-model:open="limitHit"
+      :title="cfg.limit.title"
+      :confirm-label="cfg.limit.action"
+      @confirm="limitHit = false"
+    >
+      {{ cfg.limit.body }}
+      Raising it is a commercial change rather than a setting, so there is
+      nothing on this screen that would let you past it.
+    </ConfirmModal>
 
     <ConfirmModal
       v-model:open="confirmOpen"

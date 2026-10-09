@@ -1208,3 +1208,17 @@ html[data-i-theme="dark"] .i-pickpop{ box-shadow:none; outline:1px solid rgba(25
 /* A sheet opened from inside a sheet sits above it, with its own scrim. */
 .i-scrim.is-nested{ z-index:74; }
 .i-sheet.is-nested{ z-index:75; }
+
+/* ================== 21 · location plot ================== */
+.i-locpick{ margin-bottom:var(--i-s4); }
+.i-plot{
+  display:block; width:100%; height:auto; cursor:crosshair;
+  border:1px solid var(--i-rule); border-radius:var(--i-r-ctl);
+}
+.i-plotbg{ fill:var(--i-tint); }
+.i-plotgrid line{ stroke:var(--i-rule); stroke-width:1; }
+.i-plotequator{ stroke:var(--i-rule-strong); stroke-width:1; stroke-dasharray:4 4; }
+.i-plotcity{ fill:var(--i-mute); }
+.i-plotring{ fill:var(--i-v600); fill-opacity:.16; stroke:var(--i-v600); stroke-width:1.5; }
+.i-plotpin{ fill:var(--i-v600); stroke:var(--i-canvas); stroke-width:1.5; }
+.i-plotlabel{ font-family:var(--i-sans); font-size:9px; fill:var(--i-mute); }
