@@ -249,7 +249,13 @@ export function seedApplications () {
     ['HR Portal',         'web',  'https://hr.internal',        443, 'HR',          0, 0, 0],
     ['Support Desk',      'web',  'https://desk.internal',      443, 'Support',     0, 0, 0],
     ['Log Collector',     'ssh',  '10.20.1.90',                  22, 'Security',    1, 0, 0],
-    ['Domain Controller', 'rdp',  '10.20.0.10',                3389, 'IT',          1, 1, 1]
+    ['Domain Controller', 'rdp',  '10.20.0.10',                3389, 'IT',          1, 1, 1],
+    /* The three types this seed never produced, so their fields had nothing
+       to show: a database with a driver, a file share with a share name, a
+       plain FQDN with a port list. */
+    ['Analytics Warehouse', 'db',   '10.20.4.33',               5432, 'Finance',     1, 0, 0],
+    ['Finance Shares',      'wfs',  '10.20.4.50',                445, 'Finance',     0, 0, 0],
+    ['Partner Portal',      'fqdn', 'partners.instasafe.com',    443, 'Sales',       0, 0, 0]
   ]
   const GW = ['gw-mum-01', 'gw-blr-01', 'gw-lon-01', 'gw-sin-01']
   return apps.map(([name, type, host, port, owner, rec, cpb, wm], i) => ({
@@ -260,6 +266,15 @@ export function seedApplications () {
     sessionRecording: !!rec,
     blockCopyPaste: !!cpb,
     watermark: !!wm,
+    /* Type-specific fields, blank where they do not apply. */
+    ports: type === 'fqdn' ? '80,443' : '',
+    landingPage: type === 'web' ? '/login' : '',
+    directAccess: false,
+    useInternalIp: type === 'web',
+    driver: type === 'db' ? 'PostgreSQL' : '',
+    share: type === 'wfs' ? 'finance' : '',
+    domain: type === 'wfs' ? 'ISA' : '',
+    blockDownloads: type === 'wfs' || (type === 'web' && owner === 'Finance'),
     createdAt: ago(100 + r() * 500)
   }))
 }

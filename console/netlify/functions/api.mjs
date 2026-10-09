@@ -374,7 +374,18 @@ async function ensureSchema () {
     ['groups', 'ip_restriction', 'boolean not null default false'],
     ['groups', 'auto_suspend', 'boolean not null default false'],
     ['access_rules', 'source_ids', 'text[]'],
-    ['access_rules', 'dest_ids', 'text[]']
+    ['access_rules', 'dest_ids', 'text[]'],
+    /* An application's fields depend on its type: a database has a driver, a
+       file share has a share and a domain, a web app has a landing page. The
+       table held one flat shape, so every one of these was dropped on save. */
+    ['applications', 'ports', 'text'],
+    ['applications', 'landing_page', 'text'],
+    ['applications', 'direct_access', 'boolean not null default false'],
+    ['applications', 'use_internal_ip', 'boolean not null default false'],
+    ['applications', 'driver', 'text'],
+    ['applications', 'share', 'text'],
+    ['applications', 'domain', 'text'],
+    ['applications', 'block_downloads', 'boolean not null default false']
   ]) {
     await sql.query(`alter table ${table} add column if not exists ${col} ${type}`)
   }

@@ -649,25 +649,50 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Device updates — software push, not an agent version table.
+   *
+   * This was built as "which agent build each platform should run", which is
+   * a reasonable guess at the name and not what the feature is. Velto pushes
+   * a **file** to managed devices: upload it, give it arguments, say when it
+   * installs, and then check afterwards that it actually did — by looking for
+   * a registry key or a file that the installer should have left behind.
+   *
+   * That last part is the bit worth having. A push with no post-install check
+   * reports success when the installer silently failed, which is how an
+   * estate ends up believing it is patched.
+   */
   '/device-updates': {
-    singular: 'agent release',
-    formSubtitle: 'Which agent build each platform should be running.',
+    singular: 'push',
+    formSubtitle: 'A file pushed to managed devices, and the check that proves it installed.',
     form: [
-      { key: 'platform', label: 'Platform', required: true,
-        options: ['Windows', 'macOS', 'Linux', 'Android', 'iOS'] },
-      { key: 'version', label: 'Version', required: true, placeholder: '4.8.2' },
-      { key: 'mandatory', label: 'Mandatory — block older agents', type: 'switch' },
-      { key: 'notes', label: 'Release notes', placeholder: 'Fixes posture reporting on Windows 11 24H2' }
+      { key: 'name', label: 'Name', required: true, placeholder: 'Falcon sensor 7.20' },
+      { key: 'fileName', label: 'Filename', required: true, placeholder: 'FalconSensor.msi' },
+      { key: 'status', label: 'Status', options: ['Enabled', 'Disabled'] },
+      { key: 'arguments', label: 'Arguments', placeholder: '/quiet /norestart',
+        hint: 'Passed to the installer. Silent flags belong here or every device shows a dialog.' },
+      { key: 'installSchedule', label: 'Install schedule', required: true,
+        options: ['Immediate', 'After-Reboot', 'Uninstall'] },
+      { key: 'validationCheck', label: 'Post validation check', required: true,
+        options: ['Registry Key present', 'File present'],
+        hint: 'Without this a push that silently failed still reports success.' },
+      { key: 'checkValue', label: 'Post validation check value',
+        placeholder: 'HKLM\SOFTWARE\CrowdStrike or C:\Program Files\CrowdStrike\CSFalconService.exe' }
     ],
     title: 'Device updates',
-    subtitle: 'The agent version each platform is expected to run.',
+    subtitle: 'Software pushed to managed devices, with the check that proves it landed.',
     resource: 'deviceUpdates',
-    primaryAction: 'Add release',
+    primaryAction: 'Add push',
+    searchFields: ['name', 'fileName'],
+    emptyTitle: 'Nothing is being pushed',
+    emptyBody: 'Add a package to install it across the devices your policy covers.',
     columns: [
-      { key: 'platform', label: 'Platform', bold: true },
-      { key: 'version', label: 'Version', mono: true },
-      { key: 'mandatory', label: 'Mandatory', bool: true },
-      { key: 'notes', label: 'Notes', dim: true }
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'fileName', label: 'Filename', mono: true },
+      { key: 'arguments', label: 'Arguments', mono: true, cell: (v) => v || dash },
+      { key: 'installSchedule', label: 'Schedule' },
+      { key: 'validationCheck', label: 'Validated by', dim: true },
+      { key: 'status', label: 'Status', pill: statusPill }
     ]
   },
 

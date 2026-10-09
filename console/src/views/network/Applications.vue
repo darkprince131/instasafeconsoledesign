@@ -35,18 +35,98 @@ const form = ref(blank())
 const sessionOpen = ref(false)
 const sessionApp = ref(null)
 
+/**
+ * The seven application types, each with its own fields.
+ *
+ * This screen had one flat shape — name, host, port — for every type, which
+ * is wrong in both directions: it asks a web application for a port it does
+ * not need, and never asks a database for its driver or a file share for its
+ * share name, without which neither can be reached at all.
+ *
+ * `fields` is what that type actually needs; `controls` is which of the
+ * data-loss controls apply. Session recording means nothing for a file share
+ * and blocking downloads means nothing for SSH, so neither is offered there.
+ */
 const TYPES = [
-  { key: 'web', label: 'Web', icon: 'fa-globe', hint: 'Reached in a browser through the gateway.' },
-  { key: 'rdp', label: 'RDP', icon: 'fa-desktop', hint: 'Windows remote desktop.' },
-  { key: 'ssh', label: 'SSH', icon: 'fa-terminal', hint: 'Shell access to a host.' },
-  { key: 'vnc', label: 'VNC', icon: 'fa-display', hint: 'Remote framebuffer.' }
+  { key: 'web', label: 'Web', icon: 'fa-globe', hint: 'Reached in a browser through the gateway.',
+    fields: [
+      { key: 'host', label: 'URL', required: true, placeholder: 'https://app.internal',
+        hint: 'Reached through the gateway — it never needs a public DNS record.' },
+      { key: 'landingPage', label: 'Landing page', placeholder: '/login',
+        hint: 'Where a session starts. Blank opens the root.' }
+    ],
+    switches: [
+      { key: 'directAccess', label: 'Allow direct access' },
+      { key: 'useInternalIp', label: 'Resolve to the internal IP' }
+    ],
+    controls: ['blockCopyPaste', 'watermark', 'blockDownloads'] },
+
+  { key: 'fqdn', label: 'FQDN', icon: 'fa-at', hint: 'A named host reached by domain name.',
+    fields: [
+      { key: 'host', label: 'Fully qualified domain name', required: true, placeholder: 'site.instasafe.com' },
+      { key: 'ports', label: 'Ports', required: true, placeholder: '80,443,1000-2000',
+        hint: 'Comma-separated, and ranges are allowed.' }
+    ],
+    controls: [] },
+
+  { key: 'rdp', label: 'RDP', icon: 'fa-desktop', hint: 'Windows remote desktop.',
+    fields: [
+      { key: 'host', label: 'IP address', required: true, placeholder: '10.20.4.17' },
+      { key: 'port', label: 'Port', type: 'number' }
+    ],
+    controls: ['blockCopyPaste', 'watermark', 'sessionRecording'] },
+
+  { key: 'ssh', label: 'SSH', icon: 'fa-terminal', hint: 'Shell access to a host.',
+    fields: [
+      { key: 'host', label: 'IP address', required: true, placeholder: '10.20.4.17' },
+      { key: 'port', label: 'Port', type: 'number' }
+    ],
+    controls: ['blockCopyPaste', 'watermark', 'sessionRecording'] },
+
+  { key: 'vnc', label: 'VNC', icon: 'fa-display', hint: 'Remote framebuffer.',
+    fields: [
+      { key: 'host', label: 'IP address', required: true, placeholder: '10.20.4.17' },
+      { key: 'port', label: 'Port', type: 'number' }
+    ],
+    controls: ['blockCopyPaste', 'watermark', 'sessionRecording'] },
+
+  { key: 'db', label: 'Database', icon: 'fa-database', hint: 'A database reached through the gateway.',
+    fields: [
+      { key: 'driver', label: 'Driver', required: true,
+        options: ['PostgreSQL', 'MySQL', 'Microsoft SQL Server', 'Oracle', 'MongoDB'] },
+      { key: 'host', label: 'Host', required: true, placeholder: '10.20.4.33' },
+      { key: 'port', label: 'Port', type: 'number' }
+    ],
+    controls: ['sessionRecording'] },
+
+  { key: 'wfs', label: 'File share', icon: 'fa-folder-open', hint: 'A Windows file share.',
+    fields: [
+      { key: 'host', label: 'Host', required: true, placeholder: '10.20.4.50' },
+      { key: 'share', label: 'Share', required: true, placeholder: 'folder name' },
+      { key: 'domain', label: 'Domain', placeholder: 'ISA' }
+    ],
+    controls: ['blockDownloads'] }
 ]
+
+const DEFAULT_PORT = { web: 443, fqdn: 443, rdp: 3389, ssh: 22, vnc: 5900, db: 5432, wfs: 445 }
+
+/** The data-loss controls, and what each one actually does. */
+const CONTROLS = {
+  sessionRecording: ['Record the session', 'Every keystroke and frame, replayable from the session log.'],
+  blockCopyPaste: ['Block copy and paste', 'Stops the clipboard crossing between the session and the device.'],
+  watermark: ['Watermark with the user identity', 'A photograph of the screen still names who took it.'],
+  blockDownloads: ['Block downloads', 'Files can be read in the session but not taken out of it.']
+}
+
+const typeDef = computed(() => TYPES.find(t => t.key === form.value.type) || TYPES[0])
 
 function blank () {
   return {
-    name: '', type: 'web', host: '', port: 443, owner: 'Engineering',
-    status: 'active', sessionRecording: false, blockCopyPaste: false, watermark: false,
-    gateway: ''
+    name: '', type: 'web', host: '', port: 443, ports: '', owner: 'Engineering',
+    status: 'active', gateway: '',
+    landingPage: '', directAccess: false, useInternalIp: false,
+    driver: '', share: '', domain: '',
+    sessionRecording: false, blockCopyPaste: false, watermark: false, blockDownloads: false
   }
 }
 
@@ -55,20 +135,21 @@ function blank () {
    discovering when somebody cannot connect. */
 const gateways = ref([])
 
-const isRemote = computed(() => ['rdp', 'ssh', 'vnc'].includes(form.value.type))
-
-/** Port follows the type until it is edited by hand. */
+/**
+ * Changing the type changes which fields exist, so the values that belonged
+ * to the old one have to go with it. Leaving a stale SSH port on a file share
+ * is the kind of thing that saves cleanly and fails at connect time.
+ */
 watch(() => form.value.type, (t) => {
   if (editingId.value) return       // editing: leave the saved values alone
-  const d = { web: 443, rdp: 3389, ssh: 22, vnc: 5900 }[t]
-  if (d) form.value.port = d
-  if (!isRemote.value) {
-    form.value.sessionRecording = false
-    form.value.blockCopyPaste = false
-    form.value.watermark = false
-  } else {
-    // remote sessions default to recorded and watermarked; that is the
-    // reason to put them behind a ZTNA gateway at all
+  form.value.port = DEFAULT_PORT[t] || 443
+
+  const keep = new Set(typeDef.value.controls)
+  for (const c of Object.keys(CONTROLS)) if (!keep.has(c)) form.value[c] = false
+
+  /* Remote sessions default to recorded and watermarked: that is the reason
+     to put them behind a gateway at all. */
+  if (['rdp', 'ssh', 'vnc'].includes(t)) {
     form.value.sessionRecording = true
     form.value.watermark = true
   }
@@ -263,17 +344,24 @@ onMounted(async () => {
             </select>
           </div>
         </div>
+        <!-- What this type needs, and only what it needs. A web application
+             has no port and a file share has no landing page. -->
         <div class="i-frow">
-          <div class="i-field">
-            <label for="ah">{{ form.type === 'web' ? 'URL' : 'Host or IP' }} <span class="i-req">*</span></label>
-            <input id="ah" class="i-ctl" v-model="form.host"
-                   :placeholder="form.type === 'web' ? 'https://app.internal' : '10.20.4.17'">
-            <p class="i-hint">
-              {{ form.type === 'web'
-                ? 'Reached through the gateway — it never needs a public DNS record.'
-                : 'Private address. It is not exposed to the internet.' }}
-            </p>
+          <div v-for="f in typeDef.fields" :key="f.key" class="i-field">
+            <label :for="'af_' + f.key">
+              {{ f.label }}<span v-if="f.required" class="i-req">*</span>
+            </label>
+            <select v-if="f.options" :id="'af_' + f.key" class="i-ctl" v-model="form[f.key]">
+              <option value="">Select…</option>
+              <option v-for="o in f.options" :key="o">{{ o }}</option>
+            </select>
+            <input
+              v-else :id="'af_' + f.key" class="i-ctl"
+              :type="f.type || 'text'" v-model="form[f.key]" :placeholder="f.placeholder || ''"
+            >
+            <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
           </div>
+
           <div class="i-field">
             <label for="agw">Gateway</label>
             <select id="agw" class="i-ctl" v-model="form.gateway">
@@ -284,31 +372,28 @@ onMounted(async () => {
             </select>
             <p class="i-hint">Traffic reaches this application through the gateway. Without one it is unreachable.</p>
           </div>
-          <div class="i-field">
-            <label for="ap">Port</label>
-            <input id="ap" class="i-ctl" type="number" v-model.number="form.port">
-            <p class="i-hint">Filled in from the type. Change it if the host is non-standard.</p>
-          </div>
+        </div>
+
+        <div v-if="typeDef.switches" class="d-flex flex-column gap-2 mt-2">
+          <label v-for="sw in typeDef.switches" :key="sw.key" class="i-sw">
+            <input type="checkbox" v-model="form[sw.key]"><span class="i-track" />{{ sw.label }}
+          </label>
         </div>
       </div>
 
-      <div v-if="isRemote" class="i-formsec">
-        <h3>Session controls</h3>
+      <div v-if="typeDef.controls.length" class="i-formsec">
+        <h3>Data controls</h3>
         <p class="i-secsub">
-          The part that is InstaSafe rather than {{ form.type.toUpperCase() }}. These wrap every session.
+          The part that is InstaSafe rather than {{ typeDef.label }}. Only the
+          controls that mean something for this type are offered.
         </p>
-        <div class="d-flex flex-column gap-2">
-          <label class="i-sw">
-            <input type="checkbox" v-model="form.sessionRecording"><span class="i-track" />
-            Record the session
-          </label>
-          <label class="i-sw">
-            <input type="checkbox" v-model="form.blockCopyPaste"><span class="i-track" />
-            Block copy and paste
-          </label>
-          <label class="i-sw">
-            <input type="checkbox" v-model="form.watermark"><span class="i-track" />
-            Watermark with the user's identity
+        <div class="d-flex flex-column gap-3">
+          <label v-for="c in typeDef.controls" :key="c" class="i-sw">
+            <input type="checkbox" v-model="form[c]"><span class="i-track" />
+            <span>
+              {{ CONTROLS[c][0] }}
+              <small class="d-block" style="color:var(--i-mute);font-size:var(--i-t-micro)">{{ CONTROLS[c][1] }}</small>
+            </span>
           </label>
         </div>
       </div>
