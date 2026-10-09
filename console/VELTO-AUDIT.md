@@ -474,6 +474,42 @@ Microsoft Windows and Mac OS) and the geo-fence field set.
 **Still unknown:** the gateway Add form itself — velto's quota modal replaces
 it, so it could not be captured.
 
+## 20. Shift schedules had no day control — and were never enforced
+
+Velto's Add Shift Schedule: `Name · Timezone · Start Time · End Time`, then a
+**toggle per day** under "Schedule Days/Time". Columns are `Name · Days ·
+Start Time · End Time`, and it sits under User settings as *Shift Schedules*.
+
+`days` was in this console's data model and rendered in its table, and the
+form had **no control for it at all** — so a schedule could be saved with no
+days and would then match nothing, for ever, silently.
+
+One window for the whole schedule rather than per day: toggling a day in
+velto reveals no extra time fields despite the label implying it. Timezones
+are UTC offsets rather than IANA names, which is right for a dropdown —
+"(UTC+05:30) Indian Standard Time" reads, "Asia/Kolkata" is a lookup.
+
+Two worse things behind it:
+
+- **Schedules were never enforced.** A rule could name one, the access
+  explorer printed "only during Business hours" beneath it, and the engine
+  did not look at schedules at all. A rule limited to office hours allowed at
+  three in the morning. The screen said one thing and the engine did another,
+  which is worse than not having the feature.
+- **The mock adapter held a second copy of the matcher.** It imported
+  `evaluateAccess` and never called it, so engine fixes reached the deployed
+  Postgres path and not the local one and the two could disagree. One engine
+  now.
+
+Proved on the deployed backend rather than asserted: Rahul Hall (Finance) to
+Payroll Web is **allowed** at 17:32 on a Friday under 09:00–18:30 Mon–Fri;
+narrowing that schedule to 09:00–10:00 and re-evaluating the same pair returns
+**denied**; restoring it returns **allowed**.
+
+A window whose end precedes its start runs through midnight, which is what a
+night shift is — the seed carries one, because that is the case a naive
+`start <= now <= end` gets wrong.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
