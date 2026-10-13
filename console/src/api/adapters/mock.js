@@ -60,8 +60,17 @@ const RESHAPED = [
      username attribute once the real form was read. The marker is checked on
      the LDAP rows only, but the collection holds every profile type, so this
      does replace a visitor's own profiles along with the seeded ones. */
+  /* Any one of these reseeds the whole collection, which is what is wanted:
+     the markers are per profile type because each type gained its own fields
+     as its real form was read. */
   ['authProfiles', 'usernameAttribute', () => seed.seedAuthProfiles(),
-    (rows) => rows.filter(r => r.type === 'ldap')]
+    (rows) => rows.filter(r => r.type === 'ldap')],
+  ['authProfiles', 'nameIdAttribute', () => seed.seedAuthProfiles(),
+    (rows) => rows.filter(r => r.type === 'saml')],
+  ['authProfiles', 'provider', () => seed.seedAuthProfiles(),
+    (rows) => rows.filter(r => r.type === 'oauth')],
+  ['authProfiles', 'scopes', () => seed.seedAuthProfiles(),
+    (rows) => rows.filter(r => r.type === 'openid')]
 ]
 
 async function migrateReshaped () {

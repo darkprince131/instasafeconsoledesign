@@ -451,6 +451,10 @@ export function seedGateways () {
  * purpose: it is not a list at all, it is the tenant's password policy, and
  * it lives in settings.
  */
+/** A PEM-shaped signing certificate with invented contents, for the SAML
+ *  profiles. Velto holds the IdP's real one in the same field. */
+const SAML_DEMO_CERT = '-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQZy92n5Z2xqpJy804i1XNoTANBgkqhkiG9w0BAQsFADA0\nMTIwMAYDVQQDEylEZW1vIElkUCBTaWduaW5nIENlcnRpZmljYXRlIChub3QgcmVh\nbCkwHhcNMjYwNzAyMDYzMjQ1WhcNMjkwNzAyMDYzMjQ1WjA0MTIwMAYDVQQDEylE\nZW1vIElkUCBTaWduaW5nIENlcnRpZmljYXRlIChub3QgcmVhbCk=\n-----END CERTIFICATE-----'
+
 export function seedAuthProfiles () {
   const rows = [
     // Active Directory — Profile Name · Domain · Primary Server IP · Backup Server IP
@@ -469,19 +473,26 @@ export function seedAuthProfiles () {
     ['radius', { name: 'nps-london', radiusServerIp: '10.62.3.40', backupRadiusServerIp: '10.62.3.40', port: 1812 }],
 
     // SAML — Name · Integration Type · IDP EntityId · IDP Sign-In URL
-    ['saml', { name: 'okta-workforce', integrationType: 'SAML2.0', idpEntityId: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6', idpSignInUrl: 'https://instasafe.okta.com/app/instasafe_i365/exk1f2g3h4IJKLMN5o6/sso/saml' }],
-    ['saml', { name: 'entra-contractors', integrationType: 'SAML2.0', idpEntityId: 'https://sts.windows.net/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/', idpSignInUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/saml2' }],
+    /* The certificate is a real PEM shape with invented contents: velto's
+       form holds the IdP's signing certificate, and a profile without one
+       cannot verify an assertion. */
+    ['saml', { name: 'okta-workforce', integrationType: 'SAML2.0', idpEntityId: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6', idpCertificate: SAML_DEMO_CERT, idpSignInUrl: 'https://instasafe.okta.com/app/instasafe_i365/exk1f2g3h4IJKLMN5o6/sso/saml', idpSignOutUrl: 'https://instasafe.okta.com/app/instasafe_i365/exk1f2g3h4IJKLMN5o6/slo/saml', nameIdAttribute: 'Email' }],
+    ['saml', { name: 'entra-contractors', integrationType: 'SAML2.0', idpEntityId: 'https://sts.windows.net/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/', idpCertificate: SAML_DEMO_CERT, idpSignInUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/saml2', idpSignOutUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/saml2', nameIdAttribute: 'Username' }],
 
     // OAuth2 — Name · Client Id · Redirect URI
-    ['oauth', { name: 'google-workspace', clientId: '81427366104-k3m9rv2qf7hs1bd8e4ucnp0ga6tjlw5x.apps.googleusercontent.com', redirectUri: 'https://instasafe-console-demo.netlify.app/oauth2/callback' }],
+    /* Provider decides the shape: only Azure carries a tenant id. */
+    ['oauth', { name: 'google-workspace', provider: 'Google', clientId: '81427366104-k3m9rv2qf7hs1bd8e4ucnp0ga6tjlw5x.apps.googleusercontent.com', redirectUri: 'https://instasafe-console-demo.netlify.app/oauth2/callback' }],
+    ['oauth', { name: 'entra-workforce', provider: 'Azure', tenantId: '9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84', clientId: '008e455c-ccbb-4f48-a6da-7ea4b554a970', redirectUri: 'https://instasafe-console-demo.netlify.app/oauth2/callback' }],
 
     // OpenID — Name · Client Id · Issuer URL
-    ['openid', { name: 'entra-oidc', clientId: '2ec521d5-20dd-4410-9493-b54523d837d8', issuerUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/v2.0' }],
-    ['openid', { name: 'auth0-partners', clientId: 'Pew0wevZV6VToxCKmvjKPLdBigT2Lo4r', issuerUrl: 'https://instasafe-partners.eu.auth0.com/' }],
+    ['openid', { name: 'entra-oidc', clientId: '2ec521d5-20dd-4410-9493-b54523d837d8', scopes: 'openid profile email', issuerUrl: 'https://login.microsoftonline.com/9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84/v2.0', redirectUri: 'https://instasafe-console-demo.netlify.app/openid/callback' }],
+    ['openid', { name: 'auth0-partners', clientId: 'Pew0wevZV6VToxCKmvjKPLdBigT2Lo4r', scopes: 'openid profile email', issuerUrl: 'https://instasafe-partners.eu.auth0.com/', redirectUri: 'https://instasafe-console-demo.netlify.app/openid/callback' }],
 
     // Passwordless — Name · Primary Auth · Fallback Authn
-    ['passwordless', { name: 'fido-engineering', primaryAuth: 'FIDO Key', fallbackAuth: 'Password' }],
-    ['passwordless', { name: 'fido-executives', primaryAuth: 'FIDO Key', fallbackAuth: 'FIDO Key' }]
+    /* Velto's own three primaries and three fallbacks. Kerberos is a primary
+       only, Password a fallback only. */
+    ['passwordless', { name: 'engineering-keys', primaryAuth: 'Hardware Key', fallbackAuth: 'Password' }],
+    ['passwordless', { name: 'domain-desktops', primaryAuth: 'Kerberos', fallbackAuth: 'Digital Certificate' }]
   ]
   return rows.map(([type, fields], i) => ({
     id: `ap_${pad(i + 1, 4)}`,

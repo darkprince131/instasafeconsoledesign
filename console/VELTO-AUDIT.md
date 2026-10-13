@@ -943,6 +943,79 @@ whether it also carries a Change Password for the bind user is unconfirmed. It
 very likely does — OpenLDAP and RADIUS both do, and AD has the same bind user
 — but it is not built on a guess. One look at a velto AD profile settles it.
 
+## 30. The remaining four profile types — SAML, OAuth2, OpenID, Passwordless
+
+All four rebuilt against their captured add and edit forms, and Active
+Directory given the Change Password it also has (§29.4 is now closed: velto
+does carry it there).
+
+### 30.1 SAML — three fields missing, and one of them is the trust
+`profile_name`* (locks) · `sso_integration_type`* (SAML2.0, the only option) ·
+`identity_provider`* · **`fingerprint`*** · `signin_url`* ·
+**`signout_url`*** · **`name_id`*** (Username · Email).
+
+`fingerprint` is a seven-row textarea holding the IdP's signing certificate in
+PEM. It is the thing an assertion is verified against, and the demo did not
+ask for it at all — a SAML profile without it cannot establish trust with
+anything. The sign-out URL and the NameID attribute were missing too, and
+NameID decides whether a sign-in resolves to a known user or an unknown one.
+
+### 30.2 OAuth2 — the provider dropdown changes the form
+`provider` is Generic · Google · Azure, and **Tenant ID appears for Azure
+alone**. Confirmed against all three captured provider states: the Generic and
+Google captures have no `tenant_id` field, the Azure one does. Azure issues
+tokens per directory, so the tenant is part of the endpoint.
+
+`redirect_uri` is `readonly` in velto and derived from the tenant's host. It is
+not a choice — it is what the console will be called back on, shown so it can
+be copied into the provider. It was an editable required field here.
+
+### 30.3 OpenID — Scopes was missing, Redirect URI was absent
+`profile_name`* (locks) · `client_id`* · **`scopes`*** · `issuer_url`* ·
+`redirect_uri` (readonly **and** disabled in velto). Without scopes the
+console asks for no claims, so nothing fills the username or the address.
+
+### 30.4 Passwordless — both option lists were invented
+The demo offered FIDO Key, Certificate, Push notification, Magic link as
+primary and FIDO Key, Password, OTP, None as fallback. Velto offers:
+
+| | |
+|---|---|
+| **Primary Auth** | Hardware Key · Digital Certificate · Kerberos |
+| **Fallback Auth** | Password · Hardware Key · Digital Certificate |
+
+The two lists are deliberately not the same. **Kerberos is a primary and never
+a fallback** — it needs a domain-joined machine, which is the case where the
+primary already worked. **Password is a fallback and never primary** — not
+using it is the whole point of the screen. Neither constraint can be expressed
+by one shared list, which is why it is two.
+
+Selecting any of these reveals nothing further: unlike Active Directory's
+Kerberos toggle, the Passwordless dropdowns only change the selection. Checked
+against all six captured variants.
+
+### 30.5 Secrets, consistently
+Every profile type that holds one now keeps it behind its own button, and
+never stores the value:
+
+| Screen | Button |
+|---|---|
+| Active Directory, OpenLDAP | Change Password (bind password) |
+| RADIUS | Change Client Secret |
+| OAuth2, OpenID | Change Client Secret |
+
+OAuth2 and OpenID had the client secret as an ordinary password field on the
+form. Nothing is stored but the fact one was set and when, as with the SMTP
+password in §27.1.
+
+### 30.6 Two smaller corrections
+- A select carrying a default no longer offers an empty "Select…" choice.
+  Velto's required dropdowns are never empty, and offering nothing is not one
+  of the choices.
+- The seeded profiles were migrated per type. Any profile type whose marker
+  field is missing reseeds the collection, because each type gained its own
+  fields as its real form was read.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

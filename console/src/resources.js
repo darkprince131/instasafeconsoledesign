@@ -160,6 +160,7 @@ export const RESOURCES = {
      * sign-in in the tenant.
      */
     formSubtitle: 'Where the directory is, how to bind to it, and which users to let in.',
+    secretAction: { key: 'bindPassword', label: 'Change Password', noun: 'bind password' },
     form: [
       { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
@@ -304,14 +305,31 @@ export const RESOURCES = {
       { key: 'import-idp', label: 'Import IDP Metadata', icon: 'fa-file-import' },
       { key: 'download-sp', label: 'Download SP MetaData', icon: 'fa-file-export' }
     ],
+    /**
+     * Velto's form. The demo was missing the three that matter most: the IdP
+     * certificate an assertion is verified against, the sign-out URL, and
+     * which attribute carries the identity.
+     */
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'okta-workforce',
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
-      { key: 'integrationType', label: 'Integration type', options: ['SAML2.0'] },
-      { key: 'idpEntityId', label: 'IdP entity ID', required: true,
-        placeholder: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6' },
-      { key: 'idpSignInUrl', label: 'IdP sign-in URL', required: true,
-        placeholder: 'https://example.okta.com/app/.../sso/saml' }
+      { key: 'integrationType', name: 'sso_integration_type', label: 'Integration Type', required: true,
+        options: ['SAML2.0'], default: 'SAML2.0' },
+      { key: 'idpEntityId', name: 'identity_provider', label: 'IDP EntityId', required: true,
+        placeholder: 'http://idp.example.com' },
+      /* A PEM block, seven rows of it in velto. Without the certificate the
+         console cannot verify an assertion at all, and the demo did not ask
+         for it. */
+      { key: 'idpCertificate', name: 'fingerprint', label: 'IDP Certificate', required: true, type: 'textarea',
+        placeholder: '-----BEGIN CERTIFICATE-----',
+        hint: 'The IdP signing certificate, PEM. Assertions are verified against this, so a rotation at the IdP has to be pasted here or every sign-in fails.' },
+      { key: 'idpSignInUrl', name: 'signin_url', label: 'IDP Sign-In URL', required: true,
+        placeholder: 'http://idp.example.com' },
+      { key: 'idpSignOutUrl', name: 'signout_url', label: 'IDP Sign-Out URL', required: true,
+        placeholder: 'http://idp.example.com' },
+      { key: 'nameIdAttribute', name: 'name_id', label: 'NameID Attribute', required: true,
+        options: ['Username', 'Email'], default: 'Username',
+        hint: 'Which attribute the assertion carries the identity in. It has to match what the IdP sends, or every sign-in arrives as an unknown user.' }
     ],
     columns: [
       { key: 'name', label: 'Name', bold: true },
@@ -331,17 +349,32 @@ export const RESOURCES = {
     searchFields: ['name', 'clientId'],
     emptyTitle: 'No OAuth2 profiles',
     emptyBody: 'Add one to let users sign in through an OAuth2 provider.',
+    /**
+     * Provider is a real dropdown, and it changes the form: **Tenant ID
+     * appears for Azure only**, not for Generic or Google. Confirmed against
+     * all three captured provider states.
+     *
+     * The redirect URI is readonly in velto and derived from the tenant's own
+     * host. It is not something you choose: it is what the console will be
+     * called back on, shown so it can be copied into the provider.
+     */
+    secretAction: { key: 'clientSecret', label: 'Change Client Secret', noun: 'client secret' },
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'google-workspace',
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
-      { key: 'clientId', label: 'Client ID', required: true },
-      { key: 'clientSecret', label: 'Client secret', type: 'password',
-        hint: 'Issued by the provider. Never shown again once saved.' },
-      { key: 'redirectUri', label: 'Redirect URI', required: true,
-        hint: 'Must match the registration at the provider exactly - a trailing slash is a different URI.' }
+      { key: 'provider', name: 'provider', label: 'Provider', required: true,
+        options: ['Generic', 'Google', 'Azure'], default: 'Generic' },
+      { key: 'tenantId', name: 'tenant_id', label: 'Tenant ID', required: true, placeholder: 'Enter Tenant Id',
+        when: (f) => f.provider === 'Azure',
+        hint: 'Azure issues tokens per directory, so the tenant is part of the endpoint. Generic and Google are not asked for one.' },
+      { key: 'clientId', name: 'client_id', label: 'Client Id', required: true, placeholder: 'Enter Client Id' },
+      { key: 'redirectUri', name: 'redirect_uri', label: 'Redirect URI',
+        default: 'https://instasafe-console-demo.netlify.app/oauth2/callback',
+        locked: 'Where the provider sends the user back. The console decides it; copy it into the provider exactly, because a trailing slash is a different URI.' }
     ],
     columns: [
       { key: 'name', label: 'Name', bold: true },
+      { key: 'provider', label: 'Provider' },
       { key: 'clientId', label: 'Client ID', mono: true },
       { key: 'redirectUri', label: 'Redirect URI', mono: true }
     ]
@@ -357,13 +390,18 @@ export const RESOURCES = {
     searchFields: ['name', 'clientId', 'issuerUrl'],
     emptyTitle: 'No OpenID profiles',
     emptyBody: 'Add one to let users sign in through an OpenID Connect provider.',
+    secretAction: { key: 'clientSecret', label: 'Change Client Secret', noun: 'client secret' },
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'entra-oidc',
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
-      { key: 'clientId', label: 'Client ID', required: true },
-      { key: 'clientSecret', label: 'Client secret', type: 'password' },
-      { key: 'issuerUrl', label: 'Issuer URL', required: true,
-        hint: 'The console appends /.well-known/openid-configuration to this.' }
+      { key: 'clientId', name: 'client_id', label: 'Client Id', required: true, placeholder: 'Enter Client Id' },
+      { key: 'scopes', name: 'scopes', label: 'Scopes', required: true, placeholder: 'Enter Scopes',
+        hint: 'Space separated. openid is required; profile and email are what fill in the username and the address.' },
+      { key: 'issuerUrl', name: 'issuer_url', label: 'Issuer URL', required: true, placeholder: 'Enter Issuer URL',
+        hint: 'The console appends /.well-known/openid-configuration to this.' },
+      { key: 'redirectUri', name: 'redirect_uri', label: 'Redirect URI',
+        default: 'https://instasafe-console-demo.netlify.app/openid/callback',
+        locked: 'Where the provider sends the user back. The console decides it; copy it into the provider exactly.' }
     ],
     columns: [
       { key: 'name', label: 'Name', bold: true },
@@ -382,19 +420,27 @@ export const RESOURCES = {
     searchFields: ['name'],
     emptyTitle: 'No passwordless profiles',
     emptyBody: 'Add one to let users sign in with a security key instead of a password.',
+    /**
+     * Both lists were invented — FIDO Key, Push notification, Magic link, OTP.
+     * Velto offers three primaries and three fallbacks, and they are not the
+     * same three: **Kerberos can be primary but never a fallback, and Password
+     * can be a fallback but never primary**, which is the whole point of the
+     * screen.
+     */
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'fido-engineering',
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
-      { key: 'primaryAuth', label: 'Primary authentication',
-        options: ['FIDO Key', 'Certificate', 'Push notification', 'Magic link'] },
-      { key: 'fallbackAuth', label: 'Fallback authentication',
-        options: ['FIDO Key', 'Password', 'OTP', 'None'],
-        hint: 'A fallback of Password means a lost key locks nobody out - and that the password still matters.' }
+      { key: 'primaryAuth', name: 'primary', label: 'Primary Auth', required: true,
+        options: ['Hardware Key', 'Digital Certificate', 'Kerberos'], default: 'Hardware Key',
+        hint: 'What a user presents instead of a password. Password is not offered here — avoiding it is what this profile is for.' },
+      { key: 'fallbackAuth', name: 'fallback', label: 'Fallback Auth', required: true,
+        options: ['Password', 'Hardware Key', 'Digital Certificate'], default: 'Digital Certificate',
+        hint: 'What they use when the primary is unavailable. Kerberos is not offered: it needs a domain-joined machine, which is the case where the primary already worked.' }
     ],
     columns: [
       { key: 'name', label: 'Name', bold: true },
       { key: 'primaryAuth', label: 'Primary auth' },
-      { key: 'fallbackAuth', label: 'Fallback authn' }
+      { key: 'fallbackAuth', label: 'Fallback auth' }
     ]
   },
 

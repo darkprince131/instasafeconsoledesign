@@ -593,7 +593,9 @@ onMounted(load)
               v-else-if="f.options" :id="'rf_' + f.key" :name="f.name || f.key" class="i-ctl"
               v-model="form[f.key]" :disabled="!!locked(f)"
             >
-              <option value="">Select…</option>
+              <!-- A select that carries a default is never empty in velto,
+                   so it does not offer an empty choice either. -->
+              <option v-if="f.default === undefined" value="">Select…</option>
               <option v-for="o in fieldOptions(f)" :key="o">{{ o }}</option>
             </select>
             <textarea
