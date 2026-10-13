@@ -101,7 +101,7 @@ Eight profile types, all with working add/edit/test.
 |---|---|---|
 | Company details | `/settings/company-details` | **S** — velto's fields: address, logo and background upload (held as data URLs), three contact tabs each holding several contacts, and the welcome banner users see in a dashboard popup |
 | Subscription | `/settings/subscription-details` | **S** — the licence-period table velto has, with the period in force marked, and an expiry reminder that names the date it would send. Licenced Gateways here is what the Gateways screen enforces |
-| SMS / Email settings | `/sms-settings`, `/email-settings` | **S** — test send lands in Demo Inbox |
+| SMS / Email settings | `/sms-settings`, `/email-settings` | **S** — velto's fields: SMS is a generic HTTP gateway (method, URL, headers, parameter template, message and phone attributes), email is six SMTP fields with Require SSL as a Yes/No select and the password behind Change Password. Test send lands in Demo Inbox and quotes the configured request |
 | User settings | `/user-settings` | **D** — 19 controls, 8 sections |
 | Time schedules | `/time-schedules` | **R** — genuinely enforced at access evaluation |
 | Risk profiles | `/risk-profiles` | **R** — score computed from device + geo + time |

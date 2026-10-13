@@ -756,6 +756,61 @@ force a day early and dates the reminder a day short — it computed 30-Jan
 where the contract says 31-Jan. Calendar dates are now built from local parts
 on both screens.
 
+## 26. SMS settings was a provider list; velto has no providers — FIXED
+
+The demo offered Twilio, MessageBird, AWS SNS or Custom HTTP, a sender id, an
+API key and a secret, then code length, validity and retry count. Velto has
+none of it. Its SMS screen describes **an HTTP request**:
+
+| Field | |
+|---|---|
+| HTTP Method* | Get or Post |
+| URL* | the vendor endpoint |
+| Custom Headers | optional — where an API key goes on most gateways |
+| Parameters* | the fixed part of the request, as the vendor documents it |
+| Message Attribute* | which parameter the code goes in |
+| Phone Number attribute* | which parameter the number goes in |
+
+That is a better design than the one I invented, and for a reason worth
+keeping: a tenant in India or the Gulf already pays a regional SMS vendor, and
+a provider dropdown cannot reach it. Describing the request reaches any of
+them. The code length and validity I had invented belong to the MFA policy,
+not to the transport.
+
+The one addition: GET is offered because velto offers it, with a note that it
+puts the parameters — including the code — in a query string that proxies log.
+
+## 27. Email settings — six fields, and the password is not one of them — FIXED
+
+Velto's section is **Email SMTP Settings**: `HostName`, `Port`, `Username`,
+`Sender Email-ID`, `Sender Name`, `Require SSL`, all required. Beside Save and
+Cancel sits **Change Password**, which opens *Change Email Password* with
+`password` and `password_confirmation`.
+
+Two things the demo had wrong beyond the field names:
+
+- **The password was on the form.** It belongs behind the button, where a
+  password that has been set is never shown again. That is velto's behaviour
+  and it is the right one.
+- **Require SSL is a Yes/No select, not a switch.** Kept as a select, because
+  the control is velto's and the wording is the question being asked. The
+  hint says what No actually means: credentials and message bodies in the
+  clear.
+
+### 27.1 Nothing stores the password
+There is no SMTP relay in this demo to hand a password to, and a browser
+database is no place to keep one. Saving records `passwordSet` and
+`passwordUpdatedAt` only, and the screen says *Password set 13 Oct 2026. It is
+not shown again.* The panel says so too, rather than implying a secret is
+being held.
+
+### 27.2 The test send now quotes the configuration
+"Send a test email" and "Send a test SMS" write to the Demo Inbox, as before,
+but the message is the request that would actually go out —
+`POST https://… with sender=INSTSF&route=otp, the code in "text" and the
+number in "to"` — so the test says whether the configuration is right rather
+than only that a button works.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

@@ -3,6 +3,7 @@ import { ref, computed, watch, inject, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
+import Sheet from '../../components/ui/Sheet.vue'
 
 /**
  * Settings — SMS, email, user settings, DNS, and the local password policy.
@@ -68,43 +69,65 @@ const PAGES = {
     ]
   },
 
+  /**
+   * SMS settings.
+   *
+   * Not a provider list. Velto has no Twilio, no sender id, no API key: it
+   * takes a **generic HTTP gateway** and asks you to describe the request —
+   * the method, the URL, any headers, the parameter template, and which two
+   * parameters carry the message and the phone number. That is what lets a
+   * tenant point it at whatever regional SMS vendor it already pays for,
+   * which is the thing a provider dropdown cannot do.
+   *
+   * The demo had Twilio, a sender id, an API key and a secret, plus code
+   * length and validity, none of which this screen holds.
+   */
   '/sms-settings': {
     title: 'SMS settings',
-    subtitle: 'How one-time codes reach a phone.',
+    subtitle: 'The HTTP gateway one-time codes are sent through. Any vendor that accepts an HTTP request will do.',
     sections: [
-      ['Gateway', [
-        ['provider', 'Provider', 'select', 'Twilio', '', ['Twilio','MessageBird','AWS SNS','Custom HTTP']],
-        ['senderId', 'Sender ID', 'text', 'INSTSF', 'Six characters. Alphanumeric sender IDs are not deliverable in every country.'],
-        ['apiKey', 'API key', 'password', ''],
-        ['apiSecret', 'API secret', 'password', '']
+      ['The request', [
+        ['method', 'HTTP Method', 'select', 'POST', 'How the gateway expects to be called. GET puts the parameters in the query string, where they are logged by proxies — including the code.', ['GET', 'POST'], true],
+        ['url', 'URL', 'url', 'https://sms.example.com/api/v1/send', '', '', true],
+        ['headers', 'Custom Headers', 'textarea', '', 'One per line, Name: value. This is where an API key goes on most gateways.', 'Authorization: Bearer …']
       ]],
-      ['Behaviour', [
-        ['ttl', 'Code valid for (minutes)', 'number', '5'],
-        ['length', 'Code length', 'number', '6'],
-        ['retries', 'Attempts before lockout', 'number', '3']
+      ['What it sends', [
+        ['parameters', 'Parameters', 'text', 'sender=INSTSF&route=otp', 'The fixed part of the request, as the gateway documents it. The two attributes below are added to it.', '', true],
+        ['messageAttribute', 'Message Attribute', 'text', 'text', 'The parameter the code itself goes in.', '', true],
+        ['phoneAttribute', 'Phone Number attribute', 'text', 'to', 'The parameter the number goes in.', '', true]
       ]]
     ],
     testLabel: 'Send a test SMS'
   },
+
+  /**
+   * Email settings — velto calls the section Email SMTP Settings.
+   *
+   * Six fields, and the password is not one of them: it sits behind a Change
+   * Password button that opens New Password / Confirm Password. A password
+   * that has been set is never shown again, which is right, and the demo had
+   * it inline on the form instead.
+   *
+   * Require SSL is a Yes/No select rather than a switch. That is velto's
+   * control and it is kept, because the wording is the question being asked.
+   */
   '/email-settings': {
     title: 'Email settings',
-    subtitle: 'How activation links, alerts and scheduled reports are sent.',
+    subtitle: 'The SMTP relay that sends activation links, alerts and scheduled reports.',
     sections: [
-      ['SMTP', [
-        ['host', 'Server', 'text', 'smtp.example.com'],
-        ['port', 'Port', 'number', '587'],
-        ['username', 'Username', 'text', ''],
-        ['password', 'Password', 'password', ''],
-        ['tls', 'Use STARTTLS', 'switch', true]
-      ]],
-      ['Addressing', [
-        ['fromName', 'From name', 'text', 'InstaSafe'],
-        ['fromAddress', 'From address', 'email', 'no-reply@instasafe.com'],
-        ['replyTo', 'Reply-to', 'email', '', 'Leave empty and replies bounce, which is usually not what anyone intends.']
+      ['Email SMTP settings', [
+        ['host', 'HostName', 'text', 'smtp.example.com', '', 'Enter HostName', true],
+        ['port', 'Port', 'number', '587', 'Usually 587 with SSL, or 25 without.', 'Enter Port', true],
+        ['username', 'Username', 'text', 'no-reply@example.com', '', 'Enter Username', true],
+        ['senderEmail', 'Sender Email-ID', 'email', 'no-reply@example.com', 'What recipients see in From, and where their replies go.', 'Enter Sender Email-ID', true],
+        ['senderName', 'Sender Name', 'text', 'InstaSafe', '', 'Enter Sender Name', true],
+        ['requireSsl', 'Require SSL', 'select', 'Yes', 'No sends credentials and message bodies in the clear.', ['Yes', 'No'], true]
       ]]
     ],
-    testLabel: 'Send a test email'
+    testLabel: 'Send a test email',
+    passwordAction: 'Change Password'
   },
+
   /**
    * User settings.
    *
@@ -190,6 +213,49 @@ const original = ref({})
 const saving = ref(false)
 const testing = ref(false)
 
+/* The SMTP password. Velto keeps it off the form behind Change Password, and
+   a password that has been set is never shown again. Nothing here stores the
+   value: there is no SMTP server to give it to, and a demo has no business
+   holding one in a browser database. What is kept is that one was set, and
+   when — which is what the screen needs to tell you. */
+const pwOpen = ref(false)
+const pwNew = ref('')
+const pwConfirm = ref('')
+const pwSaving = ref(false)
+
+function openPassword () {
+  pwNew.value = ''
+  pwConfirm.value = ''
+  pwOpen.value = true
+}
+
+async function savePassword () {
+  if (pwNew.value.length < 8) { toast('Use at least 8 characters', 'bad'); return }
+  if (pwNew.value !== pwConfirm.value) { toast('The two passwords do not match', 'bad'); return }
+  pwSaving.value = true
+  try {
+    form.value.passwordSet = true
+    form.value.passwordUpdatedAt = new Date().toISOString()
+    await api.settings.set(route.path, { ...form.value })
+    original.value = { ...form.value }
+    await api.events.record({
+      type: 'settings.updated',
+      message: 'SMTP password changed',
+      severity: 'warning'
+    })
+    pwOpen.value = false
+    toast('SMTP password changed')
+  } finally {
+    pwSaving.value = false
+  }
+}
+
+const passwordState = computed(() => {
+  if (!form.value.passwordSet) return 'No password set — the relay will refuse to authenticate.'
+  const when = new Date(form.value.passwordUpdatedAt)
+  return `Password set ${when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}. It is not shown again.`
+})
+
 const dirty = computed(() =>
   JSON.stringify(form.value) !== JSON.stringify(original.value))
 
@@ -229,9 +295,9 @@ async function sendTest () {
     kind: isSms ? 'sms' : 'email',
     subject: isSms ? 'Test message' : 'Test email from InstaSafe',
     body: isSms
-      ? `Test from ${form.value.senderId || 'INSTSF'} via ${form.value.provider}. Codes are ${form.value.length} digits and valid for ${form.value.ttl} minutes.`
-      : `Test email sent through ${form.value.host}:${form.value.port}${form.value.tls ? ' over STARTTLS' : ' with no TLS'}.`,
-    meta: { to: isSms ? '+91 98000 00000' : (form.value.replyTo || form.value.fromAddress) },
+      ? `${form.value.method} ${form.value.url} with ${form.value.parameters}, the code in "${form.value.messageAttribute}" and the number in "${form.value.phoneAttribute}".`
+      : `Test email sent as ${form.value.senderName} <${form.value.senderEmail}> through ${form.value.host}:${form.value.port}${form.value.requireSsl === 'Yes' ? ' over SSL' : ' with no SSL'}.`,
+    meta: { to: isSms ? '+91 98000 00000' : form.value.senderEmail },
     read: false,
     at: new Date().toISOString()
   })
@@ -250,6 +316,9 @@ onMounted(load)
 
     <div class="i-strip">
       <div class="i-tools">
+        <button
+          v-if="cfg.passwordAction" class="i-btn" @click="openPassword"
+        >{{ cfg.passwordAction }}</button>
         <button
           v-if="cfg.testLabel" class="i-btn" :disabled="testing" @click="sendTest"
         >{{ testing ? 'Sending…' : cfg.testLabel }}</button>
@@ -272,7 +341,9 @@ onMounted(load)
               </label>
             </template>
             <template v-else>
-              <label :for="'s_' + f[0]">{{ f[1] }}</label>
+              <label :for="'s_' + f[0]">
+                {{ f[1] }}<span v-if="f[6]" class="i-req">*</span>
+              </label>
               <select
                 v-if="f[2] === 'select'" :id="'s_' + f[0]" class="i-ctl"
                 v-model="form[f[0]]" :disabled="cfg.readOnly"
@@ -298,6 +369,10 @@ onMounted(load)
         </div>
       </div>
 
+      <p v-if="cfg.passwordAction" class="i-demo-note">
+        {{ passwordState }}
+      </p>
+
       <!-- what Save is about to commit, which production never shows -->
       <div v-if="dirty" class="i-verdict is-warn">
         <h3><i class="fa-solid fa-pen me-2" aria-hidden="true" />{{ changedKeys.length }} unsaved change{{ changedKeys.length === 1 ? '' : 's' }}</h3>
@@ -313,5 +388,48 @@ onMounted(load)
         count goes through your account team.
       </p>
     </div>
+
+    <!-- Velto's Change Email Password: two fields and Save, with the password
+         never shown on the form itself. -->
+    <Sheet
+      v-model:open="pwOpen"
+      title="Change email password"
+      subtitle="The password the relay authenticates with. It is not shown again once saved."
+    >
+      <div class="i-formsec">
+        <div class="i-field">
+          <label for="password">New Password<span class="i-req">*</span></label>
+          <input
+            id="password" name="password" class="i-ctl" type="password"
+            autocomplete="new-password" placeholder="New Password"
+            v-model="pwNew"
+          >
+          <p class="i-hint">At least 8 characters.</p>
+        </div>
+        <div class="i-field">
+          <label for="password_confirmation">Confirm Password<span class="i-req">*</span></label>
+          <input
+            id="password_confirmation" name="password_confirmation" class="i-ctl"
+            type="password" autocomplete="new-password" placeholder="Confirm Password"
+            v-model="pwConfirm"
+          >
+          <p v-if="pwConfirm && pwNew !== pwConfirm" class="i-hint">
+            These two do not match yet.
+          </p>
+        </div>
+        <p class="i-demo-note">
+          This demo has no SMTP relay to hand a password to, so the value is
+          not stored anywhere — only the fact that one was set, and when.
+        </p>
+      </div>
+      <template #footer>
+        <button class="i-btn i-quiet" @click="pwOpen = false">Cancel</button>
+        <div class="i-right">
+          <button class="i-btn i-primary" :disabled="pwSaving" @click="savePassword">
+            {{ pwSaving ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </template>
+    </Sheet>
   </div>
 </template>
