@@ -35,9 +35,28 @@ function plain (value) {
 }
 
 // ------------------------------------------------------------- seeding
+let migrated = false
+
 async function ensureSeeded () {
-  if (localStorage.getItem(SEED_FLAG)) return
-  await reseed()
+  if (!localStorage.getItem(SEED_FLAG)) { await reseed(); migrated = true; return }
+  /* One db.all on the first call of the session, then never again. */
+  if (!migrated) { migrated = true; await migrateControllers() }
+}
+
+/**
+ * Controllers were seeded with an invented shape — region, IP, version,
+ * uptime — before the live form was read. A visitor who has already seeded
+ * holds those rows, and the new screen would render blank cells against them.
+ *
+ * Re-seeding everything would take their users, devices and MFA enrolment
+ * with it, so only this one collection is replaced, and only when a row is
+ * recognisably the old shape.
+ */
+async function migrateControllers () {
+  const rows = await db.all('controllers')
+  if (rows.length && rows.every(c => c.cloudServer !== undefined)) return
+  await db.clear('controllers')
+  await db.putMany('controllers', seed.seedControllers())
 }
 
 async function reseed () {
@@ -393,6 +412,27 @@ const handlers = {
       }, 4000)
     }
     return { ok: true, status: next }
+  },
+
+  /**
+   * Commit a selection in one call.
+   *
+   * Velto's toolbar Commit is armed whether or not anything is selected and
+   * gives no account of what it did. This commits only the controllers that
+   * were actually holding changes, and says how many — committing a
+   * controller with nothing pending is a no-op worth not reporting as work.
+   */
+  async 'controllers.commitMany' ({ ids }) {
+    const all = await Promise.all(ids.map(cid => db.get('controllers', cid)))
+    const pending = all.filter(c => c && c.pendingCommit)
+    for (const c of pending) {
+      await db.put('controllers', { ...c, pendingCommit: false, status: 'running' })
+    }
+    await record('controller.commit',
+      pending.length
+        ? `Committed ${pending.map(c => c.name).join(', ')}`
+        : 'Commit ran with nothing pending')
+    return { ok: true, committed: pending.length, skipped: ids.length - pending.length }
   },
 
   // ---- misc ----------------------------------------------------------

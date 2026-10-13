@@ -540,6 +540,68 @@ console does about a stolen credential showed nothing at all. Only the three
 actions that intervene take a mark in the table; mailing an admin is a
 notification.
 
+## 22. Controllers was the wrong screen entirely — FIXED
+
+Four of its five columns were invented. The real list is Controller, Cloud
+Server, Protocol/Port, Network, Status, Actions; mine had Region, IP address,
+Version and Uptime, none of which the product holds. There was no selection, no
+sort, no row click, no detail, no edit, and `Add controller` was a button with
+no handler behind it.
+
+Read off the live `/controllers` on velto and the captured add and edit forms:
+
+| | |
+|---|---|
+| Columns | Controller · Cloud Server · Protocol/Port · Network · Status · Actions |
+| Toolbar | Add · CSV · Commit · Delete — the last two operate on the checkbox selection |
+| Row click | opens a **View Controller** panel, read-only, with an Edit button |
+| Form | `controller_name` · `cloud_server` · `location` · `protocol` · `port` · `mgt_port` · `internal_network` · `net_mask` · `network_topology` |
+| Locked on add | `mgt_port`, `network_topology` |
+| Locked on edit | those two, plus `controller_name` and `cloud_server` |
+| `net_mask` | a select, /16 to /28 — not a free number |
+| `protocol` | TCP or UDP |
+
+**The management port is arithmetic.** Velto's captured controller is port 1306
+with management port 21306; the live one is 1309 / 21309. It is the data port
+plus 20,000, which is why the field is disabled and why nobody could tell from
+looking at it. The form now says so under the field.
+
+Built with the shared DataTable, so this screen gains sort, a column chooser and
+selection-gated actions along with the other 53. The form carries velto's own
+`id` and `name` on every control so an implementer can map it one to one.
+
+### Where this screen deliberately differs from velto
+- **Commit and Delete are armed by a selection.** Velto's are live over an empty
+  list; clicking Delete with nothing selected is a thing you can do there.
+- **The delete confirmation names what it deletes**, singular or plural.
+- **The four locked fields say why they are locked.** Production disables them
+  and explains none, which reads as a broken form until you work out the
+  arithmetic.
+- **Commit over a selection reports what it did**, and skips controllers that
+  were not holding changes rather than counting them as work.
+
+### Two judgements worth flagging
+- **A new controller starts `stopped` and holding its configuration.** It has
+  never been committed, so it is not serving anything. Velto's behaviour on
+  create was not captured — if it comes up running, change the two values in
+  `save()`.
+- **Row click opens a read panel, not the edit form.** This contradicts the
+  house rule in `CLAUDE.md` that a row click opens the editable panel. It is not
+  a drift: velto's Controllers genuinely has a View panel with an Edit button
+  inside it, confirmed on the live tenant. The rule still holds everywhere else.
+
+### A bug this screen found in the shared table
+`DataTable` clears its selection whenever the rows array changes, and this
+screen polled every two seconds to watch a restart settle. The two together made
+Commit-on-a-selection impossible to click — the tick landed between the checkbox
+and the button and emptied it. The poll now runs only while a controller is
+actually restarting, and never while a selection or the panel is open.
+
+### Not from the captured tenant
+The `cloud_server` select's 24 options were captured with real names, five of
+which identify a customer. Those five are replaced with further region names;
+the shape, the id range and the inconsistent casing are kept. See §3.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

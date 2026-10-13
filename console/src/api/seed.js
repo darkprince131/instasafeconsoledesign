@@ -337,15 +337,65 @@ export function seedAccessRules (groups, apps) {
 }
 
 // ------------------------------------------- controllers and gateways
+/**
+ * The cloud servers a controller can be placed on.
+ *
+ * The live `#cloud_server` select carries 24 options with numeric ids and
+ * names that are a region plus a serial, not a tidy scheme — `Mumbai9C` and
+ * `mumbai4old` sit in the same list. The shape is kept and the five options
+ * that named a real customer are replaced with further regions, because this
+ * demo is public (see VELTO-AUDIT §3). A controller
+ * does not carry a region of its own — the cloud server is the region, which
+ * is why velto's list column is Cloud Server and there is no Region column.
+ */
+export const CLOUD_SERVERS = [
+  [149, 'Singapore1'], [152, 'mumbai4'], [162, 'Mumbai6'], [167, 'mumbai4old'],
+  [168, 'Mumbai7'], [177, 'Virginia1'], [178, 'Dallas1'], [184, 'Mumbai9'],
+  [185, 'Ireland1'], [186, 'Ireland2'], [187, 'Singapore2'], [189, 'Mumbai10'],
+  [191, 'Mumbai11'], [192, 'Mumbai12'], [195, 'Mumbai9C'], [196, 'Mumbai10C'],
+  [198, 'Singapore3'], [204, 'Virginia2'], [207, 'Frankfurt1'], [211, 'Sydney1'],
+  [216, 'mumbai15'], [217, 'mumbai16'], [221, 'Dallas2'], [228, 'Frankfurt2']
+].map(([id, name]) => ({ id, name }))
+
+/** `#net_mask` offers exactly /16 to /28. Not a free number field. */
+export const NETMASK_BITS = Array.from({ length: 13 }, (_, i) => 16 + i)
+
+/** The management port is not asked for: it is the data port plus 20000. */
+export const MGT_PORT_OFFSET = 20000
+export const mgtPortFor = (port) => Number(port || 0) + MGT_PORT_OFFSET
+
+/**
+ * Controllers.
+ *
+ * The earlier shape — region, IP, version, uptime in days — was invented. The
+ * real row is name, cloud server, protocol/port, network, status, and the real
+ * form carries a location, netmask bits and a topology. Every field below is a
+ * field the live form has; nothing has been added for decoration.
+ *
+ * Ports sit in the 1300s with the management port derived, the way the one
+ * captured controller does (1306 / 21306).
+ */
 export function seedControllers () {
   return [
-    ['ctl-mum-01','Mumbai','10.0.1.10','running'],
-    ['ctl-blr-01','Bengaluru','10.0.2.10','running'],
-    ['ctl-lon-01','London','10.0.3.10','running']
-  ].map(([name, region, ip, status], i) => ({
-    id: `ctl_${pad(i + 1, 4)}`, name, region, ip, status,
-    version: '3.4.1', uptimeDays: Math.floor(30 + r() * 300),
-    pendingCommit: i === 1, createdAt: ago(500)
+    ['demomum6', 162, 'Mumbai', 'UDP', 1306, '10.130.9.0', 24, 'running'],
+    ['demosin2', 187, 'Singapore', 'UDP', 1312, '10.130.12.0', 24, 'running'],
+    ['demoire1', 185, 'Dublin', 'TCP', 1318, '10.130.18.0', 23, 'running'],
+    ['demodal1', 178, 'Dallas', 'UDP', 1324, '10.130.24.0', 24, 'stopped']
+  ].map(([name, cloudServerId, location, protocol, port, network, netmaskBits, status], i) => ({
+    id: `ctl_${pad(i + 1, 4)}`,
+    name,
+    cloudServerId,
+    cloudServer: CLOUD_SERVERS.find(s => s.id === cloudServerId)?.name || '',
+    location,
+    protocol,
+    port,
+    mgtPort: mgtPortFor(port),
+    network,
+    netmaskBits,
+    topology: 'Subnet',
+    status,
+    pendingCommit: i === 1,
+    createdAt: ago(500)
   }))
 }
 

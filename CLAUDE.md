@@ -69,6 +69,12 @@ The real console has **no per-row edit button anywhere**. The whole table is
 loaded; the panel shows the same fields as add, plus Suspend / Save / Cancel.
 This console matches that. Do not add pencil icons.
 
+**One screen is genuinely different.** Controllers opens a read-only *View
+Controller* panel on the row click, with an Edit button inside it that turns the
+panel into the form. That is velto's own behaviour, confirmed on the live
+tenant, not a drift — see `console/VELTO-AUDIT.md` §22. Everywhere else the row
+click goes straight to the editable panel.
+
 ### Gotchas already hit — do not rediscover
 - Exactly **one** `netlify.toml`, at the repo root. With `base = "console"` Netlify also
   reads `console/netlify.toml` and lets it win, which double-nests the paths. That was

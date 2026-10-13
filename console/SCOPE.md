@@ -61,7 +61,7 @@ Eight profile types, all with working add/edit/test.
 
 | Capability | Route | Real? | Notes |
 |---|---|---|---|
-| Controllers | `/controllers` | **S** | Stop / Restart / Commit run a real state machine with timed transitions |
+| Controllers | `/controllers` | **S** | Stop / Restart / Commit run a real state machine with timed transitions. Velto's own columns and form, including the derived management port; row click opens a read panel with Edit behind it; Commit and Delete work on a selection |
 | Gateways | `/gateways` | **S** | Health, reachability, throughput — simulated but moving |
 | Application services | `/application-services` | **D** | Protocol + port definitions |
 | Applications | `/applications` | **D** | Web, **RDP**, **SSH**, VNC types with their per-type fields |

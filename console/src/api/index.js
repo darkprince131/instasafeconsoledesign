@@ -123,7 +123,9 @@ export const api = {
   controllers: {
     ...resource('controllers'),
     /** POST /controllers/:id/:action — stop | restart | commit */
-    action: (id, action) => adapter.call('controllers.action', { id, action })
+    action: (id, action) => adapter.call('controllers.action', { id, action }),
+    /** POST /controllers/bulk-commit — the toolbar Commit, over a selection */
+    commitMany: (ids) => adapter.call('controllers.commitMany', { ids })
   },
   gateways: resource('gateways'),
   applications: {

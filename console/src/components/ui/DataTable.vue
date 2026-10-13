@@ -132,7 +132,10 @@ function cellClass (col) {
               style="font-size:9px"
             />
           </th>
-          <th v-if="rowAction" style="width:96px" />
+          <th
+            v-if="rowAction || $slots.actions"
+            :style="{ width: $slots.actions ? '240px' : '96px' }"
+          >{{ $slots.actions ? 'Actions' : '' }}</th>
         </tr>
       </thead>
 
@@ -140,7 +143,7 @@ function cellClass (col) {
         <tr v-for="n in 8" :key="n" class="is-skel">
           <td v-if="selectable"><div class="i-skel" style="width:14px;height:14px" /></td>
           <td v-for="col in visibleColumns" :key="col.key"><div class="i-skel" /></td>
-          <td v-if="rowAction" />
+          <td v-if="rowAction || $slots.actions" />
         </tr>
       </tbody>
 
@@ -181,12 +184,17 @@ function cellClass (col) {
             <template v-else>{{ value(row, col) ?? '—' }}</template>
           </td>
 
-          <td v-if="rowAction" class="text-end" @click.stop>
-            <button
-              v-if="!rowAction.when || rowAction.when(row)"
-              class="i-btn i-sm"
-              @click="emit('row-action', row)"
-            >{{ rowAction.label }}</button>
+          <!-- One screen's row carries three verbs rather than one. The slot
+               falls back to the single rowAction button, so the 53 screens
+               that pass a rowAction render exactly as before. -->
+          <td v-if="rowAction || $slots.actions" class="text-end" @click.stop>
+            <slot name="actions" :row="row">
+              <button
+                v-if="rowAction && (!rowAction.when || rowAction.when(row))"
+                class="i-btn i-sm"
+                @click="emit('row-action', row)"
+              >{{ rowAction.label }}</button>
+            </slot>
           </td>
         </tr>
       </tbody>
