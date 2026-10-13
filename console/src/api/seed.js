@@ -458,8 +458,11 @@ export function seedAuthProfiles () {
     ['active-directory', { name: 'contractors-ad', domain: 'ext.instasafe.com', primaryServerIp: '10.20.9.31', backupServerIp: '10.20.9.32' }],
 
     // OpenLDAP — adds Port and Protocol
-    ['ldap', { name: 'openldap-eu', domain: 'eu.ldap.instasafe.com', primaryServerIp: '10.44.1.8', backupServerIp: '10.44.1.9', port: 636, protocol: 'TLS' }],
-    ['ldap', { name: 'openldap-lab', domain: 'lab.ldap.instasafe.com', primaryServerIp: '10.44.7.2', backupServerIp: '10.44.7.2', port: 389, protocol: 'TCP' }],
+    /* Protocol is TCP on every row because the field is fixed in the product.
+       The rest are velto's columns: bind user, auth type, base DN and filter
+       all live on the form rather than in the list. */
+    ['ldap', { name: 'openldap-eu', domain: 'eu.ldap.example.com', primaryServerIp: '10.44.1.8', backupServerIp: '10.44.1.9', bindUser: 'cn=admin,dc=example,dc=com', authType: 'Certificate', baseDn: 'dc=example,dc=com', filter: '(|(gidNumber=48681))', port: 389, protocol: 'TCP', usernameAttribute: 'UID' }],
+    ['ldap', { name: 'openldap-lab', domain: 'lab.ldap.example.com', primaryServerIp: '10.44.7.2', backupServerIp: '10.44.7.2', bindUser: 'cn=admin,dc=lab,dc=example,dc=com', authType: 'Password + Certs', baseDn: 'dc=lab,dc=example,dc=com', filter: '(&(objectClass=posixAccount))', port: 389, protocol: 'TCP', usernameAttribute: 'UID' }],
 
     // RADIUS — Name · RADIUS Server IP · Backup RADIUS Server IP · Port
     ['radius', { name: 'nps-mumbai', radiusServerIp: '10.61.3.40', backupRadiusServerIp: '10.61.3.41', port: 1812 }],

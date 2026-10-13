@@ -55,12 +55,19 @@ async function ensureSeeded () {
  */
 const RESHAPED = [
   ['controllers', 'cloudServer', () => seed.seedControllers()],
-  ['gateways', 'protectedNetworks', () => seed.seedGateways()]
+  ['gateways', 'protectedNetworks', () => seed.seedGateways()],
+  /* LDAP profiles gained the bind user, auth type, base DN, filter and
+     username attribute once the real form was read. The marker is checked on
+     the LDAP rows only, but the collection holds every profile type, so this
+     does replace a visitor's own profiles along with the seeded ones. */
+  ['authProfiles', 'usernameAttribute', () => seed.seedAuthProfiles(),
+    (rows) => rows.filter(r => r.type === 'ldap')]
 ]
 
 async function migrateReshaped () {
-  for (const [store, marker, reseedOne] of RESHAPED) {
-    const rows = await db.all(store)
+  for (const [store, marker, reseedOne, slice] of RESHAPED) {
+    const all = await db.all(store)
+    const rows = slice ? slice(all) : all
     if (rows.length && rows.every(r => r[marker] !== undefined)) continue
     await db.clear(store)
     await db.putMany(store, reseedOne())

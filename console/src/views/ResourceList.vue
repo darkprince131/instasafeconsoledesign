@@ -58,7 +58,12 @@ const editable = computed(() => Array.isArray(cfg.value?.form) && cfg.value.form
 function blankForm () {
   const out = {}
   for (const f of cfg.value?.form || []) {
-    out[f.key] = f.type === 'switch' ? false
+    /* A field the form never lets you fill still has to be saved with its
+       value — OpenLDAP's Protocol is fixed at TCP and disabled, so without a
+       default a new profile would be created with no protocol at all. Velto
+       pre-fills its add form the same way, including RADIUS port 1812. */
+    out[f.key] = f.default !== undefined ? f.default
+      : f.type === 'switch' ? false
       : f.type === 'days' ? []
       : f.type === 'pick' ? (f.multiple === false ? '' : [])
       : ''
@@ -99,7 +104,58 @@ function reallyOpenAdd () {
  * nothing; this says why.
  */
 function locked (f) {
+  /* Some fields are fixed whatever you are doing. OpenLDAP's Protocol is
+     disabled on the add form too, carrying TCP — the console does not offer
+     the choice at all. */
+  if (f.locked) return f.locked
   return editingId.value && f.lockedOnEdit ? f.lockedOnEdit : ''
+}
+
+/**
+ * A secret the record holds but never shows.
+ *
+ * Velto puts these behind their own button on the view panel — Change
+ * Password on an LDAP profile, Change Client Secret on a RADIUS one — rather
+ * than on the form, because a secret that has been set should not be readable
+ * afterwards. Nothing stores the value: there is no directory or RADIUS
+ * server here to give it to, so what is kept is that one was set, and when.
+ */
+const secretOpen = ref(false)
+const secretNew = ref('')
+const secretConfirm = ref('')
+const secretSaving = ref(false)
+
+function openSecret () {
+  secretNew.value = ''
+  secretConfirm.value = ''
+  secretOpen.value = true
+}
+
+const secretState = computed(() => {
+  const a = cfg.value?.secretAction
+  if (!a) return ''
+  if (!form.value[a.key + 'Set']) return `No ${a.noun} set yet.`
+  const when = new Date(form.value[a.key + 'UpdatedAt'])
+  return `${a.noun[0].toUpperCase()}${a.noun.slice(1)} set ${when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}. It is not shown again.`
+})
+
+async function saveSecret () {
+  const a = cfg.value.secretAction
+  if (secretNew.value.length < 8) { toast('Use at least 8 characters', 'bad'); return }
+  if (secretNew.value !== secretConfirm.value) { toast(`The two ${a.noun}s do not match`, 'bad'); return }
+  secretSaving.value = true
+  try {
+    form.value[a.key + 'Set'] = true
+    form.value[a.key + 'UpdatedAt'] = new Date().toISOString()
+    if (editingId.value) {
+      await api[cfg.value.resource].update(editingId.value, { ...form.value })
+      load()
+    }
+    secretOpen.value = false
+    toast(`${a.label} — saved`)
+  } finally {
+    secretSaving.value = false
+  }
 }
 
 /** A field that only exists once another one is switched on. */
@@ -571,11 +627,66 @@ onMounted(load)
           </div>
         </div>
       </div>
+      <!-- Velto's Change Password / Change Client Secret: its own button,
+           never a field on the form. -->
+      <div v-if="cfg.secretAction" class="i-formsec">
+        <div class="i-field">
+          <label>{{ cfg.secretAction.label }}</label>
+          <div>
+            <button class="i-btn i-sm" @click="openSecret">
+              <i class="fa-solid fa-key me-1" aria-hidden="true" />{{ cfg.secretAction.label }}
+            </button>
+          </div>
+          <p class="i-hint">{{ secretState }}</p>
+        </div>
+      </div>
+
       <template #footer>
         <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
         <div class="i-right">
           <button class="i-btn i-primary" :disabled="saving" @click="saveForm">
             {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Create') }}
+          </button>
+        </div>
+      </template>
+    </Sheet>
+
+    <Sheet
+      v-if="cfg?.secretAction"
+      v-model:open="secretOpen"
+      nested
+      :title="cfg.secretAction.label"
+      :subtitle="`The ${cfg.secretAction.noun} is not shown again once saved.`"
+    >
+      <div class="i-formsec">
+        <div class="i-field">
+          <label for="secret_new">New {{ cfg.secretAction.noun }}<span class="i-req">*</span></label>
+          <input
+            id="secret_new" class="i-ctl" type="password" autocomplete="new-password"
+            v-model="secretNew"
+          >
+          <p class="i-hint">At least 8 characters.</p>
+        </div>
+        <div class="i-field">
+          <label for="secret_confirm">Confirm {{ cfg.secretAction.noun }}<span class="i-req">*</span></label>
+          <input
+            id="secret_confirm" class="i-ctl" type="password" autocomplete="new-password"
+            v-model="secretConfirm"
+          >
+          <p v-if="secretConfirm && secretNew !== secretConfirm" class="i-hint">
+            These two do not match yet.
+          </p>
+        </div>
+        <p class="i-demo-note">
+          There is nothing here to hand this to, so the value is not stored —
+          only the fact that one was set, and when.
+        </p>
+      </div>
+      <template #footer>
+        <button class="i-btn i-quiet" @click="secretOpen = false">Cancel</button>
+        <div class="i-right">
+          <button class="i-btn i-primary" :disabled="secretSaving" @click="saveSecret">
+            {{ secretSaving ? 'Saving…' : 'Save' }}
           </button>
         </div>
       </template>

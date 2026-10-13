@@ -113,6 +113,8 @@ const statusPill = (raw) => {
   }[v] ?? null)
 }
 
+const LOCK_REASON = 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.'
+
 export const RESOURCES = {
   /* ============================================================
      Authentication profiles - seven screens, not one with a filter.
@@ -160,7 +162,7 @@ export const RESOURCES = {
     formSubtitle: 'Where the directory is, how to bind to it, and which users to let in.',
     form: [
       { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
+        lockedOnEdit: LOCK_REASON },
       { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'corp.example.com' },
       { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
       { key: 'backupServerIp', name: 'bads_ip', label: 'Backup AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x',
@@ -211,25 +213,47 @@ export const RESOURCES = {
     emptyTitle: 'No LDAP profiles',
     emptyBody: 'Add one to authenticate users against an LDAP directory.',
     tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    /**
+     * Velto's form. Eleven fields, read off the add form and confirmed
+     * against an Edit Ldap Profile panel on the live tenant.
+     *
+     * Protocol is **disabled everywhere**, carrying TCP — on the add form as
+     * well as on edit. The console does not offer the choice, so the earlier
+     * TLS/TCP select here was offering something the product does not have,
+     * and the attention pill on TCP marked every row in the list.
+     */
+    formSubtitle: 'Where the directory is, how to bind to it, and which users to let in.',
+    secretAction: { key: 'bindPassword', label: 'Change Password', noun: 'bind password' },
     form: [
-      { key: 'name', label: 'Profile name', required: true, placeholder: 'openldap-eu',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
-      { key: 'domain', label: 'Domain', required: true, placeholder: 'ldap.example.com' },
-      { key: 'primaryServerIp', label: 'Primary server IP', required: true },
-      { key: 'backupServerIp', label: 'Backup server IP' },
-      { key: 'port', label: 'Port', placeholder: '636 for LDAPS, 389 for plain LDAP' },
-      { key: 'protocol', label: 'Protocol', options: ['TLS', 'TCP'] }
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
+        lockedOnEdit: LOCK_REASON },
+      { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'ldap.example.com' },
+      { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
+      { key: 'backupServerIp', name: 'bads_ip', label: 'Backup AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
+      { key: 'bindUser', name: 'bind_user', label: 'Bind User', required: true, placeholder: 'cn=admin,dc=example,dc=com',
+        hint: 'The account this console reads the directory with. It only needs read.' },
+      { key: 'authType', name: 'auth_type', label: 'Authentication Type', required: true,
+        options: ['Certificate', 'Password + Certs'] },
+      { key: 'baseDn', name: 'base_dn', label: 'Base DN', required: true, placeholder: 'dc=example,dc=com' },
+      { key: 'filter', name: 'filter', label: 'Filter', required: true, type: 'textarea',
+        placeholder: '(|(gidNumber=48681))',
+        hint: 'Which directory accounts may sign in. Without it, everybody under the base DN can.' },
+      { key: 'port', name: 'port', label: 'Port', required: true, type: 'number', placeholder: 'Eg: 389' },
+      { key: 'protocol', name: 'protocol', label: 'Protocol', default: 'TCP',
+        locked: 'LDAP profiles run over TCP. The console does not offer the choice, here or on the add form.' },
+      { key: 'usernameAttribute', name: 'username', label: 'Username Attribute', required: true,
+        options: ['UID'],
+        hint: 'The attribute a person types. OpenLDAP offers UID alone; Active Directory also offers UPN.' }
     ],
     columns: [
-      { key: 'name', label: 'Profile name', bold: true },
+      { key: 'name', label: 'Profile Name', bold: true },
       { key: 'domain', label: 'Domain' },
-      { key: 'primaryServerIp', label: 'Primary server IP', mono: true },
-      { key: 'backupServerIp', label: 'Backup server IP', mono: true, cell: (v) => v || dash },
+      { key: 'primaryServerIp', label: 'Primary Server IP', mono: true },
+      { key: 'backupServerIp', label: 'Backup Server IP', mono: true, cell: (v) => v || dash },
       { key: 'port', label: 'Port', mono: true, align: 'right' },
-      /* 389 over TCP is a plaintext bind. It is the one value on this screen
-         that is a security decision rather than a setting, so it is the one
-         that takes a mark. */
-      { key: 'protocol', label: 'Protocol', pill: (v) => v === 'TCP' ? 'att' : null }
+      /* No pill. Every profile is TCP because the field is fixed, and a mark
+         on all of them says nothing — it only spends the colour budget. */
+      { key: 'protocol', label: 'Protocol' }
     ]
   },
 
@@ -243,19 +267,25 @@ export const RESOURCES = {
     searchFields: ['name', 'radiusServerIp'],
     emptyTitle: 'No RADIUS profiles',
     emptyBody: 'Add one to authenticate users against a RADIUS server.',
+    /**
+     * Four fields, confirmed against an Edit Radius Profile panel on the live
+     * tenant: the name locks, the rest stay editable. The shared secret was a
+     * password field on this form; velto keeps it behind Change Client Secret
+     * on the view panel, which is where a write-only secret belongs.
+     */
+    secretAction: { key: 'clientSecret', label: 'Change Client Secret', noun: 'client secret' },
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'nps-mumbai',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
-      { key: 'radiusServerIp', label: 'RADIUS server IP', required: true },
-      { key: 'backupRadiusServerIp', label: 'Backup RADIUS server IP' },
-      { key: 'port', label: 'Port', placeholder: '1812' },
-      { key: 'sharedSecret', label: 'Shared secret', type: 'password',
-        hint: 'Held by both ends. Never shown again once saved.' }
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
+        lockedOnEdit: LOCK_REASON },
+      { key: 'port', name: 'port', label: 'Port', required: true, type: 'number', placeholder: 'Eg: 1812', default: 1812,
+        hint: '1812 is the standard authentication port; 1645 on older equipment.' },
+      { key: 'radiusServerIp', name: 'rs_ip', label: 'RADIUS Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
+      { key: 'backupRadiusServerIp', name: 'brs_ip', label: 'Backup RADIUS Server IP', required: true, placeholder: 'Eg: 10.x.x.x' }
     ],
     columns: [
       { key: 'name', label: 'Name', bold: true },
-      { key: 'radiusServerIp', label: 'RADIUS server IP', mono: true },
-      { key: 'backupRadiusServerIp', label: 'Backup server IP', mono: true, cell: (v) => v || dash },
+      { key: 'radiusServerIp', label: 'RADIUS Server IP', mono: true },
+      { key: 'backupRadiusServerIp', label: 'Backup RADIUS Server IP', mono: true, cell: (v) => v || dash },
       { key: 'port', label: 'Port', mono: true, align: 'right' }
     ]
   },
@@ -276,7 +306,7 @@ export const RESOURCES = {
     ],
     form: [
       { key: 'name', label: 'Name', required: true, placeholder: 'okta-workforce',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
+        lockedOnEdit: LOCK_REASON },
       { key: 'integrationType', label: 'Integration type', options: ['SAML2.0'] },
       { key: 'idpEntityId', label: 'IdP entity ID', required: true,
         placeholder: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6' },
@@ -303,7 +333,7 @@ export const RESOURCES = {
     emptyBody: 'Add one to let users sign in through an OAuth2 provider.',
     form: [
       { key: 'name', label: 'Name', required: true, placeholder: 'google-workspace',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
+        lockedOnEdit: LOCK_REASON },
       { key: 'clientId', label: 'Client ID', required: true },
       { key: 'clientSecret', label: 'Client secret', type: 'password',
         hint: 'Issued by the provider. Never shown again once saved.' },
@@ -329,7 +359,7 @@ export const RESOURCES = {
     emptyBody: 'Add one to let users sign in through an OpenID Connect provider.',
     form: [
       { key: 'name', label: 'Name', required: true, placeholder: 'entra-oidc',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
+        lockedOnEdit: LOCK_REASON },
       { key: 'clientId', label: 'Client ID', required: true },
       { key: 'clientSecret', label: 'Client secret', type: 'password' },
       { key: 'issuerUrl', label: 'Issuer URL', required: true,
@@ -354,7 +384,7 @@ export const RESOURCES = {
     emptyBody: 'Add one to let users sign in with a security key instead of a password.',
     form: [
       { key: 'name', label: 'Name', required: true, placeholder: 'fido-engineering',
-        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
+        lockedOnEdit: LOCK_REASON },
       { key: 'primaryAuth', label: 'Primary authentication',
         options: ['FIDO Key', 'Certificate', 'Push notification', 'Magic link'] },
       { key: 'fallbackAuth', label: 'Fallback authentication',

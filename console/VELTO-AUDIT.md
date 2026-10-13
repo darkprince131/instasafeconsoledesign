@@ -888,6 +888,61 @@ said "Created" and the list did not change. The create now stamps the record
 with the filter that selects the screen. This affected all seven profile
 screens, and any other list that shows a slice of a collection.
 
+## 29. OpenLDAP and RADIUS — the inference in §28.2 checked, and both forms rebuilt
+
+§28.2 locked `profile_name` on OpenLDAP and RADIUS by inference, because
+neither had a captured edit form. Both have now been opened on the live velto
+tenant, and both are confirmed:
+
+| | Disabled on edit |
+|---|---|
+| **Edit Ldap Profile** | `profile_name` **and `protocol`** |
+| **Edit Radius Profile** | `profile_name` |
+
+Veno could not answer this: its OpenLDAP and RADIUS lists are both empty, so
+there is no row to open. Velto has four LDAP profiles and three RADIUS ones.
+
+### 29.1 OpenLDAP asked six questions; velto asks eleven
+Velto's form: `profile_name`* · `domain`* · `ads_ip`* · `bads_ip`* ·
+`bind_user`* · `auth_type`* (Certificate · Password + Certs) · `base_dn`* ·
+`filter`* · `port`* · `protocol` · `username`* (UID).
+
+Two things the demo had wrong beyond the missing fields:
+
+- **Protocol was a TLS/TCP select.** It is `disabled` in the product — on the
+  **add** form as well as on edit — carrying TCP. The console does not offer
+  the choice, so the select offered something that does not exist.
+- **The attention pill on TCP marked every row.** Since every profile is TCP
+  by construction, a mark on all of them says nothing and only spends the
+  colour budget. Removed.
+
+`username` offers **UID alone** on OpenLDAP, where Active Directory offers
+Username and UPN. Worth keeping as the two separate lists they are.
+
+### 29.2 RADIUS is four fields, and the secret is not one of them
+`profile_name`* · `port`* (1812) · `rs_ip`* · `brs_ip`*. The demo had the
+shared secret as a password field on the form. Velto keeps it behind **Change
+Client Secret** on the view panel — and OpenLDAP keeps its bind password
+behind **Change Password** the same way.
+
+Both are now built the way the SMTP password is (§27.1): the value is never
+stored, only that one was set and when, and the panel says so. Verified by
+reading the saved record back — it holds `bindPasswordSet` and
+`bindPasswordUpdatedAt`, and no secret.
+
+### 29.3 A locked field needs a default
+A field the form never lets you fill still has to be saved with its value. The
+first build of this created an LDAP profile with **no protocol at all**,
+because the blank form filled every key with an empty string and Protocol is
+disabled. Fields can now carry a `default`, which is also how RADIUS's port
+arrives pre-filled at 1812, as velto's add form does.
+
+### 29.4 Still unverified
+Active Directory's **view** panel was not opened on a tenant with AD rows, so
+whether it also carries a Change Password for the bind user is unconfirmed. It
+very likely does — OpenLDAP and RADIUS both do, and AD has the same bind user
+— but it is not built on a guess. One look at a velto AD profile settles it.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
