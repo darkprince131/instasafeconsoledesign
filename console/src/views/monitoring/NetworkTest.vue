@@ -45,7 +45,10 @@ async function run () {
     results.value.push({
       label: `Gateway ${g.name}`, real: false,
       value: g.status === 'up' ? g.latencyMs + ' ms' : 'unreachable',
-      note: `${g.region} \u00b7 ${g.ip}`
+      /* A gateway added here has no address yet: velto's form does not ask
+         for one; the agent reports it when it first checks in. Say so
+         rather than printing undefined. */
+      note: g.ip ? `${g.location} · ${g.ip}` : `${g.location} · awaiting first check-in`
     })
   }
 

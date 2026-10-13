@@ -47,8 +47,9 @@ const byGateway = computed(() => gateways.value.map(g => {
           </span>
         </div>
         <dl class="i-kv mb-3" style="grid-template-columns:104px 1fr">
-          <dt>Region</dt><dd>{{ g.region }}</dd>
-          <dt>Address</dt><dd class="i-tech">{{ g.ip }}</dd>
+          <dt>Location</dt><dd>{{ g.location }}</dd>
+          <dt>Address</dt>
+          <dd :class="g.ip ? 'i-tech' : ''">{{ g.ip || 'Awaiting first check-in' }}</dd>
           <dt>Latency</dt><dd class="i-tech">{{ g.latencyMs }} ms</dd>
           <dt>Live sessions</dt><dd>{{ g.live }}</dd>
         </dl>

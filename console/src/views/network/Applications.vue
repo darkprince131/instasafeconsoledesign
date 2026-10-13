@@ -367,7 +367,7 @@ onMounted(async () => {
             <select id="agw" class="i-ctl" v-model="form.gateway">
               <option value="">Unassigned</option>
               <option v-for="g in gateways" :key="g.id" :value="g.name">
-                {{ g.name }} — {{ g.region }}
+                {{ g.name }} — {{ g.location }}
               </option>
             </select>
             <p class="i-hint">Traffic reaches this application through the gateway. Without one it is unreachable.</p>

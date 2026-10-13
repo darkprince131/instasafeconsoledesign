@@ -40,23 +40,31 @@ let migrated = false
 async function ensureSeeded () {
   if (!localStorage.getItem(SEED_FLAG)) { await reseed(); migrated = true; return }
   /* One db.all on the first call of the session, then never again. */
-  if (!migrated) { migrated = true; await migrateControllers() }
+  if (!migrated) { migrated = true; await migrateReshaped() }
 }
 
 /**
- * Controllers were seeded with an invented shape — region, IP, version,
- * uptime — before the live form was read. A visitor who has already seeded
- * holds those rows, and the new screen would render blank cells against them.
+ * Controllers and gateways were seeded with invented shapes — region, IP,
+ * version, uptime — before the live forms were read. A visitor who has
+ * already seeded holds those rows, and the new screens would render blank
+ * cells against them.
  *
  * Re-seeding everything would take their users, devices and MFA enrolment
- * with it, so only this one collection is replaced, and only when a row is
+ * with it, so only these collections are replaced, and only when a row is
  * recognisably the old shape.
  */
-async function migrateControllers () {
-  const rows = await db.all('controllers')
-  if (rows.length && rows.every(c => c.cloudServer !== undefined)) return
-  await db.clear('controllers')
-  await db.putMany('controllers', seed.seedControllers())
+const RESHAPED = [
+  ['controllers', 'cloudServer', () => seed.seedControllers()],
+  ['gateways', 'protectedNetworks', () => seed.seedGateways()]
+]
+
+async function migrateReshaped () {
+  for (const [store, marker, reseedOne] of RESHAPED) {
+    const rows = await db.all(store)
+    if (rows.length && rows.every(r => r[marker] !== undefined)) continue
+    await db.clear(store)
+    await db.putMany(store, reseedOne())
+  }
 }
 
 async function reseed () {

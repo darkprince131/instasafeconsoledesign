@@ -389,35 +389,6 @@ export const RESOURCES = {
    * Save, and be told the work was wasted. Saying so before the form opens
    * costs them one click instead.
    */
-  '/gateways': {
-    singular: 'gateway',
-    limit: { max: 4, of: 'gateways',
-      title: 'Maximum gateway limit reached',
-      body: 'This tenant is licensed for 4 gateways and is running 4. Gateways are licensed separately from user seats.',
-      action: 'Contact InstaSafe' },
-    formSubtitle: 'Where traffic enters. A gateway has to be reachable before a rule using it can work.',
-    form: [
-      { key: 'name', label: 'Gateway name', required: true, placeholder: 'gw-mum-02' },
-      { key: 'region', label: 'Region', placeholder: 'Mumbai' },
-      { key: 'ip', label: 'Public IP', placeholder: '103.21.44.13' },
-      { key: 'version', label: 'Agent version', placeholder: '3.4.1' }
-    ],
-    title: 'Gateways',
-    subtitle: 'The data plane. Traffic reaches applications through these.',
-    resource: 'gateways',
-    primaryAction: 'Add gateway',
-    columns: [
-      { key: 'name', label: 'Gateway', bold: true },
-      { key: 'region', label: 'Region' },
-      { key: 'ip', label: 'IP address', mono: true },
-      { key: 'version', label: 'Version', mono: true },
-      { key: 'sessions', label: 'Sessions', align: 'right', num: true },
-      { key: 'throughputMbps', label: 'Mbps', align: 'right', num: true },
-      { key: 'latencyMs', label: 'Latency', align: 'right', cell: (v) => `${v} ms`, mono: true },
-      { key: 'status', label: 'Status', pill: statusPill }
-    ]
-  },
-
   '/auth-devices': {
     title: 'Auth devices',
     subtitle: 'Devices bound to a user for authentication.',

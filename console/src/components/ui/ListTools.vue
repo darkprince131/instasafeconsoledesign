@@ -54,8 +54,18 @@ const OPS = {
     { key: 'activate', label: 'Activate' },
     { key: 'suspend', label: 'Suspend' },
     { key: 'delete', label: 'Delete' }
+  ],
+  /* Velto's gateway screen calls this Bulk Add and offers the one operation.
+     Its modal states two rules: every gateway needs a different name, and
+     every gateway must have a backup gateway name. Both are checked here
+     against the tenant before anything is written. */
+  gateways: [
+    { key: 'add', label: 'Add gateways' }
   ]
 }
+
+/** Velto licenses gateways separately; the tenant it was read on runs four. */
+const GATEWAY_LIMIT = 4
 const ops = computed(() => OPS[props.kind] || [])
 
 const opsOpen = ref(false)
@@ -64,13 +74,25 @@ watch(ops, (v) => { if (!op.value && v.length) op.value = v[0].key }, { immediat
 
 /** Add is the only operation that needs more than a name. */
 const ADD_COLUMNS = ['First Name', 'Last Name', 'Login Id', 'E-Mail Id', 'Mobile Number', 'Password']
+const GATEWAY_COLUMNS = ['Gateway Name', 'Backup Gateway Name', 'Location', 'Protected Networks']
 const isAdd = computed(() => op.value === 'add')
-const columns = computed(() => isAdd.value ? ADD_COLUMNS : ['username'])
+const isGateway = computed(() => props.kind === 'gateways')
 
-const sampleRows = computed(() => isAdd.value
-  ? [['Sandip', 'Panda', 'sandip.panda', 'sandip.panda@example.com', '9876543210', ''],
-     ['Deepak', '', 'deepak.rao', 'deepak.rao@example.com', '', 'ChangeMe!2026']]
-  : [['sandip.panda'], ['deepak.rao']])
+const columns = computed(() =>
+  isGateway.value ? GATEWAY_COLUMNS : (isAdd.value ? ADD_COLUMNS : ['username']))
+
+const sampleRows = computed(() => {
+  if (isGateway.value) {
+    return [
+      ['gw-pun-01', 'gw-pun-02', 'Pune', '10.150.0.0/16 192.168.15.0/24'],
+      ['gw-hyd-01', 'gw-hyd-02', 'Hyderabad', '10.160.0.0/16']
+    ]
+  }
+  return isAdd.value
+    ? [['Sandip', 'Panda', 'sandip.panda', 'sandip.panda@example.com', '9876543210', ''],
+       ['Deepak', '', 'deepak.rao', 'deepak.rao@example.com', '', 'ChangeMe!2026']]
+    : [['sandip.panda'], ['deepak.rao']]
+})
 
 function downloadTemplate () {
   const csv = [columns.value.join(','), ...sampleRows.value.map(r => r.join(','))].join('\n')
@@ -133,9 +155,80 @@ async function onFile (e) {
  * as an action with a reason, and rows that cannot be matched are listed
  * rather than silently dropped.
  */
+const CIDR = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/
+
+function badNetwork (value) {
+  const m = CIDR.exec(String(value || '').trim())
+  if (!m) return `${value} is not CIDR`
+  if (m.slice(1, 5).some(o => Number(o) > 255)) return `${value} has an octet over 255`
+  if (Number(m[5]) > 32) return `${value} has a prefix over /32`
+  return ''
+}
+
+/**
+ * Gateways, where the file is checked against velto's own two rules and
+ * against the licence before anything is created.
+ *
+ * Velto's modal states the rules and then uploads anyway; a file that repeats
+ * a name or omits a backup fails somewhere inside the import. Here each row
+ * comes back as create or skip, with the reason, and the licence limit is
+ * counted as the plan is built rather than hit halfway through writing.
+ */
+function planGateways (parsed, existing) {
+  const taken = new Set(existing.map(g => g.name.toLowerCase()))
+  const actions = []
+  let room = GATEWAY_LIMIT - existing.length
+
+  for (const row of parsed) {
+    const name = pick(row, 'gateway name', 'gw_name', 'name')
+    const backup = pick(row, 'backup gateway name', 'backup_name', 'backup')
+    const location = pick(row, 'location')
+    const nets = pick(row, 'protected networks', 'protected network', 'networks')
+      .split(/[\s;|]+/).map(n => n.trim()).filter(Boolean)
+
+    if (!name) { actions.push({ name: '—', verb: 'skip', why: 'No gateway name in this row.' }); continue }
+    if (taken.has(name.toLowerCase())) {
+      actions.push({ name, verb: 'skip', why: 'A gateway with this name already exists.' }); continue
+    }
+    if (!backup) {
+      actions.push({ name, verb: 'skip', why: 'Every gateway must have a backup gateway name.' }); continue
+    }
+    if (backup.toLowerCase() === name.toLowerCase()) {
+      actions.push({ name, verb: 'skip', why: 'A gateway cannot be its own backup.' }); continue
+    }
+    if (!location) {
+      actions.push({ name, verb: 'skip', why: 'Location is required.' }); continue
+    }
+    if (!nets.length) {
+      actions.push({ name, verb: 'skip', why: 'At least one protected network is required.' }); continue
+    }
+    const bad = nets.map(badNetwork).find(Boolean)
+    if (bad) { actions.push({ name, verb: 'skip', why: bad + '.' }); continue }
+    if (room <= 0) {
+      actions.push({ name, verb: 'skip', why: `This tenant is licensed for ${GATEWAY_LIMIT} gateways.` }); continue
+    }
+
+    room -= 1
+    taken.add(name.toLowerCase())
+    actions.push({
+      name,
+      verb: 'create',
+      why: `${backup} standing by · ${location} · ${nets.length} network${nets.length === 1 ? '' : 's'}`,
+      payload: {
+        name, backupName: backup, location, protectedNetworks: nets,
+        status: 'down', sessions: 0, version: '3.4.1'
+      }
+    })
+  }
+
+  const willRun = actions.filter(a => a.verb !== 'skip')
+  return { actions, willRun: willRun.length, skipped: actions.length - willRun.length }
+}
+
 async function buildPlan (parsed) {
   const api = (await import('../../api')).default
   const existing = (await api[props.resource].list({ perPage: 0 })).data
+  if (isGateway.value) return planGateways(parsed, existing)
   const byName = new Map(existing.map(r => [(r.username || r.name || '').toLowerCase(), r]))
 
   const actions = []
@@ -227,11 +320,14 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
 <template>
   <button
     v-if="ops.length"
-    class="i-btn" title="Add, delete, activate or suspend from an uploaded list"
+    class="i-btn"
+    :title="isGateway
+      ? 'Create gateways from an uploaded list'
+      : 'Add, delete, activate or suspend from an uploaded list'"
     @click="opsOpen = true"
   >
     <i class="fa-solid fa-file-csv" aria-hidden="true" />
-    <span class="d-none d-lg-inline">Bulk Ops</span>
+    <span class="d-none d-lg-inline">{{ isGateway ? 'Bulk Add' : 'Bulk Ops' }}</span>
   </button>
 
   <button
@@ -245,10 +341,12 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
 
   <Sheet
     v-model:open="opsOpen"
-    :title="`Bulk operations for ${kind}`"
+    :title="isGateway ? 'Bulk add gateways' : `Bulk operations for ${kind}`"
     subtitle="The uploaded file is the list. What is ticked in the table is not used."
   >
-    <div class="i-formsec">
+    <!-- One operation needs no chooser. Velto's gateway modal has none
+         either; it opens straight on the instructions. -->
+    <div v-if="ops.length > 1" class="i-formsec">
       <h3>1 · Choose the operation</h3>
       <div class="i-field">
         <label for="bop">Operation</label>
@@ -259,9 +357,16 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
     </div>
 
     <div class="i-formsec">
-      <h3>2 · Make the list</h3>
+      <h3>{{ ops.length > 1 ? '2' : '1' }} · Make the list</h3>
       <p class="i-secsub">
-        <template v-if="isAdd">
+        <template v-if="isGateway">
+          One row per gateway. <strong>Every column is required</strong>: each
+          gateway needs a name of its own, a backup gateway, a location, and at
+          least one protected network. Put several networks in the one cell,
+          separated by spaces — <span class="i-tech">10.150.0.0/16
+          192.168.15.0/24</span> — so no network contains a comma.
+        </template>
+        <template v-else-if="isAdd">
           One row per person. <strong>First name, username and e-mail are
           mandatory</strong>; the rest may be blank. A row with no password
           gets an activation mail instead.
@@ -280,7 +385,13 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
         </tbody>
       </table>
 
-      <p class="i-hint">
+      <p v-if="isGateway" class="i-hint">
+        This tenant is licensed for {{ GATEWAY_LIMIT }} gateways. Rows beyond
+        the licence, rows repeating a name that already exists, and rows
+        missing a backup gateway are listed as skipped below before anything
+        is created — not discovered part-way through the import.
+      </p>
+      <p v-else class="i-hint">
         Bulk operations apply to locally created {{ kind }} only. Accounts
         imported from Active Directory or LDAP are managed there, and rows
         naming one are listed as skipped rather than failing silently.
@@ -292,7 +403,7 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
     </div>
 
     <div class="i-formsec">
-      <h3>3 · Upload it</h3>
+      <h3>{{ ops.length > 1 ? '3' : '2' }} · Upload it</h3>
       <label class="i-filepick">
         <input type="file" accept=".csv,text/csv" @change="onFile">
         <i class="fa-solid fa-upload" aria-hidden="true" />

@@ -62,7 +62,7 @@ Eight profile types, all with working add/edit/test.
 | Capability | Route | Real? | Notes |
 |---|---|---|---|
 | Controllers | `/controllers` | **S** | Stop / Restart / Commit run a real state machine with timed transitions. Velto's own columns and form, including the derived management port; row click opens a read panel with Edit behind it; Commit and Delete work on a selection |
-| Gateways | `/gateways` | **S** | Health, reachability, throughput — simulated but moving |
+| Gateways | `/gateways` | **S** | Veno's columns and form: a backup gateway, a location, and protected networks that repeat in CIDR. Name and backup lock once created; Bulk Add is a CSV wizard that checks the file against the licence and velto's two rules before writing. Health, reachability and throughput are simulated but moving, and live on the reports, not this list |
 | Application services | `/application-services` | **D** | Protocol + port definitions |
 | Applications | `/applications` | **D** | Web, **RDP**, **SSH**, VNC types with their per-type fields |
 | **RDP / SSH launch** | — | **S** | Clicking Connect opens a convincing in-browser session surface with watermark, copy-paste block and session recording, matching the real option set |

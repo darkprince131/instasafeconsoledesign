@@ -399,16 +399,40 @@ export function seedControllers () {
   }))
 }
 
+/**
+ * Gateways.
+ *
+ * Velto's list is Gateway Name · Backup Gateway Name · Location · Number of
+ * Networks, and its form is four fields: `gw_name`, `backup_name`, `location`
+ * and a repeating `pro_net-N`. A gateway therefore carries a **backup
+ * gateway** and a **list of protected networks in CIDR**, neither of which
+ * this demo had — the captured gateway protects 192.168.0.0/24, 10.0.0.0/24
+ * and 0.0.0.0/0, so three networks behind one name is the ordinary case, and
+ * "Number of Networks" is that count.
+ *
+ * `status`, `sessions`, `throughputMbps`, `latencyMs` and `ip` are kept even
+ * though the gateway list shows none of them: the dashboard's gateway load,
+ * the graph, the network test and Live Gateways all read them. They are
+ * operational telemetry that belongs on those screens, not columns here.
+ */
 export function seedGateways () {
   return [
-    ['gw-mum-01','Mumbai','103.21.44.12','up',188],
-    ['gw-blr-01','Bengaluru','103.21.45.9','up',104],
-    ['gw-lon-01','London','185.42.7.18','up',22],
-    ['gw-sin-01','Singapore','139.59.12.4','degraded',4]
-  ].map(([name, region, ip, status, sessions], i) => ({
-    id: `gw_${pad(i + 1, 4)}`, name, region, ip, status, sessions,
-    version: '3.4.1', throughputMbps: Math.round(sessions * (1.5 + r() * 3)),
-    latencyMs: Math.round(8 + r() * 40), createdAt: ago(480)
+    ['gw-mum-01', 'gw-mum-02', 'Mumbai', '103.21.44.12', 'up', 188,
+      ['10.130.0.0/16', '192.168.10.0/24']],
+    ['gw-blr-01', 'gw-blr-02', 'Bengaluru', '103.21.45.9', 'up', 104,
+      ['10.140.0.0/16']],
+    ['gw-lon-01', 'gw-lon-02', 'London', '185.42.7.18', 'up', 22,
+      ['10.20.0.0/16', '172.16.4.0/24', '0.0.0.0/0']],
+    ['gw-sin-01', 'gw-sin-02', 'Singapore', '139.59.12.4', 'degraded', 4,
+      ['10.60.0.0/16', '192.168.60.0/24']]
+  ].map(([name, backupName, location, ip, status, sessions, protectedNetworks], i) => ({
+    id: `gw_${pad(i + 1, 4)}`,
+    name, backupName, location, protectedNetworks,
+    ip, status, sessions,
+    version: '3.4.1',
+    throughputMbps: Math.round(sessions * (1.5 + r() * 3)),
+    latencyMs: Math.round(8 + r() * 40),
+    createdAt: ago(480)
   }))
 }
 

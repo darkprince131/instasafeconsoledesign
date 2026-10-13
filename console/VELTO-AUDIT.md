@@ -602,6 +602,74 @@ The `cloud_server` select's 24 options were captured with real names, five of
 which identify a customer. Those five are replaced with further region names;
 the shape, the id range and the inconsistent casing are kept. See §3.
 
+## 23. Gateways had none of the fields a gateway actually has — FIXED
+
+Read off **veno**: velto's tenant is licensed for four gateways and is running
+four, so its Add form will not open at all — the licence wall opens instead.
+That wall is itself the finding in §23.1 below.
+
+The list is four columns, and the demo had none of them:
+
+| | |
+|---|---|
+| Columns | Gateway Name · Backup Gateway Name · Location · Number of Networks |
+| Toolbar | Add · **Bulk Add** · CSV · Delete |
+| Row click | a **View Gateway** panel, as on Controllers, with Edit behind it |
+| Form | `gw_name` · `backup_name` · `location` · `pro_net-0..n` |
+| Locked on edit | `gw_name`, `backup_name` |
+| `pro_net` | repeats, with a remove on each row and an **Add more** below |
+
+What the demo had instead — region, public IP, agent version, sessions, Mbps,
+latency, status — is the Live Gateways report, not this screen. Two things it
+was missing are the ones a gateway is actually configured with:
+
+- **A backup gateway.** Every gateway names the gateway that stands in for it.
+  Velto's own bulk-upload modal states it as a rule: *every gateway must have
+  backup gateway name*.
+- **Protected networks, plural, in CIDR.** The captured gateway fronts
+  192.168.0.0/24, 10.0.0.0/24 and 0.0.0.0/0. Three networks behind one name is
+  the ordinary case, and "Number of Networks" is that count. A single address
+  field could never have held it.
+
+The operational fields stay on the record — the dashboard's gateway load, the
+graph, the network test and Live Gateways all read them — they are simply not
+columns here, because they are not columns there.
+
+### 23.1 The licence wall is velto's, and it fires before the form
+Velto stops you at *Maximum gateway limit reached* rather than letting you fill
+in a form it will refuse. That is the better of the two behaviours and it is
+kept, with the count named in the message.
+
+### 23.2 Bulk Add — velto's modal, with the step it is missing
+Velto's modal is three steps: make a CSV, download the sample, upload it. It
+states two rules and then uploads anyway, so a file that repeats a name or
+omits a backup fails somewhere inside the import.
+
+This reuses the Bulk Ops CSV wizard already built for users and devices, which
+resolves the file against the tenant first and shows what will happen before
+anything is written. On gateways it checks velto's own two rules, plus the
+licence:
+
+- a name that already exists · skipped
+- no backup gateway name · skipped
+- a gateway named as its own backup · skipped
+- a protected network that is not CIDR, or a prefix over /32 · skipped
+- rows beyond the licence · skipped, counted as the plan is built rather than
+  hit half-way through writing
+
+**Assumption to confirm:** the sample CSV's columns. The real one is a download
+and was not captured, so the template here is Gateway Name, Backup Gateway
+Name, Location, Protected Networks, with several networks in one cell separated
+by spaces — a comma would collide with the CSV itself. If velto's template
+differs, only `GATEWAY_COLUMNS` in `ListTools.vue` changes.
+
+### 23.3 A gateway created here has no address
+Velto's form does not ask for an IP: the agent reports it when it first checks
+in. So a gateway added through the form or the bulk upload has no `ip`, and the
+network test printed `undefined` against it. It now says *awaiting first
+check-in*, and the graph says the same. A created gateway also starts `down`
+with no sessions, for the same reason.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
