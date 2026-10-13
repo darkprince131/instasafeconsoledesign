@@ -90,6 +90,50 @@ function reallyOpenAdd () {
   sheetOpen.value = true
 }
 
+/**
+ * A field velto disables once the record exists.
+ *
+ * Every authentication profile does this with `profile_name`: it is disabled
+ * on all four captured edit forms. The name is what rules and sessions refer
+ * to, so renaming it is a new profile. Production disables it and says
+ * nothing; this says why.
+ */
+function locked (f) {
+  return editingId.value && f.lockedOnEdit ? f.lockedOnEdit : ''
+}
+
+/** A field that only exists once another one is switched on. */
+function visible (f) {
+  return !f.when || f.when(form.value)
+}
+
+/**
+ * An uploaded file, held the way the real console holds it: the name goes in
+ * one field and the bytes go base64 in another. The name field is read-only
+ * in velto too — it is filled from the file, never typed, which is why it
+ * looks greyed out.
+ */
+function onFile (f, e) {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file) return
+  const exts = (f.accept || '').split(',').map(x => x.trim()).filter(Boolean)
+  const ok = exts.some(x => file.name.toLowerCase().endsWith(x.toLowerCase()))
+  if (!ok) {
+    toast(`Invalid file type. Allowed types: ${exts.join(', ')}`, 'bad')
+    form.value[f.key] = ''
+    if (f.dataKey) form.value[f.dataKey] = ''
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    form.value[f.key] = file.name
+    if (f.dataKey) form.value[f.dataKey] = String(reader.result)
+  }
+  reader.onerror = () => toast('That file could not be read', 'bad')
+  reader.readAsDataURL(file)
+}
+
 function openEdit (row) {
   if (!editable.value) return
   form.value = { ...blankForm(), ...row }
@@ -98,7 +142,9 @@ function openEdit (row) {
 }
 
 async function saveForm () {
-  const required = (cfg.value.form || []).filter(f => f.required && !form.value[f.key])
+  const required = (cfg.value.form || [])
+    .filter(f => visible(f) && !locked(f))
+    .filter(f => f.required && !form.value[f.key])
   if (required.length) { toast(required[0].label + ' is required', 'bad'); return }
   saving.value = true
   try {
@@ -106,7 +152,12 @@ async function saveForm () {
       await api[cfg.value.resource].update(editingId.value, { ...form.value })
       toast('Saved')
     } else {
-      await api[cfg.value.resource].create({ ...form.value })
+      /* A screen that shows one slice of a collection has to stamp the
+         record with that slice, or it creates something it cannot then
+         display. Every authentication-profile screen is one type out of
+         authProfiles, so a profile created without its `type` was saved and
+         then vanished from the list it was created on. */
+      await api[cfg.value.resource].create({ ...cfg.value.baseFilter, ...form.value })
       toast('Created')
     }
     sheetOpen.value = false
@@ -430,7 +481,11 @@ onMounted(load)
       :subtitle="cfg.formSubtitle || ''"
     >
       <div class="i-formsec">
-        <div v-for="f in cfg.form" :key="f.key" class="i-frow" style="grid-template-columns:1fr">
+        <div
+          v-for="f in cfg.form" :key="f.key"
+          v-show="visible(f)"
+          class="i-frow" style="grid-template-columns:1fr"
+        >
           <!-- A field that picks from a collection gets a searchable picker,
                not a select. Membership is edited here, inside the parent's
                form, so a group and the users in it are one object you save
@@ -475,21 +530,44 @@ onMounted(load)
               {{ f.label }}<span v-if="f.required" class="i-req">*</span>
             </label>
             <label v-if="f.type === 'switch'" class="i-sw">
-              <input type="checkbox" v-model="form[f.key]"><span class="i-track" />{{ f.label }}
+              <input type="checkbox" :name="f.name || f.key" v-model="form[f.key]" :disabled="!!locked(f)">
+              <span class="i-track" />{{ f.label }}
             </label>
-            <select v-else-if="f.options" :id="'rf_' + f.key" class="i-ctl" v-model="form[f.key]">
+            <select
+              v-else-if="f.options" :id="'rf_' + f.key" :name="f.name || f.key" class="i-ctl"
+              v-model="form[f.key]" :disabled="!!locked(f)"
+            >
               <option value="">Select…</option>
               <option v-for="o in fieldOptions(f)" :key="o">{{ o }}</option>
             </select>
             <textarea
-              v-else-if="f.type === 'textarea'" :id="'rf_' + f.key" class="i-ctl i-tech"
+              v-else-if="f.type === 'textarea'" :id="'rf_' + f.key" :name="f.name || f.key" class="i-ctl i-tech"
               rows="4" v-model="form[f.key]" :placeholder="f.placeholder || ''"
+              :disabled="!!locked(f)"
             />
+            <!-- An upload: a button over a hidden input, and the filename
+                 beside it read-only because it comes from the file. -->
+            <template v-else-if="f.type === 'file'">
+              <div class="d-flex align-items-center gap-2">
+                <label class="i-filepick mb-0">
+                  <input type="file" :accept="f.accept" @change="onFile(f, $event)">
+                  <i class="fa-solid fa-upload" aria-hidden="true" />
+                  <span>{{ form[f.key] ? 'Replace file' : (f.uploadLabel || 'Upload file') }}</span>
+                </label>
+                <input
+                  :id="'rf_' + f.key" class="i-ctl i-tech" type="text" readonly
+                  :value="form[f.key] || ''" :placeholder="f.placeholder || 'No file chosen'"
+                  :aria-label="f.label + ' filename'"
+                >
+              </div>
+            </template>
             <input
-              v-else :id="'rf_' + f.key" class="i-ctl"
+              v-else :id="'rf_' + f.key" :name="f.name || f.key" class="i-ctl"
               :type="f.type || 'text'" v-model="form[f.key]" :placeholder="f.placeholder || ''"
+              :disabled="!!locked(f)"
             >
-            <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
+            <p v-if="locked(f)" class="i-hint">{{ locked(f) }}</p>
+            <p v-else-if="f.hint" class="i-hint">{{ f.hint }}</p>
           </div>
         </div>
       </div>

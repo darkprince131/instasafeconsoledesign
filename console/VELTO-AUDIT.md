@@ -811,6 +811,83 @@ but the message is the request that would actually go out —
 number in "to"` — so the test says whether the configuration is right rather
 than only that a button works.
 
+## 28. The Active Directory profile asked four questions; velto asks seventeen — FIXED
+
+The demo's add form was profile name, domain, primary server IP, backup server
+IP. A profile built from those four could never have authenticated anybody:
+everything that makes a bind work was missing.
+
+Velto's form, in its order, with its `name` attributes:
+
+| Field | |
+|---|---|
+| `profile_name`* | locked once the profile exists |
+| `domain`* | |
+| `ads_ip`* · `bads_ip`* | primary and backup AD server — **both required** |
+| `username_attribute`* | select: Username · User Principal Name (UPN) |
+| `auth_type`* | select: Certificate · Password + Certs |
+| `bind_user`* | the account the console reads the directory with |
+| `base_dn`* | |
+| `filter`* | which accounts may sign in at all |
+| `ps_ip` · `backup_dns` | DNS, optional |
+| `primary_wins` · `backup_wins` | WINS, optional |
+| `port` | toggle — *Require SSL/TLS secure connection* |
+| `kerberos_auth` | toggle — *Enable Kerberos Authentication* |
+
+Velto requiring the **backup** server is worth keeping rather than softening:
+a directory with one server is a single point of failure for every sign-in in
+the tenant.
+
+Changing Authentication Type reveals nothing — the Certificate and
+Password + Certs captures are identical but for the metadata. Only Kerberos
+changes the form.
+
+### 28.1 The keytab, and why its filename looks greyed out
+Switching Kerberos on reveals an upload. The behaviour is in the production
+bundle, not guessed:
+
+- a button triggers a hidden file input, and the drop zone takes a drag
+- the only accepted extension is `.keytab`, and the rejection reads
+  *Invalid file type. Allowed types: .keytab* — reproduced verbatim
+- on success the file is read with `FileReader` to base64 into `filedata`,
+  and `kerberos_filename` is set from `file.name`
+
+So the filename box is not disabled because it is broken: **it is display-only
+and filled from the file**, never typed. Reproduced as a read-only field
+beside the upload, which is what it is.
+
+### 28.2 Profile Name locks on edit, on every profile type
+`profile_name` is `disabled` on all four captured edit forms — OAuth, OpenID,
+SAML and Passwordless — and velto does the same on Active Directory. The name
+is what access rules and sessions refer to, so renaming it would be a new
+profile. All seven profile screens lock it now, and say that, where production
+disables it silently.
+
+OpenLDAP and RADIUS have no captured edit form, so the lock on those two is
+inferred from the other five rather than observed. If either turns out to be
+editable, remove `lockedOnEdit` from that entry alone.
+
+### 28.3 Three things the shared list template gained
+These are in `ResourceList.vue`, so the other 53 screens get them too:
+
+- `lockedOnEdit` — a field that cannot be changed once the record exists, with
+  the reason shown rather than a silently dead input
+- `when` — a field that only exists once another is switched on, which is how
+  the keytab appears
+- `type: 'file'` — an upload with its accept list, storing the name in one
+  field and the base64 in another, exactly as the real console does
+
+Form controls also carry velto's `name` attribute now wherever a config gives
+one, so an implementer can map a generated form to the real one.
+
+### 28.4 A bug this found: a filtered list created records it could not show
+Every authentication-profile screen is one `type` out of `authProfiles`,
+selected by `baseFilter`. Creating a profile sent only the form fields, so the
+new record had no `type`, failed the screen's own filter, and vanished — it
+said "Created" and the list did not change. The create now stamps the record
+with the filter that selects the screen. This affected all seven profile
+screens, and any other list that shows a slice of a collection.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

@@ -144,11 +144,53 @@ export const RESOURCES = {
     emptyTitle: 'No Active Directory profiles',
     emptyBody: 'Add one to authenticate users against a domain controller.',
     tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    /**
+     * Velto's own form, field for field, with its `name` attributes.
+     *
+     * The demo asked four questions. The real one asks seventeen, and the
+     * missing thirteen are the ones that decide whether the bind works at
+     * all: the bind user, the base DN, the filter, which attribute holds the
+     * username, and whether the connection is TLS. A profile created from
+     * four fields could never have authenticated anybody.
+     *
+     * Velto marks the backup server required too, which is worth keeping:
+     * a directory with one server is a single point of failure for every
+     * sign-in in the tenant.
+     */
+    formSubtitle: 'Where the directory is, how to bind to it, and which users to let in.',
     form: [
-      { key: 'name', label: 'Profile name', required: true, placeholder: 'corp-ad-primary' },
-      { key: 'domain', label: 'Domain', required: true, placeholder: 'corp.example.com' },
-      { key: 'primaryServerIp', label: 'Primary server IP', required: true, placeholder: '10.20.4.11' },
-      { key: 'backupServerIp', label: 'Backup server IP', placeholder: 'Used only when the primary does not answer' }
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
+      { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'corp.example.com' },
+      { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
+      { key: 'backupServerIp', name: 'bads_ip', label: 'Backup AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x',
+        hint: 'Answered when the primary does not. A directory with one server is a single point of failure for every sign-in.' },
+      { key: 'usernameAttribute', name: 'username_attribute', label: 'Username Attribute', required: true,
+        options: ['Username', 'User Principal Name (UPN)'],
+        hint: 'Which attribute a person types. UPN is the full name@domain form; Username is the short sAMAccountName.' },
+      { key: 'authType', name: 'auth_type', label: 'Authentication Type', required: true,
+        options: ['Certificate', 'Password + Certs'] },
+      { key: 'bindUser', name: 'bind_user', label: 'Bind User', required: true, placeholder: 'Bind User',
+        hint: 'The account this console reads the directory with. It only needs read.' },
+      { key: 'baseDn', name: 'base_dn', label: 'Base DN', required: true, placeholder: 'CN=Users, DC=corp, DC=example' },
+      { key: 'filter', name: 'filter', label: 'Filter', required: true, type: 'textarea',
+        placeholder: '(&(objectClass=user)(memberOf=CN=GROUPNAME,CN=Users,dc=corp,dc=example))',
+        hint: 'Which directory accounts may sign in. Without a memberOf clause this is everybody in the base DN.' },
+      { key: 'primaryDns', name: 'ps_ip', label: 'Primary DNS Server IP', placeholder: 'Eg: 10.x.x.x' },
+      { key: 'secondaryDns', name: 'backup_dns', label: 'Secondary DNS Server IP', placeholder: 'Eg: 10.x.x.x' },
+      { key: 'primaryWins', name: 'primary_wins', label: 'Primary WINS Server IP', placeholder: 'Eg: 10.x.x.x' },
+      { key: 'secondaryWins', name: 'backup_wins', label: 'Secondary WINS Server IP', placeholder: 'Eg: 10.x.x.x' },
+      { key: 'requireSsl', name: 'port', label: 'Require SSL/TLS secure connection', type: 'switch',
+        hint: 'Off sends the bind password and every lookup in the clear.' },
+      { key: 'kerberosAuth', name: 'kerberos_auth', label: 'Enable Kerberos Authentication', type: 'switch' },
+      /* Velto reveals the keytab upload only once Kerberos is on, and its
+         filename box is filled from the file rather than typed — which is
+         why it reads as greyed out. Same here. */
+      { key: 'kerberosFilename', name: 'kerberos_filename', label: 'Keytab', type: 'file',
+        accept: '.keytab', dataKey: 'keytabData', uploadLabel: 'Upload keytab',
+        when: (f) => !!f.kerberosAuth,
+        placeholder: 'No keytab chosen',
+        hint: 'The service account keytab exported from the domain controller. The filename comes from the file itself.' }
     ],
     columns: [
       { key: 'name', label: 'Profile name', bold: true },
@@ -170,7 +212,8 @@ export const RESOURCES = {
     emptyBody: 'Add one to authenticate users against an LDAP directory.',
     tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
     form: [
-      { key: 'name', label: 'Profile name', required: true, placeholder: 'openldap-eu' },
+      { key: 'name', label: 'Profile name', required: true, placeholder: 'openldap-eu',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
       { key: 'domain', label: 'Domain', required: true, placeholder: 'ldap.example.com' },
       { key: 'primaryServerIp', label: 'Primary server IP', required: true },
       { key: 'backupServerIp', label: 'Backup server IP' },
@@ -201,7 +244,8 @@ export const RESOURCES = {
     emptyTitle: 'No RADIUS profiles',
     emptyBody: 'Add one to authenticate users against a RADIUS server.',
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'nps-mumbai' },
+      { key: 'name', label: 'Name', required: true, placeholder: 'nps-mumbai',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
       { key: 'radiusServerIp', label: 'RADIUS server IP', required: true },
       { key: 'backupRadiusServerIp', label: 'Backup RADIUS server IP' },
       { key: 'port', label: 'Port', placeholder: '1812' },
@@ -231,7 +275,8 @@ export const RESOURCES = {
       { key: 'download-sp', label: 'Download SP MetaData', icon: 'fa-file-export' }
     ],
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'okta-workforce' },
+      { key: 'name', label: 'Name', required: true, placeholder: 'okta-workforce',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
       { key: 'integrationType', label: 'Integration type', options: ['SAML2.0'] },
       { key: 'idpEntityId', label: 'IdP entity ID', required: true,
         placeholder: 'http://www.okta.com/exk1f2g3h4IJKLMN5o6' },
@@ -257,7 +302,8 @@ export const RESOURCES = {
     emptyTitle: 'No OAuth2 profiles',
     emptyBody: 'Add one to let users sign in through an OAuth2 provider.',
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'google-workspace' },
+      { key: 'name', label: 'Name', required: true, placeholder: 'google-workspace',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
       { key: 'clientId', label: 'Client ID', required: true },
       { key: 'clientSecret', label: 'Client secret', type: 'password',
         hint: 'Issued by the provider. Never shown again once saved.' },
@@ -282,7 +328,8 @@ export const RESOURCES = {
     emptyTitle: 'No OpenID profiles',
     emptyBody: 'Add one to let users sign in through an OpenID Connect provider.',
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'entra-oidc' },
+      { key: 'name', label: 'Name', required: true, placeholder: 'entra-oidc',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
       { key: 'clientId', label: 'Client ID', required: true },
       { key: 'clientSecret', label: 'Client secret', type: 'password' },
       { key: 'issuerUrl', label: 'Issuer URL', required: true,
@@ -306,7 +353,8 @@ export const RESOURCES = {
     emptyTitle: 'No passwordless profiles',
     emptyBody: 'Add one to let users sign in with a security key instead of a password.',
     form: [
-      { key: 'name', label: 'Name', required: true, placeholder: 'fido-engineering' },
+      { key: 'name', label: 'Name', required: true, placeholder: 'fido-engineering',
+        lockedOnEdit: 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.' },
       { key: 'primaryAuth', label: 'Primary authentication',
         options: ['FIDO Key', 'Certificate', 'Push notification', 'Magic link'] },
       { key: 'fallbackAuth', label: 'Fallback authentication',
