@@ -5,7 +5,12 @@ import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
 
 /**
- * Settings — company details, subscription, SMS, email, user settings, DNS.
+ * Settings — SMS, email, user settings, DNS, and the local password policy.
+ *
+ * Company details and Subscription details were configs here until the real
+ * screens were read: one needs repeating contacts and file uploads, the other
+ * is a table of licence periods. Neither fits a list of fields, so both are
+ * their own components now.
  *
  * One component over six routes, because they are all the same thing: a set
  * of fields grouped under headings, saved as a blob.
@@ -63,46 +68,6 @@ const PAGES = {
     ]
   },
 
-  '/settings/company-details': {
-    title: 'Company details',
-    subtitle: 'Who this tenant belongs to, and who to contact about it.',
-    sections: [
-      ['Organisation', [
-        ['companyName', 'Company name', 'text', 'InstaSafe Demo Ltd'],
-        ['tenantId', 'Tenant identifier', 'text', 'demo', 'Appears in every portal URL. Changing it breaks saved links.'],
-        ['industry', 'Industry', 'select', 'Technology', '', ['Technology','Finance','Healthcare','Manufacturing','Retail','Government','Education']],
-        ['employees', 'Employees', 'number', '1800'],
-        ['country', 'Country', 'text', 'India']
-      ]],
-      ['Business contact', [
-        ['bizName', 'Name', 'text', ''],
-        ['bizEmail', 'Email', 'email', ''],
-        ['bizPhone', 'Phone', 'text', '']
-      ]],
-      ['Technical contact', [
-        ['techName', 'Name', 'text', ''],
-        ['techEmail', 'Email', 'email', '', 'Where outage and certificate-expiry notices go.'],
-        ['techPhone', 'Phone', 'text', '']
-      ]],
-      ['Renewal contact', [
-        ['renName', 'Name', 'text', ''],
-        ['renEmail', 'Email', 'email', '']
-      ]]
-    ]
-  },
-  '/settings/subscription-details': {
-    title: 'Subscription',
-    subtitle: 'What this tenant is licensed for.',
-    readOnly: true,
-    sections: [
-      ['Licence', [
-        ['plan', 'Plan', 'text', 'Enterprise'],
-        ['seats', 'Licensed seats', 'number', '2000'],
-        ['expiry', 'Renews on', 'text', '31 Dec 2026'],
-        ['support', 'Support tier', 'text', '24x7']
-      ]]
-    ]
-  },
   '/sms-settings': {
     title: 'SMS settings',
     subtitle: 'How one-time codes reach a phone.',
@@ -219,7 +184,7 @@ const PAGES = {
   }
 }
 
-const cfg = computed(() => PAGES[route.path] || PAGES['/settings/company-details'])
+const cfg = computed(() => PAGES[route.path] || PAGES['/profile/local'])
 const form = ref({})
 const original = ref({})
 const saving = ref(false)

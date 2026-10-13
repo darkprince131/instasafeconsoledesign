@@ -52,8 +52,8 @@ const bespoke = {
   '/authserver/radius':() => import('../views/identity/IdamServices.vue'),
 
   // settings: six routes of grouped fields saved as a blob
-  '/settings/company-details':      () => import('../views/settings/Settings.vue'),
-  '/settings/subscription-details': () => import('../views/settings/Settings.vue'),
+  '/settings/company-details':      () => import('../views/settings/CompanyDetails.vue'),
+  '/settings/subscription-details': () => import('../views/settings/SubscriptionDetails.vue'),
   '/sms-settings':                  () => import('../views/settings/Settings.vue'),
   '/email-settings':                () => import('../views/settings/Settings.vue'),
   '/user-settings':                 () => import('../views/settings/Settings.vue'),

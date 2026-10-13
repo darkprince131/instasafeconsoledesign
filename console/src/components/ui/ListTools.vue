@@ -36,6 +36,8 @@ const props = defineProps({
   /** Resource key on the api object, for reads and writes. */
   resource: { type: String, default: '' },
   rows: { type: Array, default: () => [] },
+  /** Gateways only: the licensed maximum, from the subscription. */
+  limit: { type: Number, default: 0 },
   dimensions: { type: Array, default: () => [] },
   total: { type: Number, default: 0 }
 })
@@ -64,8 +66,8 @@ const OPS = {
   ]
 }
 
-/** Velto licenses gateways separately; the tenant it was read on runs four. */
-const GATEWAY_LIMIT = 4
+/** How many gateways the licence allows, passed in from Subscription details. */
+const GATEWAY_LIMIT = computed(() => props.limit || 4)
 const ops = computed(() => OPS[props.kind] || [])
 
 const opsOpen = ref(false)
@@ -177,7 +179,7 @@ function badNetwork (value) {
 function planGateways (parsed, existing) {
   const taken = new Set(existing.map(g => g.name.toLowerCase()))
   const actions = []
-  let room = GATEWAY_LIMIT - existing.length
+  let room = GATEWAY_LIMIT.value - existing.length
 
   for (const row of parsed) {
     const name = pick(row, 'gateway name', 'gw_name', 'name')
@@ -205,7 +207,7 @@ function planGateways (parsed, existing) {
     const bad = nets.map(badNetwork).find(Boolean)
     if (bad) { actions.push({ name, verb: 'skip', why: bad + '.' }); continue }
     if (room <= 0) {
-      actions.push({ name, verb: 'skip', why: `This tenant is licensed for ${GATEWAY_LIMIT} gateways.` }); continue
+      actions.push({ name, verb: 'skip', why: `This tenant is licensed for ${GATEWAY_LIMIT.value} gateways.` }); continue
     }
 
     room -= 1

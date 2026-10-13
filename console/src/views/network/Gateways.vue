@@ -34,10 +34,21 @@ import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 const toast = inject('toast', () => {})
 const refreshStats = inject('refreshStats', () => {})
 
-/* Velto's tenant is licensed for four and running four, which is why the add
-   form could not be opened there. The wall is the velto behaviour: it stops
-   you before the form rather than after it. */
-const LIMIT = 4
+/* How many gateways the tenant may run is a licence fact, not a constant:
+   Subscription details carries Licenced Gateways per period, which is why
+   velto's add form refuses a fourth on a tenant licensed for three. Read it
+   from there, and fall back only if the setting has never been written. */
+const LIMIT = ref(4)
+
+async function loadLicence () {
+  const sub = await api.settings.get('/settings/subscription-details')
+  /* Local calendar date, not UTC: in IST the UTC date is yesterday until
+     05:30, which would read the licence period wrongly for half the morning. */
+  const n = new Date()
+  const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+  const period = (sub?.periods || []).find(p => p.start <= today && p.end >= today)
+  if (period?.gateways) LIMIT.value = period.gateways
+}
 
 const rows = ref([])
 const total = ref(0)
@@ -101,7 +112,7 @@ function onSort (s) {
 watch([page, perPage], load)
 watch(search, () => { page.value = 1; load() })
 
-const atLimit = computed(() => total.value >= LIMIT)
+const atLimit = computed(() => total.value >= LIMIT.value)
 
 /* ------------------------------------------------------------- the bulk */
 
@@ -279,7 +290,7 @@ function exportCsv () {
   URL.revokeObjectURL(a.href)
 }
 
-onMounted(load)
+onMounted(() => { loadLicence(); load() })
 </script>
 
 <template>
@@ -305,7 +316,7 @@ onMounted(load)
           <i class="fa-solid fa-download" aria-hidden="true" />
           <span class="d-none d-sm-inline">CSV</span>
         </button>
-        <ListTools kind="gateways" resource="gateways" :rows="rows" :total="total" @apply="onBulkApplied" />
+        <ListTools kind="gateways" resource="gateways" :rows="rows" :total="total" :limit="LIMIT" @apply="onBulkApplied" />
         <button class="i-btn i-primary" @click="openAdd">
           <i class="fa-solid fa-plus" aria-hidden="true" /> Add gateway
         </button>

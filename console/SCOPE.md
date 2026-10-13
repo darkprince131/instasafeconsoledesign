@@ -99,8 +99,8 @@ Eight profile types, all with working add/edit/test.
 
 | Capability | Route | Real? |
 |---|---|---|
-| Company details | `/settings/company-details` | **D** — 29 fields, 3 contact tabs |
-| Subscription | `/settings/subscription-details` | **D** — seats, expiry, usage |
+| Company details | `/settings/company-details` | **S** — velto's fields: address, logo and background upload (held as data URLs), three contact tabs each holding several contacts, and the welcome banner users see in a dashboard popup |
+| Subscription | `/settings/subscription-details` | **S** — the licence-period table velto has, with the period in force marked, and an expiry reminder that names the date it would send. Licenced Gateways here is what the Gateways screen enforces |
 | SMS / Email settings | `/sms-settings`, `/email-settings` | **S** — test send lands in Demo Inbox |
 | User settings | `/user-settings` | **D** — 19 controls, 8 sections |
 | Time schedules | `/time-schedules` | **R** — genuinely enforced at access evaluation |

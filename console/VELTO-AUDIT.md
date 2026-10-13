@@ -670,6 +670,92 @@ network test printed `undefined` against it. It now says *awaiting first
 check-in*, and the graph says the same. A created gateway also starts `down`
 with no sessions, for the same reason.
 
+## 24. Company details was five invented fields — FIXED
+
+The real screen holds four things and the demo had one of them. Read off veno,
+and the same screen on velto:
+
+| | |
+|---|---|
+| Organisation | `name` · `url` (Secure Access custom URL) |
+| Address | `lane-1` · `address-area` · `city` · `address` · `zipcode` |
+| Branding | `logo` and `bg`, both file uploads, WEBP/JPG/PNG |
+| Contacts | three tabs — Business, Tech, Renewal — each holding **several** contacts |
+| Welcome banner | a switch and `banner_text` |
+
+Each contact is `first_name` · `lastName` · `email` · `officeNum` · `mobile` ·
+`designation`, with first name, email and office number mandatory. **Add
+contact** appends another card with a remove on it, so a tenant with two
+network engineers on call can say so. The demo had one name, one email and one
+phone per kind, which cannot describe that.
+
+The welcome banner was missing entirely. Its tooltip says what it is for:
+*Display a Custom message to users in dashboard popup* — a welcome, or the
+warning notice some regulators require before access. Switching it on with no
+text is refused here rather than showing users an empty popup.
+
+### 24.1 The repeated ids are production's, and are not copied
+Velto gives every contact card the same `id` — `first_name`, `email`,
+`officeNum` — however many cards are on the page, and across all three tabs.
+Ids have to be unique, so a label points at whichever input the browser finds
+first and clicking "Email ID" on the third card focuses the first card's email.
+Here the id carries the type and index (`email-tech-1`) while the `name`
+attribute stays velto's, so the QA surface is unchanged and the labels work.
+
+### 24.2 Uploads are data URLs, and that is the one place this has to differ
+There is no server, so an uploaded logo is read with `FileReader` and held as a
+data URL in the same IndexedDB as everything else, capped at 1 MB so a phone
+photograph does not go into the settings blob. A real backend takes the file
+and stores a path. Nothing else about the screen changes.
+
+Where a customer logo should appear — beside InstaSafe's in the rail, instead
+of it, or on the end-user portal only — is still the open question in
+`CLAUDE.md` §4, and the hint under the field says so rather than quietly
+picking one.
+
+## 25. Subscription details had none of velto's data — FIXED
+
+The demo showed plan, licensed seats, renews-on and support tier. All four were
+invented. The real screen is a table of **licence periods**, newest first:
+
+```
+Start Date · End Date · User Licences · Licenced Gateways · Type
+```
+
+Velto, live: 19-Sep-2026 → 31-Mar-2027, 2,000 licences, 3 gateways, Regular,
+with 18-May-2026 → 18-Sep-2026 for 1,000 and 3 beneath it. Veno: a Trial of 5
+then a Regular of 50. So a tenant carries its licence history on this screen,
+and `Type` is Trial or Regular.
+
+Below it, **Set Subscription expiry reminder**: an `emails` textarea taking
+addresses separated by commas, and `Before [0–48] months of expiry`.
+
+### 25.1 Licenced Gateways is where the gateway limit comes from
+This is the number that made velto's Add gateway refuse — §23. The Gateways
+screen now reads the gateway count from the period in force instead of holding
+a constant, and the bulk upload counts against the same number. Two screens,
+one fact.
+
+### 25.2 What this does that velto does not
+- **Marks the period in force.** Velto prints two rows that look identical and
+  leaves you to compare the dates against today's. The row in force says so,
+  and a band above says how many days are left.
+- **Says when the reminder would send.** "Before [0] months of expiry" reads
+  like a setting that is off. This resolves it: *2 recipients would be mailed
+  on 31-Jan-2027, 2 months before this licence ends*, and says plainly that
+  zero means the mail goes out the day the licence ends, too late to renew.
+- **Checks the addresses.** A mistyped address in a comma-separated list is
+  the whole point of failure for a renewal notice, so it is named before save.
+- Velto's label reads "seperated"; it is spelled correctly here.
+
+### 25.3 A date bug worth remembering
+Both screens compared `new Date().toISOString().slice(0,10)` against the
+period dates. `toISOString` is UTC, and this console is read in IST: until
+05:30 every morning the UTC date is yesterday, which moves a licence out of
+force a day early and dates the reminder a day short — it computed 30-Jan
+where the contract says 31-Jan. Calendar dates are now built from local parts
+on both screens.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
