@@ -1418,6 +1418,33 @@ writing to it, so this screen was empty whatever its config said. That is the
 group rule counts (§34.1). Seeded now, with the shape velto's own rows have —
 mostly Windows config policies, which is what the templates are for.
 
+## 40. Short fields were taking a full-width row each
+
+A latitude is six characters. It was getting the same full-width row as a
+filter expression, and so was a longitude, a city, a country code and a radius
+— so a geo-fence, which is one circle and four numbers, scrolled like a long
+form.
+
+Fields can be marked `half` now, and two consecutive halves share a row. The
+geo-fence form went from nine rows to five:
+
+```
+Fence name          Radius in metres
+[ the map ]
+Latitude            Longitude
+City                Country code
+Action              Fence is enabled
+```
+
+The same applies wherever a form asks for a pair that belongs together, so the
+IP couples on the authentication profiles are paired too — primary and backup
+server, primary and secondary DNS, primary and secondary WINS. Active Directory
+is sixteen fields in thirteen rows now, and the two addresses that have to
+agree sit beside each other instead of one scrolling past the other.
+
+Anything that needs the width keeps it: the map, the LDAP filter, a picker, a
+textarea.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

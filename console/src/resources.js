@@ -165,8 +165,8 @@ export const RESOURCES = {
       { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
       { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'corp.example.com' },
-      { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
-      { key: 'backupServerIp', name: 'bads_ip', label: 'Backup AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x',
+      { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x', half: true },
+      { key: 'backupServerIp', name: 'bads_ip', label: 'Backup AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x', half: true,
         hint: 'Answered when the primary does not. A directory with one server is a single point of failure for every sign-in.' },
       { key: 'usernameAttribute', name: 'username_attribute', label: 'Username Attribute', required: true,
         options: ['Username', 'User Principal Name (UPN)'],
@@ -179,10 +179,10 @@ export const RESOURCES = {
       { key: 'filter', name: 'filter', label: 'Filter', required: true, type: 'textarea',
         placeholder: '(&(objectClass=user)(memberOf=CN=GROUPNAME,CN=Users,dc=corp,dc=example))',
         hint: 'Which directory accounts may sign in. Without a memberOf clause this is everybody in the base DN.' },
-      { key: 'primaryDns', name: 'ps_ip', label: 'Primary DNS Server IP', placeholder: 'Eg: 10.x.x.x' },
-      { key: 'secondaryDns', name: 'backup_dns', label: 'Secondary DNS Server IP', placeholder: 'Eg: 10.x.x.x' },
-      { key: 'primaryWins', name: 'primary_wins', label: 'Primary WINS Server IP', placeholder: 'Eg: 10.x.x.x' },
-      { key: 'secondaryWins', name: 'backup_wins', label: 'Secondary WINS Server IP', placeholder: 'Eg: 10.x.x.x' },
+      { key: 'primaryDns', name: 'ps_ip', label: 'Primary DNS Server IP', placeholder: 'Eg: 10.x.x.x', half: true },
+      { key: 'secondaryDns', name: 'backup_dns', label: 'Secondary DNS Server IP', placeholder: 'Eg: 10.x.x.x', half: true },
+      { key: 'primaryWins', name: 'primary_wins', label: 'Primary WINS Server IP', placeholder: 'Eg: 10.x.x.x', half: true },
+      { key: 'secondaryWins', name: 'backup_wins', label: 'Secondary WINS Server IP', placeholder: 'Eg: 10.x.x.x', half: true },
       { key: 'requireSsl', name: 'port', label: 'Require SSL/TLS secure connection', type: 'switch',
         hint: 'Off sends the bind password and every lookup in the clear.' },
       { key: 'kerberosAuth', name: 'kerberos_auth', label: 'Enable Kerberos Authentication', type: 'switch' },
@@ -229,7 +229,7 @@ export const RESOURCES = {
       { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
         lockedOnEdit: LOCK_REASON },
       { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'ldap.example.com' },
-      { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
+      { key: 'primaryServerIp', name: 'ads_ip', label: 'Primary AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x', half: true },
       { key: 'backupServerIp', name: 'bads_ip', label: 'Backup AD Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
       { key: 'bindUser', name: 'bind_user', label: 'Bind User', required: true, placeholder: 'cn=admin,dc=example,dc=com',
         hint: 'The account this console reads the directory with. It only needs read.' },
@@ -239,8 +239,8 @@ export const RESOURCES = {
       { key: 'filter', name: 'filter', label: 'Filter', required: true, type: 'textarea',
         placeholder: '(|(gidNumber=48681))',
         hint: 'Which directory accounts may sign in. Without it, everybody under the base DN can.' },
-      { key: 'port', name: 'port', label: 'Port', required: true, type: 'number', placeholder: 'Eg: 389' },
-      { key: 'protocol', name: 'protocol', label: 'Protocol', default: 'TCP',
+      { key: 'port', name: 'port', label: 'Port', required: true, type: 'number', placeholder: 'Eg: 389', half: true },
+      { key: 'protocol', name: 'protocol', label: 'Protocol', default: 'TCP', half: true,
         locked: 'LDAP profiles run over TCP. The console does not offer the choice, here or on the add form.' },
       { key: 'usernameAttribute', name: 'username', label: 'Username Attribute', required: true,
         options: ['UID'],
@@ -280,8 +280,8 @@ export const RESOURCES = {
         lockedOnEdit: LOCK_REASON },
       { key: 'port', name: 'port', label: 'Port', required: true, type: 'number', placeholder: 'Eg: 1812', default: 1812,
         hint: '1812 is the standard authentication port; 1645 on older equipment.' },
-      { key: 'radiusServerIp', name: 'rs_ip', label: 'RADIUS Server IP', required: true, placeholder: 'Eg: 10.x.x.x' },
-      { key: 'backupRadiusServerIp', name: 'brs_ip', label: 'Backup RADIUS Server IP', required: true, placeholder: 'Eg: 10.x.x.x' }
+      { key: 'radiusServerIp', name: 'rs_ip', label: 'RADIUS Server IP', required: true, placeholder: 'Eg: 10.x.x.x', half: true },
+      { key: 'backupRadiusServerIp', name: 'brs_ip', label: 'Backup RADIUS Server IP', required: true, placeholder: 'Eg: 10.x.x.x', half: true }
     ],
     columns: [
       { key: 'name', label: 'Name', bold: true },
@@ -610,17 +610,20 @@ export const RESOURCES = {
        kilometres — this stored km, so every fence was a thousand times the
        size it claimed. */
     form: [
-      { key: 'name', label: 'Fence name', required: true, placeholder: 'Pune office' },
+      /* Paired across two columns. A latitude is six characters and was
+         taking a full-width row, so a fence that is one circle and four
+         numbers scrolled like a long form. */
+      { key: 'name', label: 'Fence name', required: true, placeholder: 'Pune office', half: true },
       { key: 'radiusMetres', label: 'Radius in metres', type: 'number', required: true,
-        placeholder: '500',
-        hint: 'Drawn on the map above as you change it.' },
+        placeholder: '500', half: true,
+        hint: 'Drawn on the map as you change it.' },
       { key: 'location', type: 'location', label: 'Location' },
-      { key: 'lat', label: 'Latitude', required: true, placeholder: '18.52' },
-      { key: 'lon', label: 'Longitude', required: true, placeholder: '73.86' },
-      { key: 'city', label: 'City', placeholder: 'Filled in by the search' },
-      { key: 'countryCode', label: 'Country code', placeholder: 'IN' },
-      { key: 'action', label: 'Action', options: ['allow', 'deny'] },
-      { key: 'enabled', label: 'Fence is enabled', type: 'switch' }
+      { key: 'lat', label: 'Latitude', required: true, placeholder: '18.52', half: true },
+      { key: 'lon', label: 'Longitude', required: true, placeholder: '73.86', half: true },
+      { key: 'city', label: 'City', placeholder: 'Filled in by the search', half: true },
+      { key: 'countryCode', label: 'Country code', placeholder: 'IN', half: true },
+      { key: 'action', label: 'Action', options: ['allow', 'deny'], half: true },
+      { key: 'enabled', label: 'Fence is enabled', type: 'switch', half: true }
     ],
     title: 'Geo-fences',
     subtitle: 'Locations access is allowed from. A simulated client position is evaluated against these.',

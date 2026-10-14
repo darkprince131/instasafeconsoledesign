@@ -228,6 +228,29 @@ async function saveSecret () {
  * Profile when editing and not when creating, because the profile is decided
  * by where the members came from.
  */
+/**
+ * Form rows.
+ *
+ * A field gets a row to itself unless it is marked `half`, and two
+ * consecutive halves share one. Latitude and Longitude are six characters
+ * each and were taking a full-width row apiece, which turned adding a
+ * geo-fence into scrolling.
+ */
+const formRows = computed(() => {
+  const out = []
+  let pending = null
+  for (const f of cfg.value?.form || []) {
+    if (f.half) {
+      if (pending) { out.push([pending, f]); pending = null } else { pending = f }
+    } else {
+      if (pending) { out.push([pending]); pending = null }
+      out.push([f])
+    }
+  }
+  if (pending) out.push([pending])
+  return out
+})
+
 function visible (f) {
   if (f.editOnly && !editingId.value) return false
   if (f.addOnly && editingId.value) return false
@@ -637,10 +660,11 @@ onMounted(load)
     >
       <div class="i-formsec">
         <div
-          v-for="f in cfg.form" :key="f.key"
-          v-show="visible(f)"
-          class="i-frow" style="grid-template-columns:1fr"
+          v-for="(fieldRow, ri) in formRows" :key="'row' + ri"
+          class="i-frow"
+          :style="{ gridTemplateColumns: fieldRow.length > 1 ? '1fr 1fr' : '1fr' }"
         >
+        <div v-for="f in fieldRow" :key="f.key" v-show="visible(f)" style="min-width:0">
           <!-- A field that picks from a collection gets a searchable picker,
                not a select. Membership is edited here, inside the parent's
                form, so a group and the users in it are one object you save
@@ -738,6 +762,7 @@ onMounted(load)
             <p v-if="locked(f)" class="i-hint">{{ locked(f) }}</p>
             <p v-else-if="f.hint" class="i-hint">{{ f.hint }}</p>
           </div>
+        </div>
         </div>
       </div>
       <!-- Velto's Change Password / Change Client Secret: its own button,
