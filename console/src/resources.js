@@ -447,40 +447,60 @@ export const RESOURCES = {
   '/usergroups': {
     singular: 'group',
     formSubtitle: 'Policy set here is inherited by every member. Membership is part of the group, so both are saved together.',
-    /* Velto's field set. The one that was missing is `members`: without it
-       there was no way to put a user in a group from the group's side at all,
-       which is the side an admin works from when onboarding a team. */
+    aclPanel: true,
+    /**
+     * Velto's field set, with its own `name` attributes.
+     *
+     * Twelve switches, not seven. The five that were missing — Device DLP,
+     * Shift Schedule, Geofencing, Block Apps, Risk Profile, Device Policy —
+     * are the same set a user carries, which is the point: a group is where
+     * you set them once instead of on every member.
+     *
+     * Authentication Profile is asked on edit and not on create, because the
+     * profile follows from where the members came from. IP Restriction is a
+     * user field and is not on this form at all.
+     */
     form: [
-      { key: 'name', label: 'Group name', required: true, placeholder: 'Finance' },
-      { key: 'location', label: 'Location', placeholder: 'Mumbai' },
-      { key: 'description', label: 'Description', placeholder: 'What this group is for' },
-      { key: 'authType', label: 'Authentication type',
-        options: ['Local', 'Azure AD', 'RADIUS', 'LDAP', 'SAML', 'Google'] },
-      { key: 'memberIds', label: 'Users', type: 'pick', resource: 'users',
-        placeholder: 'Search by name, username or email',
+      { key: 'name', name: 'grp_name', label: 'Name', required: true, placeholder: 'Finance',
+        lockedOnEdit: 'Access rules name their source group, and sessions already granted refer to it. A renamed group is a new one.' },
+      { key: 'location', name: 'location', label: 'Location', placeholder: 'Enter Location' },
+      { key: 'description', name: 'description', label: 'Description', placeholder: 'Enter Group Description' },
+      { key: 'authProfileId', name: 'auth_profile', label: 'Authentication Profile', editOnly: true,
+        type: 'pick', resource: 'authProfiles', multiple: false,
+        labelKey: 'name', hintKey: 'type', placeholder: 'Search profiles…',
+        hint: 'How members of this group authenticate. Velto lists the tenant\'s own profiles by protocol and name.' },
+      { key: 'memberIds', name: 'users', label: 'Users', type: 'pick', resource: 'users',
+        placeholder: 'Select users…',
         labelKey: 'username', hintKey: 'username',
         hint: 'Type to narrow. A native list of 1,821 names is not a control anybody can use.' },
-      { key: 'twoFactor', label: 'Require two-factor', type: 'switch' },
-      { key: 'deviceBinding', label: 'Bind members to their first device', type: 'switch' },
-      { key: 'deviceChecks', label: 'Run device posture checks', type: 'switch' },
-      { key: 'deviceUpdates', label: 'Push device updates', type: 'switch' },
-      { key: 'geoBinding', label: 'Bind to a geography', type: 'switch' },
-      { key: 'ipRestriction', label: 'Restrict by source IP', type: 'switch' },
-      { key: 'autoSuspend', label: 'Auto-suspend idle members', type: 'switch' }
+      { key: 'twoFactor', name: 'googleotp', label: 'Two Factor Authentication', type: 'switch' },
+      { key: 'deviceBinding', name: 'enable_device_binding', label: 'Device Binding', type: 'switch' },
+      { key: 'deviceChecks', name: 'device_check_enable', label: 'Device checks', type: 'switch' },
+      { key: 'deviceUpdates', name: 'device_update_enable', label: 'Device updates', type: 'switch' },
+      { key: 'deviceDlp', name: 'device_dlp_enable', label: 'Device DLP', type: 'switch' },
+      { key: 'geoBinding', name: 'geo_binding', label: 'Geo Binding', type: 'switch' },
+      { key: 'shiftSchedule', name: 'time_schedule_enable', label: 'Shift Schedule', type: 'switch' },
+      { key: 'geoFence', name: 'enable_geo_fence', label: 'Geofencing', type: 'switch' },
+      { key: 'blockApps', name: 'enable_app_blocker', label: 'Block Apps', type: 'switch' },
+      { key: 'riskProfile', name: 'enable_risk_profile', label: 'Risk Profile', type: 'switch' },
+      { key: 'devicePolicy', name: 'enable_device_policy', label: 'Device Policy', type: 'switch' },
+      { key: 'autoSuspend', name: 'auto_suspend_users', label: 'Auto Suspend Users', type: 'switch' }
     ],
     title: 'User groups',
     subtitle: 'Groups carry policy. A user inherits every rule attached to every group they are in.',
     resource: 'groups',
     primaryAction: 'Add group',
-    searchFields: ['name', 'authType'],
+    searchFields: ['name', 'authType', 'description'],
+    /* Velto's seven columns. The three switches it prints are the three it
+       judges worth seeing from the list; the rest live on the form. */
     columns: [
       { key: 'name', label: 'Group', bold: true },
-      { key: 'authType', label: 'Auth type' },
+      { key: 'authType', label: 'Auth-Type' },
       { key: 'members', label: 'Members', align: 'right', num: true },
-      { key: 'accessRules', label: 'Access rules', align: 'right', num: true },
-      { key: 'twoFactor', label: 'Two factor', bool: true },
-      { key: 'deviceBinding', label: 'Device binding', bool: true },
-      { key: 'createdAt', label: 'Created', cell: fmtDate, dim: true }
+      { key: 'accessRules', label: 'Access Rules', align: 'right', num: true },
+      { key: 'twoFactor', label: 'Two Factor Authentication', bool: true },
+      { key: 'deviceBinding', label: 'Device Binding', bool: true },
+      { key: 'deviceChecks', label: 'Device Checks', bool: true }
     ]
   },
 

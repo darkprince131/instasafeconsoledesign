@@ -132,13 +132,32 @@ export function seedGroups () {
                                       // not answer "who is in this group"
     location: pick(['Mumbai', 'Bengaluru', 'London', 'Singapore']),
     description: `${name} team`,
-    deviceUpdates: false, geoBinding: false, ipRestriction: false, autoSuspend: false,
+    /* Velto's group form carries twelve switches, the same set a user does.
+       That is the point of a group: set them once rather than per member.
+       IP Restriction is not among them — it is a user field only. */
+    deviceUpdates: false, geoBinding: false, autoSuspend: false,
+    deviceDlp: false, shiftSchedule: false, geoFence: false,
+    blockApps: false, riskProfile: false, devicePolicy: false,
     twoFactor: name !== 'Contractors',
     deviceBinding: !['Contractors', 'Sales'].includes(name),
     deviceChecks: ['Administrators', 'Engineering', 'Finance', 'Executives', 'Security'].includes(name),
-    accessRules: 0,
+    accessRules: 0,                   // filled in by countRulesPerGroup
     createdAt: ago(200 + r() * 400)
   }))
+}
+
+/**
+ * How many access rules name each group as their source.
+ *
+ * The column existed and was seeded as zero on every row, so the list said no
+ * group had any rule while the access-rules screen listed a dozen pointed
+ * straight at them. Counted from the rules themselves now.
+ */
+export function countRulesPerGroup (groups, rules) {
+  for (const g of groups) {
+    g.accessRules = rules.filter(r => r.sourceType === 'group' && r.source === g.name).length
+  }
+  return groups
 }
 
 /** Puts every user in the group for their department. Mutates both. */

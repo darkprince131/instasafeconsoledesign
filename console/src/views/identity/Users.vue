@@ -629,7 +629,7 @@ onMounted(load)
           <label class="i-sw"><input id="enable_twin_tunnel" name="enable_twin_tunnel" type="checkbox" v-model="form.twinTunnel"><span class="i-track" />Twin Tunnel Support</label>
           <div class="i-field mt-3">
             <label for="static_vpn_ip">Static IP</label>
-            <input id="static_vpn_ip" name="static_vpn_ip" class="i-ctl i-tech" v-model="form.staticIp" placeholder="10.130.9.42">
+            <input id="static_vpn_ip" name="static_vpn_ip" class="i-ctl i-tech" v-model="form.staticIp" placeholder="Enter Static IP">
             <p class="i-hint">
               The address this account is always given on the tunnel. Leave it
               empty and one is assigned from the pool — which is what nearly

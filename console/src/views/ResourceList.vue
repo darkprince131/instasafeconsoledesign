@@ -212,9 +212,45 @@ async function saveSecret () {
   }
 }
 
-/** A field that only exists once another one is switched on. */
+/**
+ * A field that only exists in some states.
+ *
+ * `when` is another field being switched on. `editOnly` and `addOnly` are the
+ * two sides of the panel: velto asks a user group for its Authentication
+ * Profile when editing and not when creating, because the profile is decided
+ * by where the members came from.
+ */
 function visible (f) {
+  if (f.editOnly && !editingId.value) return false
+  if (f.addOnly && editingId.value) return false
   return !f.when || f.when(form.value)
+}
+
+/* ---- the rules that reach this record ---------------------------------- */
+
+/**
+ * Velto's View Acls.
+ *
+ * A user group's panel has a button opening a table of every access rule
+ * whose source is that group. It is the answer to "what did putting somebody
+ * in this group actually give them", and it is worth having one click away.
+ *
+ * Velto packs the destination into one cell — "Ip Address: 172.31.13.231
+ * Service Name: ANY Protocol: ANY" — which is three facts in a sentence. They
+ * are three columns here.
+ */
+const aclsOpen = ref(false)
+const relatedAcls = ref([])
+const aclsLoading = ref(false)
+
+async function loadAcls () {
+  if (!cfg.value?.aclPanel || !editingId.value) { relatedAcls.value = []; return }
+  aclsLoading.value = true
+  try {
+    const res = await api.accessRules.list({ perPage: 0 })
+    const mine = form.value.name
+    relatedAcls.value = res.data.filter(a => a.source === mine)
+  } finally { aclsLoading.value = false }
 }
 
 /**
@@ -249,6 +285,7 @@ function openEdit (row) {
   form.value = { ...blankForm(), ...row }
   editingId.value = row.id
   sheetOpen.value = true
+  loadAcls()
 }
 
 async function saveForm () {
@@ -697,12 +734,72 @@ onMounted(load)
         </div>
       </div>
 
+      <div v-if="cfg.aclPanel && editingId" class="i-formsec">
+        <h3>Access rules</h3>
+        <p class="i-secsub">
+          {{ aclsLoading
+            ? 'Loading…'
+            : (relatedAcls.length
+              ? `${relatedAcls.length} rule${relatedAcls.length === 1 ? '' : 's'} name this group as their source.`
+              : 'No rule names this group as its source, so membership on its own reaches nothing.') }}
+        </p>
+        <button v-if="relatedAcls.length" class="i-btn i-sm" @click="aclsOpen = true">
+          <i class="fa-solid fa-list me-1" aria-hidden="true" />View Acls
+        </button>
+        <RouterLink v-else class="i-btn i-sm" to="/access-rules">Write a rule for it</RouterLink>
+      </div>
+
       <template #footer>
         <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
         <div class="i-right">
           <button class="i-btn i-primary" :disabled="saving" @click="saveForm">
             {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Create') }}
           </button>
+        </div>
+      </template>
+    </Sheet>
+
+    <Sheet
+      v-model:open="aclsOpen"
+      nested
+      width="820px"
+      :title="`Access rules for ${form.name}`"
+      subtitle="Every rule whose source is this group. This is what membership buys."
+    >
+      <div class="table-responsive">
+        <table class="i-table">
+          <thead>
+            <tr>
+              <th>Acl Name</th><th>Source Type</th><th>Source</th>
+              <th>Destination</th><th>Service</th><th>Protocol</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in relatedAcls" :key="a.id">
+              <td class="fw-medium">{{ a.name }}</td>
+              <td>{{ a.sourceType }}</td>
+              <td>{{ a.source }}</td>
+              <td class="i-tech">{{ a.dest }}</td>
+              <td>{{ a.service || 'ANY' }}</td>
+              <td>{{ a.protocol || 'ANY' }}</td>
+              <td>
+                <span class="i-pill" :class="a.action === 'allow' ? '' : 'i-bad'">
+                  <span v-if="a.action === 'allow'" class="i-dot i-ok" />{{ a.action }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="i-hint mt-2">
+        Velto prints the destination, the service and the protocol into a
+        single cell as a sentence. They are three facts, so they are three
+        columns.
+      </p>
+      <template #footer>
+        <button class="i-btn i-quiet" @click="aclsOpen = false">Close</button>
+        <div class="i-right">
+          <RouterLink class="i-btn" to="/access-explorer">Explain an access decision</RouterLink>
         </div>
       </template>
     </Sheet>

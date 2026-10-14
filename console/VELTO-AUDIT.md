@@ -1203,6 +1203,57 @@ Velto's carries **216 options**. §16 already established that a list that long
 is not a control, so the common codes are offered here. If the full list is
 wanted it should be the searchable picker, not a longer select.
 
+## 34. User groups — twelve switches, and the rule count that was always zero
+
+A group carries the same policy set a user does, which is the point of it: set
+it once rather than on every member. The form had seven switches and velto has
+**twelve**. The five missing were Device DLP, Shift Schedule, Geofencing, Block
+Apps, Risk Profile and Device Policy — exactly the set that already existed on
+the user form's Advanced tab.
+
+IP Restriction went the other way: it was on this form and is not velto's. It
+is a user field only.
+
+| | |
+|---|---|
+| Form | `grp_name`* (locks on edit) · `location` · `description` · `auth_profile` (edit only) · `users`* · twelve switches |
+| Columns | Group · Auth-Type · Members · **Access Rules** · Two Factor Authentication · Device Binding · Device Checks |
+
+Velto asks for the Authentication Profile when **editing** and not when
+creating, because the profile follows from where the members came from. Fields
+can be declared `editOnly` or `addOnly` now.
+
+### 34.1 Access Rules was seeded as zero on every group
+The column existed, and every row read 0, while the access-rules screen listed
+a dozen rules pointed straight at those groups. Nothing counted them. The count
+is taken from the rules now — Administrators 2, Engineering 6, Finance 3 — and
+the rules have to be built before the groups are written, or the count is zero
+again.
+
+This is the second time a join between groups and rules has been silently
+empty; §33.3 was the other. Both read on screen as "this group grants nothing",
+which is the one answer that must never be wrong by accident.
+
+### 34.2 View Acls
+The group's panel has a **View Acls** button opening every rule whose source is
+that group — the answer to what putting somebody in it actually gave them.
+Built, and reachable one click from the form, with the count on the form so the
+button answers a question you already have.
+
+Velto writes the destination as a sentence in a single cell:
+
+```
+Ip Address: 172.31.13.231   Service Name: ANY   Protocol: ANY
+```
+
+That is three facts in one column. They are three columns here. A group with
+no rules gets a line saying membership on its own reaches nothing, and a link
+to write one, rather than an empty table.
+
+### 34.3 Left alone
+Adding users from the group's side was already right — the searchable picker,
+not a native list of 1,821 names — so it is unchanged.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

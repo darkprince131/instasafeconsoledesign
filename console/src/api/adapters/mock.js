@@ -73,7 +73,14 @@ const RESHAPED = [
     (rows) => rows.filter(r => r.type === 'openid')],
   /* Never seeded at all until now, so an existing visitor has an empty
      collection rather than a stale one. */
-  ['userProviders', 'type', () => seed.seedUserProviders()]
+  ['userProviders', 'type', () => seed.seedUserProviders()],
+  /* Groups gained the five switches velto has and a real rule count. */
+  ['groups', 'deviceDlp', () => {
+    const groups = seed.seedGroups()
+    seed.linkUsersToGroups(seed.seedUsers(), groups)
+    seed.countRulesPerGroup(groups, seed.seedAccessRules(groups, seed.seedApplications()))
+    return groups
+  }]
 ]
 
 async function migrateReshaped () {
@@ -93,13 +100,18 @@ async function reseed () {
   const apps = seed.seedApplications()
   const devices = seed.seedDevices(users)
 
+  /* Rules first, because the group rows carry a count of them and a group
+     written before the rules exist says every group has none. */
+  const rules = seed.seedAccessRules(groups, apps)
+  seed.countRulesPerGroup(groups, rules)
+
   await db.putMany('users', users)
   await db.putMany('groups', groups)
   await db.putMany('devices', devices)
   await db.putMany('applications', apps)
   await db.putMany('appGroups', seed.seedAppGroups(apps))
   await db.putMany('appServices', seed.seedAppServices())
-  await db.putMany('accessRules', seed.seedAccessRules(groups, apps))
+  await db.putMany('accessRules', rules)
   await db.putMany('controllers', seed.seedControllers())
   await db.putMany('gateways', seed.seedGateways())
   await db.putMany('authProfiles', seed.seedAuthProfiles())
