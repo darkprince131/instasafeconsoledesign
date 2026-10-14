@@ -894,32 +894,77 @@ export const RESOURCES = {
     singular: 'device policy',
     formSubtitle: 'Something the agent applies to a device: a registry key, a script, a config file or a command.',
     form: [
-      { key: 'name', label: 'Policy name', required: true, placeholder: 'Contractor laptops' },
-      { key: 'status', label: 'Status', options: ['Enabled', 'Disabled'] },
-      { key: 'description', label: 'Description', placeholder: 'What this policy is for' },
-      { key: 'os', label: 'Operating system', required: true,
+      { key: 'name', name: 'name', label: 'Name', required: true, placeholder: 'Enter Device Policy Name',
+        lockedOnEdit: 'Agents already carrying this policy refer to it by name. A renamed policy is a new one, and the old one keeps applying until it is removed.' },
+      { key: 'status', label: 'Status', options: ['Enabled', 'Disabled'], default: 'Enabled' },
+      { key: 'description', name: 'description', label: 'Description', placeholder: 'Enter Device Policy Description' },
+      { key: 'os', label: 'OS', required: true,
         options: ['Windows', 'macOS', 'Linux'] },
       { key: 'type', label: 'Type', required: true,
-        /* Registry only exists on Windows. */
+        /* Registry only exists on Windows. Velto's Type select is disabled
+           until an OS is chosen, for the same reason. */
         options: (form) => form.os === 'Windows'
           ? ['Registry', 'Script', 'Config', 'Command']
           : ['Script', 'Config', 'Command'],
-        hint: 'Registry is Windows only. The field below changes with this.' },
+        hint: 'Registry is Windows only. What is asked for below changes with this.' },
+
+      /**
+       * Config is not a free-text payload like the other three: it opens a
+       * list of **templates**, and each template asks for its own thing. The
+       * demo had one textarea for every type, which cannot express a WiFi SSID
+       * and password, or a wallpaper file.
+       *
+       * Read off a velto policy: six templates, and the fields each one
+       * reveals.
+       */
+      { key: 'configTemplate', label: 'Config Template', required: true,
+        when: (form) => form.type === 'Config',
+        options: ['Wallpaper', 'WiFi', 'Screensaver', 'Device Inventory', 'Disk Encryption', 'Set BIOS Password'],
+        default: 'Device Inventory' },
+
+      { key: 'configFile', label: 'File to be Pushed', type: 'file', required: true,
+        accept: '.png,.jpg,.jpeg,.bmp', dataKey: 'configFileData', uploadLabel: 'Choose file',
+        when: (form) => form.type === 'Config' && ['Wallpaper', 'Screensaver'].includes(form.configTemplate),
+        hint: 'The image pushed to every device the policy applies to.' },
+
+      { key: 'wifiSsid', label: 'WiFi SSID', required: true, placeholder: 'WiFi SSID',
+        when: (form) => form.type === 'Config' && form.configTemplate === 'WiFi' },
+      { key: 'wifiPassword', label: 'WiFi Password', type: 'password', required: true, placeholder: 'WiFi Password',
+        when: (form) => form.type === 'Config' && form.configTemplate === 'WiFi',
+        hint: 'Pushed to the device and stored by it. Anyone who can read the device can read this network.' },
+
+      { key: 'diskEncryption', label: 'Disk Encryption Status', required: true,
+        options: ['Enable', 'Disable'], default: 'Enable',
+        when: (form) => form.type === 'Config' && form.configTemplate === 'Disk Encryption',
+        hint: 'Turning it on encrypts the volume on the next check-in. Turning it off decrypts it, which takes as long and is not reversible mid-way.' },
+
+      { key: 'biosPassword', label: 'BIOS Password', type: 'password', required: true, placeholder: 'BIOS Password',
+        when: (form) => form.type === 'Config' && form.configTemplate === 'Set BIOS Password',
+        hint: 'A BIOS password cannot be recovered from the console. Keep it where your hardware records are.' },
+
+      { key: 'inventoryNote', type: 'note',
+        when: (form) => form.type === 'Config' && form.configTemplate === 'Device Inventory',
+        hint: 'Device Inventory asks for nothing else: the agent collects the hardware and software inventory and reports it on each check-in.' },
+
+      /* The other three types are a payload, and it is one field. */
       { key: 'value', label: 'Value', type: 'textarea',
-        label2: true,
-        placeholder: 'HKLM\\SOFTWARE\\Policies\\… or the script to run',
-        hint: 'A registry path, a script, the contents of a config file, or a command line — whichever the type above names.' }
+        when: (form) => form.type && form.type !== 'Config',
+        placeholder: 'HKLM\\SOFTWARE\\Policies\\... or the script to run',
+        hint: 'A registry path, a script, or a command line - whichever the type above names.' }
     ],
     title: 'Device policy',
     subtitle: 'Requirements a device has to meet before its user can connect.',
     resource: 'devicePolicies',
     primaryAction: 'Add policy',
     columns: [
+      /* Velto's four. Description is on the form, not in the list. */
       { key: 'name', label: 'Name', bold: true },
       { key: 'os', label: 'OS' },
       { key: 'type', label: 'Type' },
-      { key: 'description', label: 'Description', dim: true },
-      { key: 'status', label: 'Status', pill: statusPill }
+      { key: 'status', label: 'Status',
+        /* Disabled is the exception worth a mark: a policy that exists and is
+           doing nothing. Enabled is the ordinary case and stays plain. */
+        pill: (v) => v === 'Disabled' ? 'att' : null }
     ]
   },
 

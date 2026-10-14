@@ -482,6 +482,42 @@ const SAML_DEMO_CERT = '-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQZy92n5Z
  * client id, Google holds an admin user, and both hold a comma-separated
  * group list that decides who is imported.
  */
+/**
+ * Device policies.
+ *
+ * Another collection that was in the store list and never written to, so the
+ * screen was empty whatever its config said. Velto's own rows are all Windows
+ * config policies — bitlocker on, bitlocker off, set BIOS password — which is
+ * what the templates are for.
+ */
+export function seedDevicePolicies () {
+  return [
+    ['Encrypt contractor laptops', 'Windows', 'Config', 'Enabled',
+      { configTemplate: 'Disk Encryption', diskEncryption: 'Enable' },
+      'BitLocker on every machine a contractor signs in from'],
+    ['Corporate wallpaper', 'Windows', 'Config', 'Enabled',
+      { configTemplate: 'Wallpaper', configFile: 'corp-wallpaper-2026.png' },
+      'Pushed on check-in'],
+    ['Office WiFi', 'Windows', 'Config', 'Disabled',
+      { configTemplate: 'WiFi', wifiSsid: 'InstaSafe-Corp', wifiPasswordSet: true },
+      'Staged for the Mumbai office move'],
+    ['Hardware inventory', 'Windows', 'Config', 'Enabled',
+      { configTemplate: 'Device Inventory' },
+      'Collected on every check-in'],
+    ['Disable USB storage', 'Windows', 'Registry', 'Enabled',
+      { value: 'HKLM\SYSTEM\CurrentControlSet\Services\USBSTOR\Start = 4' },
+      'Registry, so Windows only'],
+    ['Require FileVault', 'macOS', 'Script', 'Enabled',
+      { value: 'fdesetup status | grep -q "FileVault is On"' },
+      'The macOS equivalent of the BitLocker policy above']
+  ].map(([name, os, type, status, extra, description], i) => ({
+    id: `dp_${pad(i + 1, 4)}`,
+    name, os, type, status, description,
+    ...extra,
+    createdAt: ago(120 + r() * 200)
+  }))
+}
+
 export function seedUserProviders () {
   return [
     ['azuread', {

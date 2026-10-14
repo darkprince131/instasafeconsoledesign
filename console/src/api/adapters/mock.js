@@ -74,6 +74,8 @@ const RESHAPED = [
   /* Never seeded at all until now, so an existing visitor has an empty
      collection rather than a stale one. */
   ['userProviders', 'type', () => seed.seedUserProviders()],
+  /* Never seeded either, so the screen has always been empty. */
+  ['devicePolicies', 'type', () => seed.seedDevicePolicies()],
   /* Groups gained the five switches velto has and a real rule count. */
   ['groups', 'deviceDlp', () => {
     const groups = seed.seedGroups()
@@ -116,6 +118,7 @@ async function reseed () {
   await db.putMany('gateways', seed.seedGateways())
   await db.putMany('authProfiles', seed.seedAuthProfiles())
   await db.putMany('userProviders', seed.seedUserProviders())
+  await db.putMany('devicePolicies', seed.seedDevicePolicies())
   await db.putMany('deviceChecks', seed.seedDeviceChecks())
   await db.putMany('timeSchedules', seed.seedTimeSchedules())
   await db.putMany('riskProfiles', seed.seedRiskProfiles())

@@ -687,6 +687,11 @@ onMounted(load)
             :value-key="f.valueKey || 'id'"
             :hint-key="f.hintKey || ''"
           />
+          <!-- A field that is only an explanation. Device Inventory asks for
+               nothing, and saying so is better than an empty space where
+               every other template has a control. -->
+          <p v-else-if="f.type === 'note'" class="i-hint">{{ f.hint }}</p>
+
           <div v-else class="i-field">
             <label v-if="f.type !== 'switch'" :for="'rf_' + f.key">
               {{ f.label }}<span v-if="f.required" class="i-req">*</span>

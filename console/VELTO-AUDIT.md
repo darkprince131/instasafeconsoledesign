@@ -1368,6 +1368,56 @@ reported by the agent and should not be typed over, while the name is a label a
 person chose — is a judgement rather than an observation. One look at a velto
 device edit panel settles it.
 
+## 39. Device policy is a three-level cascade, and the screen was empty
+
+Read off a live velto policy, because no capture goes past the Type select.
+
+| | |
+|---|---|
+| Columns | Name · OS · Type · Status |
+| Form | `name`* (locks on edit) · Status · `description` · OS* · Type* |
+| OS | Windows · macOS · Linux |
+| Type | **Registry** · Script · Config · Command — Registry on Windows only |
+
+Velto disables the Type select until an OS is chosen, for the same reason the
+Registry option is Windows-only: the Windows registry does not exist on the
+other two.
+
+### 39.1 Config is not a payload, it is a list of templates
+The other three types take one thing — a registry path, a script, a command —
+and the demo had a single textarea for all four. Config does not work that way.
+It opens a **Config Template** select, and each template asks for its own
+fields:
+
+| Template | Asks for |
+|---|---|
+| Wallpaper | a file to be pushed |
+| Screensaver | a file to be pushed |
+| WiFi | SSID and password |
+| Disk Encryption | status — Enable or Disable |
+| Set BIOS Password | a password |
+| Device Inventory | **nothing** |
+
+All six sampled on the live form. Device Inventory asking for nothing is worth
+saying on screen rather than leaving a gap where every other template has a
+control — the agent collects the inventory and reports it on check-in.
+
+So the form is OS → Type → Template → the template's own field, three levels,
+and a single textarea could never have expressed a WiFi SSID and password or a
+wallpaper image.
+
+### 39.2 Name locks on edit
+Confirmed on the live form: `name` is disabled on an existing policy. Agents
+already carrying it refer to it by name, so a renamed policy is a new one and
+the old one keeps applying until it is removed.
+
+### 39.3 The collection was never seeded
+`devicePolicies` has been in the store list from the start with nothing ever
+writing to it, so this screen was empty whatever its config said. That is the
+**third** collection found this way, after `userProviders` (§31.5) and the
+group rule counts (§34.1). Seeded now, with the shape velto's own rows have —
+mostly Windows config policies, which is what the templates are for.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
