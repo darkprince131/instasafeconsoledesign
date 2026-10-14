@@ -1479,9 +1479,14 @@ seeded, so the screens were permanently empty whatever their config said:
 Every row uses the field set the screen's own form asks for, so opening one
 shows a filled form rather than a half-empty one.
 
-**Still empty, and not asked for:** `subAdmins`, `roles`, `authDevices`,
-`reportSubscriptions`, `exportProfiles`. Same cause. Worth clearing in one pass
-rather than one screen at a time.
+**Cleared since:** `subAdmins` (five administrators), `roles` (the four the
+sub-admin form offers, with what each may actually do) and
+`reportSubscriptions` (four schedules, one of them off).
+
+`authDevices` was a false positive — that screen reads `devices` with a filter,
+so it was never empty. `exportProfiles` has no screen reading it at all; the
+store exists and nothing points at it, which is worth removing rather than
+filling.
 
 ## Route coverage
 

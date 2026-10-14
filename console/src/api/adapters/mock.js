@@ -83,6 +83,9 @@ const RESHAPED = [
   ['contentFilters', 'category', () => seed.seedContentFilters()],
   ['fileTypeFilters', 'extensions', () => seed.seedFileTypeFilters()],
   ['domainLists', 'list', () => seed.seedDomainLists()],
+  ['subAdmins', 'role', () => seed.seedSubAdmins()],
+  ['roles', 'canViewLogs', () => seed.seedRoles()],
+  ['reportSubscriptions', 'cadence', () => seed.seedReportSubscriptions()],
   /* Groups gained the five switches velto has and a real rule count. */
   ['groups', 'deviceDlp', () => {
     const groups = seed.seedGroups()
@@ -132,6 +135,9 @@ async function reseed () {
   await db.putMany('contentFilters', seed.seedContentFilters())
   await db.putMany('fileTypeFilters', seed.seedFileTypeFilters())
   await db.putMany('domainLists', seed.seedDomainLists())
+  await db.putMany('subAdmins', seed.seedSubAdmins())
+  await db.putMany('roles', seed.seedRoles())
+  await db.putMany('reportSubscriptions', seed.seedReportSubscriptions())
   await db.putMany('deviceChecks', seed.seedDeviceChecks())
   await db.putMany('timeSchedules', seed.seedTimeSchedules())
   await db.putMany('riskProfiles', seed.seedRiskProfiles())

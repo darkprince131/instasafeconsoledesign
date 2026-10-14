@@ -596,6 +596,50 @@ export function seedDomainLists () {
   }))
 }
 
+/** Administrators other than the tenant owner. */
+export function seedSubAdmins () {
+  return [
+    ['Priya Nair', 'priya.nair@example.com', 'Security analyst', true],
+    ['Deepak Menon', 'deepak.menon@example.com', 'Helpdesk', true],
+    ['Asha Rao', 'asha.rao@example.com', 'Full admin', true],
+    ['Vikram Shah', 'vikram.shah@example.com', 'Read only', true],
+    ['Neha Gupta', 'neha.gupta@example.com', 'Helpdesk', false]
+  ].map(([name, email, role, enabled], i) => ({
+    id: `sad_${pad(i + 1, 4)}`, name, email, role, enabled,
+    lastSeenAt: ago(r() * 20), createdAt: ago(100 + r() * 300)
+  }))
+}
+
+/** What each of those roles may actually do. */
+export function seedRoles () {
+  return [
+    ['Read only', 'See everything, change nothing', false, false, false, true, false],
+    ['Helpdesk', 'Approve devices and reset access for users', true, true, false, true, false],
+    ['Security analyst', 'Read logs and write access rules', false, true, true, true, false],
+    ['Full admin', 'Everything, including tenant settings', true, true, true, true, true]
+  ].map(([name, description, canManageUsers, canApproveDevices, canEditRules, canViewLogs, canEditSettings], i) => ({
+    id: `rol_${pad(i + 1, 4)}`,
+    name, description,
+    canManageUsers, canApproveDevices, canEditRules, canViewLogs, canEditSettings,
+    createdAt: ago(200 + r() * 300)
+  }))
+}
+
+/** Reports that go out without anybody opening the console. */
+export function seedReportSubscriptions () {
+  return [
+    ['Weekly access summary', 'Access logs', 'Weekly', 'security@example.com', true],
+    ['Daily event digest', 'Event logs', 'Daily', 'soc@example.com, asha.rao@example.com', true],
+    ['Monthly data usage', 'Data usage', 'Monthly', 'it-leads@example.com', true],
+    ['Dormant account review', 'User last login', 'Monthly', 'hr@example.com, it-leads@example.com', false]
+  ].map(([name, report, cadence, recipients, enabled], i) => ({
+    id: `rsb_${pad(i + 1, 4)}`,
+    name, report, cadence, recipients, enabled,
+    lastSentAt: enabled ? ago(r() * 14) : null,
+    createdAt: ago(150 + r() * 200)
+  }))
+}
+
 export function seedDevicePolicies () {
   return [
     ['Encrypt contractor laptops', 'Windows', 'Config', 'Enabled',
