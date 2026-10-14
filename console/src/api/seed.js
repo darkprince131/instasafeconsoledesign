@@ -490,6 +490,112 @@ const SAML_DEMO_CERT = '-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQZy92n5Z
  * config policies — bitlocker on, bitlocker off, set BIOS password — which is
  * what the templates are for.
  */
+/**
+ * Six collections that were in the store list and never written to, so six
+ * screens were permanently empty. They are the long tail of the same miss
+ * that left user providers and device policies blank.
+ */
+
+/** Applications the agent stops from running. */
+export function seedBlockedApps () {
+  return [
+    ['uTorrent', 'utorrent.exe', 'Windows', true],
+    ['BitTorrent', 'bittorrent.exe', 'Windows', true],
+    ['TeamViewer', 'TeamViewer.exe', 'All', true],
+    ['AnyDesk', 'AnyDesk.exe', 'All', true],
+    ['Steam', 'steam.exe', 'Windows', false],
+    ['Tor Browser', 'firefox.exe', 'All', true]
+  ].map(([name, process, platform, enabled], i) => ({
+    id: `bap_${pad(i + 1, 4)}`,
+    name, process, platform, enabled,
+    createdAt: ago(80 + r() * 300)
+  }))
+}
+
+/** Files pushed to managed devices, with the check that proves they landed. */
+export function seedDeviceUpdates () {
+  return [
+    ['Falcon sensor 7.20', 'FalconSensor.msi', 'Enabled', '/quiet /norestart',
+      'Immediate', 'File present', 'C:\\Program Files\\CrowdStrike\\CSFalconService.exe'],
+    ['InstaSafe agent 4.8.2', 'InstaSafeAgent.msi', 'Enabled', '/S',
+      'After-Reboot', 'Registry Key present', 'HKLM\\SOFTWARE\\InstaSafe\\Agent'],
+    ['Remove legacy VPN client', 'LegacyVpn.msi', 'Enabled', '/uninstall /quiet',
+      'Uninstall', 'File present', 'C:\\Program Files\\LegacyVPN\\vpn.exe'],
+    ['Zscaler removal', 'ZscalerCleanup.exe', 'Disabled', '--silent',
+      'Uninstall', 'Registry Key present', 'HKLM\\SOFTWARE\\Zscaler']
+  ].map(([name, fileName, status, args, installSchedule, validationCheck, checkValue], i) => ({
+    id: `dup_${pad(i + 1, 4)}`,
+    name, fileName, status, arguments: args,
+    installSchedule, validationCheck, checkValue,
+    createdAt: ago(40 + r() * 200)
+  }))
+}
+
+/** URL rules. Velto matches exact, wildcard or regex. */
+export function seedUrlFilters () {
+  return [
+    ['Block personal file sharing', 'block', 'wildcard', '*.dropbox.com/*', 1, true],
+    ['Block webmail', 'block', 'wildcard', '*.mail.yahoo.com/*', 2, true],
+    ['Allow the status page', 'allow', 'exact', 'https://status.instasafe.com', 3, true],
+    ['Block pastebins', 'block', 'regex', '^https?://(pastebin|hastebin)\\.com/.*$', 4, true],
+    ['Block social media', 'block', 'wildcard', '*.facebook.com/*', 5, false]
+  ].map(([name, action, urlType, url, priority, enabled], i) => ({
+    id: `urf_${pad(i + 1, 4)}`,
+    name, action, urlType, url, priority, enabled,
+    createdAt: ago(60 + r() * 240)
+  }))
+}
+
+/** Content rules, matched on the sub-category a destination falls into. */
+export function seedContentFilters () {
+  return [
+    ['Block adult content', 'block', 'Adult / Mature Content',
+      ['Pornography', 'Nudity and Risque', 'Gambling'], 1, true],
+    ['Block known security risks', 'block', 'Security Risk',
+      ['Malicious Websites', 'Phishing'], 2, true],
+    ['Block social networking', 'block', 'Social / Lifestyle',
+      ['Social Networking'], 3, true],
+    ['Allow business tools', 'allow', 'General Interest - Business',
+      ['Information Technology'], 4, true]
+  ].map(([name, action, category, subCategories, priority, enabled], i) => ({
+    id: `cof_${pad(i + 1, 4)}`,
+    name, action, category, subCategories, priority, enabled,
+    createdAt: ago(60 + r() * 240)
+  }))
+}
+
+/** File type rules, matched on the extension of a transfer. */
+export function seedFileTypeFilters () {
+  return [
+    ['Block executables', 'block', 'Executables', ['.exe', '.bat', '.msi', '.scr'], 1, true],
+    ['Block scripts', 'block', 'Scripts', ['.ps1', '.vbs', '.js'], 2, true],
+    ['Block archives from contractors', 'block', 'Compressed Files', ['.zip', '.rar', '.7z'], 3, false],
+    ['Allow documents', 'allow', 'Documents', ['.pdf', '.docx', '.xlsx'], 4, true]
+  ].map(([name, action, category, extensions, priority, enabled], i) => ({
+    id: `ftf_${pad(i + 1, 4)}`,
+    name, action, category, extensions, priority, enabled,
+    createdAt: ago(60 + r() * 240)
+  }))
+}
+
+/** Named groups of domains that rules and filters point at. */
+export function seedDomainLists () {
+  return [
+    ['Sanctioned SaaS', 'allow',
+      'login.microsoftonline.com\noffice.com\nslack.com\natlassian.net\ngithub.com'],
+    ['Finance systems', 'allow',
+      'sap.corp.example.com\npayroll.example.com\nbank.example.com'],
+    ['Known bad', 'block',
+      'malware-c2.example\nphish-login.example\nexfil.example.net'],
+    ['Personal cloud storage', 'block',
+      'dropbox.com\ndrive.google.com\nmega.nz\nwetransfer.com']
+  ].map(([name, action, list], i) => ({
+    id: `dml_${pad(i + 1, 4)}`,
+    name, action, list, priority: i + 1, enabled: true,
+    createdAt: ago(60 + r() * 240)
+  }))
+}
+
 export function seedDevicePolicies () {
   return [
     ['Encrypt contractor laptops', 'Windows', 'Config', 'Enabled',

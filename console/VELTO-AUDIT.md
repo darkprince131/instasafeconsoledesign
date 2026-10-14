@@ -1445,6 +1445,44 @@ agree sit beside each other instead of one scrolling past the other.
 Anything that needs the width keeps it: the map, the LDAP filter, a picker, a
 textarea.
 
+## 41. The empty state's own button did nothing
+
+Every list screen offers its create action twice: once in the toolbar and once
+in the middle of the empty state, which is the one somebody actually reaches
+for when a screen has nothing on it. The second one was wired to `null`:
+
+```js
+@action="search ? (search = '') : null"
+```
+
+Clearing a search worked. Adding the first record of anything did not — the
+button was there, it looked like the way in, and it did nothing at all. This
+is the worst place in the product for a dead control, because it is the only
+control on the screen.
+
+One word. Every list screen driven by the shared template had it.
+
+## 42. Six more collections that were never written to
+
+The same miss as §31.5 and §39.3, six more times. In the store list, never
+seeded, so the screens were permanently empty whatever their config said:
+
+| Screen | Seeded with |
+|---|---|
+| Blocked apps | uTorrent, BitTorrent, TeamViewer, AnyDesk, Steam, Tor Browser |
+| Device updates | A sensor push, an agent upgrade, two uninstalls — with the post-install check each one proves itself by |
+| URL filter | Exact, wildcard and regex rules, so all three match types are visible |
+| Content filter | Rules across four of velto's six categories |
+| File type filter | Executables, scripts, archives, documents |
+| Domain lists | Sanctioned SaaS, finance systems, known bad, personal cloud storage |
+
+Every row uses the field set the screen's own form asks for, so opening one
+shows a filled form rather than a half-empty one.
+
+**Still empty, and not asked for:** `subAdmins`, `roles`, `authDevices`,
+`reportSubscriptions`, `exportProfiles`. Same cause. Worth clearing in one pass
+rather than one screen at a time.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

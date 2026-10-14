@@ -646,7 +646,7 @@ onMounted(load)
               ? 'Try a shorter term, or clear the search to see everything.'
               : (cfg.emptyBody || 'Nothing has been added here yet.')"
             :action-label="search ? 'Clear search' : (cfg.primaryAction || '')"
-            @action="search ? (search = '') : null"
+            @action="search ? (search = '') : openAdd()"
           />
         </template>
       </DataTable>
