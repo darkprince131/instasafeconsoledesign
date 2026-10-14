@@ -139,16 +139,61 @@ function openSecret (action) {
   secretActive.value = action
   secretNew.value = ''
   secretConfirm.value = ''
+  secretFile.value = ''
   secretOpen.value = true
 }
 
 function secretState (a) {
   if (!form.value[a.key + 'Set']) return `No ${a.noun} set yet.`
   const when = new Date(form.value[a.key + 'UpdatedAt'])
-  return `${a.noun[0].toUpperCase()}${a.noun.slice(1)} set ${when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}. It is not shown again.`
+  const on = when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  const file = form.value[a.key + 'Filename']
+  if (file) return `${file} uploaded ${on}. Its contents are not shown again.`
+  return `${a.noun[0].toUpperCase()}${a.noun.slice(1)} set ${on}. It is not shown again.`
+}
+
+/**
+ * Some credentials are uploaded rather than typed. Google's Update
+ * Credentials takes the service account key as a JSON file, and shows the
+ * filename beside it — the same shape as the keytab on Active Directory.
+ */
+const secretFile = ref('')
+
+function onSecretFile (e) {
+  const a = secretActive.value
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file) return
+  const exts = (a.accept || '').split(',').map(x => x.trim()).filter(Boolean)
+  if (exts.length && !exts.some(x => file.name.toLowerCase().endsWith(x.toLowerCase()))) {
+    toast(`Invalid file type. Allowed types: ${exts.join(', ')}`, 'bad')
+    secretFile.value = ''
+    return
+  }
+  secretFile.value = file.name
+}
+
+async function saveSecretFile () {
+  const a = secretActive.value
+  if (!secretFile.value) { toast('Choose a file first', 'bad'); return }
+  secretSaving.value = true
+  try {
+    form.value[a.key + 'Set'] = true
+    form.value[a.key + 'Filename'] = secretFile.value
+    form.value[a.key + 'UpdatedAt'] = new Date().toISOString()
+    if (editingId.value) {
+      await api[cfg.value.resource].update(editingId.value, { ...form.value })
+      load()
+    }
+    secretOpen.value = false
+    toast(`${a.label} — saved`)
+  } finally {
+    secretSaving.value = false
+  }
 }
 
 async function saveSecret () {
+  if (secretActive.value?.type === 'file') return saveSecretFile()
   const a = secretActive.value
   if (secretNew.value.length < 8) { toast('Use at least 8 characters', 'bad'); return }
   if (secretNew.value !== secretConfirm.value) { toast(`The two ${a.noun}s do not match`, 'bad'); return }
@@ -669,7 +714,33 @@ onMounted(load)
       :title="secretActive.label"
       :subtitle="`The ${secretActive.noun} is not shown again once saved.`"
     >
-      <div class="i-formsec">
+      <div v-if="secretActive.type === 'file'" class="i-formsec">
+        <div class="i-field">
+          <label for="secret_file">{{ secretActive.fileLabel || 'Key file' }}<span class="i-req">*</span></label>
+          <div class="d-flex align-items-center gap-2">
+            <label class="i-filepick mb-0">
+              <input id="secret_file" type="file" :accept="secretActive.accept" @change="onSecretFile">
+              <i class="fa-solid fa-upload" aria-hidden="true" />
+              <span>{{ secretFile ? 'Replace file' : 'Upload file' }}</span>
+            </label>
+            <input
+              class="i-ctl i-tech" type="text" readonly
+              :value="secretFile" placeholder="No file chosen"
+              aria-label="Chosen filename"
+            >
+          </div>
+          <p class="i-hint">
+            {{ secretActive.accept }} only. The filename is taken from the file;
+            its contents are stored and never shown again.
+          </p>
+        </div>
+        <p class="i-demo-note">
+          There is nothing here to hand this to, so the file is not kept —
+          only its name, and when it was uploaded.
+        </p>
+      </div>
+
+      <div v-else class="i-formsec">
         <div class="i-field">
           <label for="secret_new">New {{ secretActive.noun }}<span class="i-req">*</span></label>
           <input

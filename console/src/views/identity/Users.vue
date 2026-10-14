@@ -8,6 +8,7 @@ import GraphView from '../../components/ui/GraphView.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 import Sheet from '../../components/ui/Sheet.vue'
+import PickList from '../../components/ui/PickList.vue'
 import { fmtAgo, statusPill } from '../../resources.js'
 
 const toast = inject('toast', () => {})
@@ -62,15 +63,132 @@ async function resetMfaForUser () {
 }
 const form = ref(blank())
 
+/**
+ * Velto splits this form across three tabs — Profile, Options, Advanced —
+ * and the demo had it as four headed sections with a different field set.
+ * The segregation is kept because it is load-bearing: Profile is the person,
+ * Options is what is enforced at sign-in, Advanced is the networking.
+ */
+const TABS = [
+  { key: 'profile', label: 'Profile', hint: 'Who they are, and how they authenticate.' },
+  { key: 'options', label: 'Options', hint: 'What is checked when they sign in.' },
+  { key: 'advanced', label: 'Advanced', hint: 'Policy and networking. Most tenants leave these alone.' }
+]
+const tab = ref('profile')
+
+/* Velto's select carries 216 countries. A list that long is not a control —
+   §16 — so the common codes are offered and the rest typed. */
+const COUNTRY_CODES = [
+  ['91', 'India'], ['1', 'United States'], ['44', 'United Kingdom'], ['61', 'Australia'],
+  ['65', 'Singapore'], ['971', 'United Arab Emirates'], ['966', 'Saudi Arabia'],
+  ['49', 'Germany'], ['33', 'France'], ['31', 'Netherlands'], ['353', 'Ireland'],
+  ['81', 'Japan'], ['86', 'China'], ['60', 'Malaysia'], ['62', 'Indonesia'],
+  ['63', 'Philippines'], ['27', 'South Africa'], ['55', 'Brazil'], ['52', 'Mexico'],
+  ['254', 'Kenya'], ['234', 'Nigeria'], ['94', 'Sri Lanka'], ['880', 'Bangladesh']
+]
+
+const AUTH_TYPES = ['Certificate', 'Password + Certs']
+const ACTIVATION_METHODS = ['Immediately on provisioning', 'Automatically on first login', 'On date time']
+
+/* The SAML IDP profile offered here is a real profile from the SAML screen,
+   not a free string: velto lists the tenant's own, with None at the top. */
+const samlProfiles = ref(['None'])
+
+async function loadSamlProfiles () {
+  const res = await api.authProfiles.list({ perPage: 0, filters: { type: 'saml' } })
+  samlProfiles.value = ['None', ...res.data.map(p => p.name)]
+}
+
 function blank () {
   return {
+    /* Profile */
     firstName: '', lastName: '', email: '', username: '',
     countryCode: '91', mobile: '', location: '',
+    authType: 'Certificate',
+    activationMethod: 'Immediately on provisioning',
+    activationAt: '',
+    samlIdpProfile: 'None',
     authProfile: 'Local', department: 'Engineering',
-    status: 'pending', mfaEnrolled: false, mfaRequired: false, groups: [],
-    deviceBinding: true, deviceCheckEnabled: true,
-    geoFenceEnabled: false, autoSuspend: false
+    password: '', confirmPassword: '',
+    status: 'pending',
+    /* Options */
+    groups: [],
+    mfaEnrolled: false, mfaRequired: false,
+    deviceBinding: true, deviceCheckEnabled: true, deviceUpdatesEnabled: false,
+    geoBinding: false, ipRestriction: false,
+    /* Advanced */
+    deviceDlp: false, shiftSchedule: false, geoFenceEnabled: false,
+    blockApps: false, riskProfile: false, devicePolicy: false,
+    twinTunnel: false, staticIp: '', autoSuspend: false
   }
+}
+
+/* ---- the password, which velto keeps off the edit form ------------------ */
+
+const pwOpen = ref(false)
+const pwNew = ref('')
+const pwConfirm = ref('')
+const pwSaving = ref(false)
+
+function openPassword () { pwNew.value = ''; pwConfirm.value = ''; pwOpen.value = true }
+
+async function savePassword () {
+  if (pwNew.value.length < 8) { toast('Use at least 8 characters', 'bad'); return }
+  if (pwNew.value !== pwConfirm.value) { toast('The two passwords do not match', 'bad'); return }
+  pwSaving.value = true
+  try {
+    await api.users.update(editingId.value, { passwordSetAt: new Date().toISOString() })
+    await api.events.record({
+      type: 'user.password.changed',
+      message: `Password changed for ${form.value.username}`,
+      severity: 'warning'
+    })
+    pwOpen.value = false
+    toast('Password changed')
+  } finally { pwSaving.value = false }
+}
+
+/* ---- what this account actually has: devices and ACLs -------------------- */
+
+/**
+ * Velto's User Details.
+ *
+ * It opens a modal over the form holding two tables — the devices enrolled
+ * to this account and the ACLs that apply to it. The tables are there and the
+ * numbers are not: you cannot see from the form that somebody has four
+ * devices and no rules until you open it.
+ *
+ * Here the counts are on the form, so the panel answers a question you
+ * already know you have, and the ACL list says where each rule comes from —
+ * the group that carries it — because "why can this person reach that" is the
+ * question being asked.
+ */
+const detailsOpen = ref(false)
+const detailsTab = ref('devices')
+const userDevices = ref([])
+const userAcls = ref([])
+const detailsLoading = ref(false)
+
+async function loadDetails (row) {
+  detailsLoading.value = true
+  try {
+    const [dev, acl, grp] = await Promise.all([
+      api.devices.list({ perPage: 0, filters: { username: row.username } }),
+      api.accessRules.list({ perPage: 0 }),
+      api.groups.list({ perPage: 0 })
+    ])
+    userDevices.value = dev.data
+    /* Membership is held as group ids and a rule names its source group, so
+       the two do not compare until the ids are resolved. Matching them raw
+       silently found nothing, which reads on screen as "no rule reaches this
+       account" — the one answer that must never be wrong by accident. */
+    const byId = new Map(grp.data.map(g => [g.id, g.name]))
+    const myGroups = (row.groups || []).map(g => byId.get(g) || g)
+    const mine = new Set([row.username, ...myGroups])
+    userAcls.value = acl.data
+      .filter(a => mine.has(a.source))
+      .map(a => ({ ...a, via: a.sourceType === 'group' ? a.source : 'this account' }))
+  } finally { detailsLoading.value = false }
 }
 
 const columns = [
@@ -122,14 +240,23 @@ watch(search, () => {
 watch([page, perPage, filter], load)
 
 function onSort (k, d) { sort.value = k; dir.value = d; page.value = 1; load() }
-function openAdd () { form.value = blank(); editingId.value = null; sheetOpen.value = true }
+function openAdd () {
+  form.value = blank()
+  editingId.value = null
+  tab.value = 'profile'
+  userDevices.value = []
+  userAcls.value = []
+  sheetOpen.value = true
+}
 
 /* Production opens the edit panel when you click the row - there are no
    per-row buttons at all - so the same gesture works here. */
 function openEdit (row) {
   form.value = { ...blank(), ...row }
   editingId.value = row.id
+  tab.value = 'profile'
   sheetOpen.value = true
+  loadDetails(row)
 }
 
 async function suspendOne () {
@@ -153,16 +280,37 @@ watch(() => [form.value.firstName, form.value.lastName], () => {
 
 async function save () {
   if (!form.value.firstName || !form.value.email) {
-    toast('First name and email are required', 'bad')
-    return
+    toast('First name and email are required', 'bad'); tab.value = 'profile'; return
+  }
+  if (!form.value.username) {
+    toast('Username is required', 'bad'); tab.value = 'profile'; return
+  }
+  if (!editingId.value) {
+    if (form.value.password.length < 8) {
+      toast('The password needs at least 8 characters', 'bad'); tab.value = 'profile'; return
+    }
+    if (form.value.password !== form.value.confirmPassword) {
+      toast('The two passwords do not match', 'bad'); tab.value = 'profile'; return
+    }
+  }
+  if (form.value.activationMethod === 'On date time' && !form.value.activationAt) {
+    toast('Pick the date and time the account activates', 'bad'); tab.value = 'profile'; return
+  }
+  if (form.value.staticIp && !/^(\d{1,3}\.){3}\d{1,3}$/.test(form.value.staticIp.trim())) {
+    toast('The static IP must be an IPv4 address', 'bad'); tab.value = 'advanced'; return
   }
   saving.value = true
   try {
     if (editingId.value) {
-      await api.users.update(editingId.value, { ...form.value })
+      const { password, confirmPassword, ...rest } = form.value
+      await api.users.update(editingId.value, rest)
       toast(form.value.firstName + ' ' + form.value.lastName + ' updated')
     } else {
-      await api.users.create({ ...form.value, lastSeenAt: null })
+      /* The typed password is not kept on the record — only that one was
+         set. There is nothing here to authenticate against, and a browser
+         database is no place for it. */
+      const { password, confirmPassword, ...rest } = form.value
+      await api.users.create({ ...rest, passwordSetAt: new Date().toISOString(), lastSeenAt: null })
       toast(form.value.firstName + ' ' + form.value.lastName + ' added')
     }
     sheetOpen.value = false
@@ -204,6 +352,7 @@ const names = computed(() => {
   return n.join(', ')
 })
 
+onMounted(loadSamlProfiles)
 onMounted(load)
 </script>
 
@@ -278,116 +427,229 @@ onMounted(load)
       :title="editingId ? 'Edit user' : 'Add user'"
       :subtitle="editingId ? 'Changes apply at their next sign-in.' : 'They receive an activation mail once saved.'"
     >
-      <div class="i-formsec">
-        <h3>Identity</h3>
-        <p class="i-secsub">How this person signs in.</p>
-        <div class="i-frow">
-          <div class="i-field">
-            <label for="fn">First name <span class="i-req">*</span></label>
-            <input id="fn" class="i-ctl" v-model="form.firstName">
-          </div>
-          <div class="i-field">
-            <label for="ln">Last name</label>
-            <input id="ln" class="i-ctl" v-model="form.lastName">
-          </div>
-        </div>
-        <div class="i-frow">
-          <div class="i-field">
-            <label for="un">Username</label>
-            <input id="un" class="i-ctl" v-model="form.username">
-            <p class="i-hint">Filled in from the name. Change it if your directory uses something else.</p>
-          </div>
-          <div class="i-field">
-            <label for="em">Email <span class="i-req">*</span></label>
-            <input id="em" class="i-ctl" type="email" v-model="form.email">
-            <p class="i-hint">The activation link goes here.</p>
-          </div>
-        </div>
-        <div class="i-frow">
-          <div class="i-field">
-            <label for="mob">Mobile number</label>
-            <div class="i-duo">
-              <select class="i-ctl" v-model="form.countryCode" aria-label="Country code">
-                <option value="91">India +91</option>
-                <option value="1">US +1</option>
-                <option value="44">UK +44</option>
-              </select>
-              <input id="mob" class="i-ctl" v-model="form.mobile" placeholder="Mobile number">
+      <!-- Velto's own three tabs. A person, what is enforced on them, and
+           the networking — in that order, because that is the order anybody
+           fills them in. -->
+      <div class="i-ftabs">
+        <button
+          v-for="t in TABS" :key="t.key"
+          class="i-chip" :class="{ 'is-on': tab === t.key }"
+          :aria-pressed="tab === t.key"
+          @click="tab = t.key"
+        >{{ t.label }}</button>
+      </div>
+      <p class="i-secsub">{{ TABS.find(t => t.key === tab).hint }}</p>
+
+      <!-- ------------------------------------------------ Profile -->
+      <template v-if="tab === 'profile'">
+        <div class="i-formsec">
+          <div class="i-frow">
+            <div class="i-field">
+              <label for="first_name">First Name<span class="i-req">*</span></label>
+              <input id="first_name" name="first_name" class="i-ctl" v-model="form.firstName" placeholder="Enter First Name">
             </div>
-            <p class="i-hint">Used for OTP when the auth profile requires it.</p>
+            <div class="i-field">
+              <label for="last_name">Last Name</label>
+              <input id="last_name" name="last_name" class="i-ctl" v-model="form.lastName" placeholder="Enter Last Name">
+            </div>
           </div>
-          <div class="i-field">
-            <label for="dept">Department</label>
-            <select id="dept" class="i-ctl" v-model="form.department">
-              <option v-for="d in DEPTS" :key="d">{{ d }}</option>
-            </select>
+          <div class="i-frow">
+            <div class="i-field">
+              <label for="username">Username<span class="i-req">*</span></label>
+              <input
+                id="username" name="username" class="i-ctl" v-model="form.username"
+                placeholder="Enter User Name" :disabled="!!editingId"
+              >
+              <p class="i-hint">
+                {{ editingId
+                  ? 'Sessions, devices and the audit trail all refer to this account by its username, so it cannot be changed.'
+                  : 'Filled in from the name. Change it if your directory uses something else.' }}
+              </p>
+            </div>
+            <div class="i-field">
+              <label for="email">Email<span class="i-req">*</span></label>
+              <input id="email" name="email" class="i-ctl" type="email" v-model="form.email" placeholder="Enter email">
+            </div>
+          </div>
+          <div class="i-frow">
+            <div class="i-field">
+              <label for="phone">Mobile Number<span class="i-req">*</span></label>
+              <div class="i-duo">
+                <select id="country_code" name="country_code" class="i-ctl" v-model="form.countryCode" aria-label="Country code">
+                  <option v-for="[code, country] in COUNTRY_CODES" :key="code" :value="code">
+                    {{ country }} (+{{ code }})
+                  </option>
+                </select>
+                <input id="phone" name="phone" class="i-ctl" v-model="form.mobile" placeholder="Enter mobile number">
+              </div>
+            </div>
+            <div class="i-field">
+              <label for="location">Location</label>
+              <input id="location" name="location" class="i-ctl" v-model="form.location" placeholder="Enter Location">
+            </div>
+          </div>
+          <div class="i-frow">
+            <div class="i-field">
+              <label for="auth_type">Authentication Type<span class="i-req">*</span></label>
+              <select id="auth_type" name="auth_type" class="i-ctl" v-model="form.authType">
+                <option v-for="a in AUTH_TYPES" :key="a">{{ a }}</option>
+              </select>
+            </div>
+            <div class="i-field">
+              <label for="activation_method">Activation Method<span class="i-req">*</span></label>
+              <select id="activation_method" name="activation_method" class="i-ctl" v-model="form.activationMethod">
+                <option v-for="a in ACTIVATION_METHODS" :key="a">{{ a }}</option>
+              </select>
+            </div>
+          </div>
+          <div v-if="form.activationMethod === 'On date time'" class="i-frow">
+            <div class="i-field">
+              <label for="activation_at">Activates at<span class="i-req">*</span></label>
+              <input id="activation_at" class="i-ctl" type="datetime-local" v-model="form.activationAt">
+              <p class="i-hint">Until then the account exists and cannot sign in.</p>
+            </div>
+          </div>
+          <div class="i-frow">
+            <div class="i-field">
+              <label for="saml_idp_profile_id">SAML IDP Profile</label>
+              <select id="saml_idp_profile_id" name="saml_idp_profile_id" class="i-ctl" v-model="form.samlIdpProfile">
+                <option v-for="p in samlProfiles" :key="p">{{ p }}</option>
+              </select>
+              <p class="i-hint">Only for accounts that sign in through an identity provider. None means they use this console's own sign-in.</p>
+            </div>
+            <div class="i-field">
+              <label for="auth_profile">Authentication Profile</label>
+              <select id="auth_profile" name="auth_profile" class="i-ctl" v-model="form.authProfile">
+                <option v-for="p in PROFILES" :key="p">{{ p }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Add asks for a password; edit does not, and offers to change
+               it instead. That is velto's split and it is the right one. -->
+          <div v-if="!editingId" class="i-frow">
+            <div class="i-field">
+              <label for="new_password">Password<span class="i-req">*</span></label>
+              <input id="new_password" name="new_password" class="i-ctl" type="password" autocomplete="new-password" v-model="form.password" placeholder="Password">
+              <p class="i-hint">At least 8 characters. They are asked to change it at first sign-in.</p>
+            </div>
+            <div class="i-field">
+              <label for="confirm_password">Confirm Password<span class="i-req">*</span></label>
+              <input id="confirm_password" name="confirm_password" class="i-ctl" type="password" autocomplete="new-password" v-model="form.confirmPassword" placeholder="Confirm password">
+            </div>
+          </div>
+          <div v-else class="i-field">
+            <label>Password</label>
+            <div>
+              <button class="i-btn i-sm" @click="openPassword">
+                <i class="fa-solid fa-key me-1" aria-hidden="true" />Change Password
+              </button>
+            </div>
+            <p class="i-hint">The current password is not readable from here, so it is replaced rather than shown.</p>
           </div>
         </div>
-      </div>
+      </template>
 
-      <div class="i-formsec">
-        <h3>Access</h3>
-        <p class="i-secsub">Groups decide which applications they reach.</p>
-        <div class="i-frow">
+      <!-- ------------------------------------------------ Options -->
+      <template v-else-if="tab === 'options'">
+        <div class="i-formsec">
           <div class="i-field">
-            <label for="ap">Authentication profile</label>
-            <select id="ap" class="i-ctl" v-model="form.authProfile">
-              <option v-for="p in PROFILES" :key="p">{{ p }}</option>
-            </select>
-          </div>
-          <div class="i-field">
-            <label for="st">Activation</label>
-            <select id="st" class="i-ctl" v-model="form.status">
-              <option value="pending">Pending activation</option>
-              <option value="active">Active immediately</option>
-            </select>
+            <label for="groups">Member of Groups</label>
+            <PickList
+              v-model="form.groups"
+              resource="groups"
+              label=""
+              placeholder="Select user groups…"
+              hint="Groups carry the access rules. A user with no group reaches nothing, which is the commonest reason a new account appears broken."
+            />
           </div>
         </div>
-      </div>
 
-      <!-- Multi-factor, from the administrator's side.
-           An admin cannot enrol somebody else's authenticator: enrolment
-           means scanning a QR with a phone the admin does not have. What an
-           admin does is require it, see whether it happened, and reset it
-           when the phone is lost. The enrolment itself lives in the end-user
-           portal, where the person with the phone is. -->
+        <!-- Multi-factor, from the administrator's side. An admin cannot
+             enrol somebody else's authenticator; what they do is require it,
+             see whether it happened, and reset it when the phone is lost. -->
+        <div class="i-formsec">
+          <h3>Two Factor Authentication</h3>
+          <div v-if="editingId" class="i-mfastate" :class="form.mfaEnrolled ? 'is-on' : 'is-off'">
+            <i class="fa-solid" aria-hidden="true"
+               :class="form.mfaEnrolled ? 'fa-shield-halved' : 'fa-shield'" />
+            <span>
+              <strong>{{ form.mfaEnrolled ? 'Enrolled' : 'Not enrolled' }}</strong>
+              <small>
+                {{ form.mfaEnrolled
+                  ? 'An authenticator app is registered to this account.'
+                  : 'They will be asked to enrol the next time they sign in to the portal.' }}
+              </small>
+            </span>
+            <button
+              v-if="form.mfaEnrolled" class="i-btn i-sm i-danger ms-auto"
+              :disabled="resettingMfa" @click="resetMfaForUser"
+            >{{ resettingMfa ? 'Resetting…' : 'Reset' }}</button>
+          </div>
+          <label class="i-sw mt-3">
+            <input id="googleotp" name="googleotp" type="checkbox" v-model="form.mfaRequired">
+            <span class="i-track" />Require multi-factor at every sign-in
+          </label>
+        </div>
+
+        <div class="i-formsec">
+          <h3>Checks at sign-in</h3>
+          <div class="d-flex flex-column gap-2">
+            <label class="i-sw"><input id="enable_device_binding" name="enable_device_binding" type="checkbox" v-model="form.deviceBinding"><span class="i-track" />Device Binding</label>
+            <label class="i-sw"><input id="device_check_enable" name="device_check_enable" type="checkbox" v-model="form.deviceCheckEnabled"><span class="i-track" />Device checks</label>
+            <label class="i-sw"><input id="device_update_enable" name="device_update_enable" type="checkbox" v-model="form.deviceUpdatesEnabled"><span class="i-track" />Device updates</label>
+            <label class="i-sw"><input id="geo_binding" name="geo_binding" type="checkbox" v-model="form.geoBinding"><span class="i-track" />Geo Binding</label>
+            <label class="i-sw"><input id="enable_ip_restriction" name="enable_ip_restriction" type="checkbox" v-model="form.ipRestriction"><span class="i-track" />IP Restriction</label>
+          </div>
+          <p class="i-hint">
+            Each switch turns on a check the tenant has already configured
+            elsewhere. Turning one on here without the policy behind it does
+            nothing, which production never says.
+          </p>
+        </div>
+      </template>
+
+      <!-- ------------------------------------------------ Advanced -->
+      <template v-else>
+        <div class="i-formsec">
+          <h3>Policy</h3>
+          <div class="d-flex flex-column gap-2">
+            <label class="i-sw"><input id="device_dlp_enable" name="device_dlp_enable" type="checkbox" v-model="form.deviceDlp"><span class="i-track" />Device DLP</label>
+            <label class="i-sw"><input id="time_schedule_enable" name="time_schedule_enable" type="checkbox" v-model="form.shiftSchedule"><span class="i-track" />Shift Schedule</label>
+            <label class="i-sw"><input id="enable_geo_fence" name="enable_geo_fence" type="checkbox" v-model="form.geoFenceEnabled"><span class="i-track" />Geofencing</label>
+            <label class="i-sw"><input id="enable_app_blocker" name="enable_app_blocker" type="checkbox" v-model="form.blockApps"><span class="i-track" />Block Apps</label>
+            <label class="i-sw"><input id="enable_risk_profile" name="enable_risk_profile" type="checkbox" v-model="form.riskProfile"><span class="i-track" />Risk Profile</label>
+            <label class="i-sw"><input id="enable_device_policy" name="enable_device_policy" type="checkbox" v-model="form.devicePolicy"><span class="i-track" />Device Policy</label>
+            <label class="i-sw"><input id="auto_suspend" name="auto_suspend" type="checkbox" v-model="form.autoSuspend"><span class="i-track" />Auto Suspend</label>
+          </div>
+        </div>
+
+        <div class="i-formsec">
+          <h3>Networking</h3>
+          <label class="i-sw"><input id="enable_twin_tunnel" name="enable_twin_tunnel" type="checkbox" v-model="form.twinTunnel"><span class="i-track" />Twin Tunnel Support</label>
+          <div class="i-field mt-3">
+            <label for="static_vpn_ip">Static IP</label>
+            <input id="static_vpn_ip" name="static_vpn_ip" class="i-ctl i-tech" v-model="form.staticIp" placeholder="10.130.9.42">
+            <p class="i-hint">
+              The address this account is always given on the tunnel. Leave it
+              empty and one is assigned from the pool — which is what nearly
+              every account wants. Set it only where something downstream
+              matches on the address.
+            </p>
+          </div>
+        </div>
+      </template>
+
+      <!-- What this account actually has. Velto hides both behind a modal
+           and shows no counts; the counts belong on the form. -->
       <div v-if="editingId" class="i-formsec">
-        <h3>Multi-factor authentication</h3>
+        <h3>This account</h3>
         <p class="i-secsub">
-          Enrolment happens in the end-user portal. From here you require it,
-          see whether it has been done, and reset it.
+          {{ detailsLoading ? 'Loading…' : `${userDevices.length} device${userDevices.length === 1 ? '' : 's'} enrolled · ${userAcls.length} access rule${userAcls.length === 1 ? ' applies' : 's apply'}` }}
         </p>
-        <div class="i-mfastate" :class="form.mfaEnrolled ? 'is-on' : 'is-off'">
-          <i class="fa-solid" aria-hidden="true"
-             :class="form.mfaEnrolled ? 'fa-shield-halved' : 'fa-shield'" />
-          <span>
-            <strong>{{ form.mfaEnrolled ? 'Enrolled' : 'Not enrolled' }}</strong>
-            <small>
-              {{ form.mfaEnrolled
-                ? 'An authenticator app is registered to this account.'
-                : 'They will be asked to enrol the next time they sign in to the portal.' }}
-            </small>
-          </span>
-          <button
-            v-if="form.mfaEnrolled" class="i-btn i-sm i-danger ms-auto"
-            :disabled="resettingMfa" @click="resetMfaForUser"
-          >{{ resettingMfa ? 'Resetting…' : 'Reset' }}</button>
-        </div>
-        <label class="i-sw mt-3">
-          <input type="checkbox" v-model="form.mfaRequired"><span class="i-track" />
-          Require multi-factor at every sign-in
-        </label>
-      </div>
-
-      <div class="i-formsec">
-        <h3>Device policy</h3>
-        <p class="i-secsub">Four switches that read as four identical checkboxes in the current console.</p>
-        <div class="d-flex flex-column gap-2">
-          <label class="i-sw"><input type="checkbox" v-model="form.deviceBinding"><span class="i-track" />Bind to first device used</label>
-          <label class="i-sw"><input type="checkbox" v-model="form.deviceCheckEnabled"><span class="i-track" />Run device posture checks</label>
-          <label class="i-sw"><input type="checkbox" v-model="form.geoFenceEnabled"><span class="i-track" />Restrict to geo-fence</label>
-          <label class="i-sw"><input type="checkbox" v-model="form.autoSuspend"><span class="i-track" />Auto-suspend after 30 days idle</label>
-        </div>
+        <button class="i-btn i-sm" @click="detailsOpen = true">
+          <i class="fa-solid fa-list me-1" aria-hidden="true" />View all
+        </button>
       </div>
 
       <template #footer>
@@ -399,6 +661,147 @@ onMounted(load)
         <div class="i-right">
           <button class="i-btn i-primary" :disabled="saving" @click="save">
             {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Save user') }}
+          </button>
+        </div>
+      </template>
+    </Sheet>
+
+    <!-- Velto's User Details, which is a modal holding two tables and no
+         indication of what is in them until you open it. The counts are on
+         the form now; this answers the question they raise. -->
+    <Sheet
+      v-model:open="detailsOpen"
+      nested
+      width="760px"
+      :title="(form.firstName + ' ' + form.lastName).trim() || 'User details'"
+      subtitle="The devices enrolled to this account, and the rules that decide what it reaches."
+    >
+      <div class="i-ftabs">
+        <button
+          class="i-chip" :class="{ 'is-on': detailsTab === 'devices' }"
+          :aria-pressed="detailsTab === 'devices'"
+          @click="detailsTab = 'devices'"
+        >Devices · {{ userDevices.length }}</button>
+        <button
+          class="i-chip" :class="{ 'is-on': detailsTab === 'acls' }"
+          :aria-pressed="detailsTab === 'acls'"
+          @click="detailsTab = 'acls'"
+        >Access rules · {{ userAcls.length }}</button>
+      </div>
+
+      <template v-if="detailsTab === 'devices'">
+        <p class="i-secsub">
+          A device is bound to this account the first time it is used. Removing
+          one here makes the person enrol again from that machine.
+        </p>
+        <p v-if="!detailsLoading && !userDevices.length" class="i-hint">
+          Nothing enrolled yet. The first device they sign in from becomes
+          their bound device.
+        </p>
+        <div v-else class="table-responsive">
+          <table class="i-table">
+            <thead>
+              <tr>
+                <th>Device Name</th><th>Device OS</th>
+                <th>Serial No</th><th>Mac Address</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="d in userDevices" :key="d.id">
+                <td class="fw-medium">{{ d.name }}</td>
+                <td>{{ d.os }}</td>
+                <td class="i-tech">{{ d.serialNumber }}</td>
+                <td class="i-tech">{{ d.macAddress }}</td>
+                <td>
+                  <span class="i-pill" :class="d.status === 'approved' ? '' : (d.status === 'pending' ? 'i-att' : 'i-bad')">
+                    <span v-if="d.status === 'approved'" class="i-dot i-ok" />{{ d.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="i-hint mt-2">
+            Velto also prints the UUID in this table. It is on the device
+            record rather than here, because three identifiers in one row is
+            not something anybody reads across.
+          </p>
+        </div>
+      </template>
+
+      <template v-else>
+        <p class="i-secsub">
+          Every rule that applies to this account, and where it comes from.
+          Rules are carried by groups, so this is what membership actually
+          bought them.
+        </p>
+        <p v-if="!detailsLoading && !userAcls.length" class="i-hint">
+          No rule reaches this account. They can sign in and will find nothing
+          — which is almost always a missing group rather than a missing rule.
+        </p>
+        <div v-else class="table-responsive">
+          <table class="i-table">
+            <thead>
+              <tr>
+                <th>Acl Name</th><th>Source Type</th><th>Source</th>
+                <th>Destination Type</th><th>Destination</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in userAcls" :key="a.id">
+                <td class="fw-medium">{{ a.name }}</td>
+                <td>{{ a.sourceType }}</td>
+                <td>{{ a.source }}</td>
+                <td>{{ a.destType }}</td>
+                <td>{{ a.dest }}</td>
+                <td>
+                  <span class="i-pill" :class="a.action === 'allow' ? '' : 'i-bad'">
+                    <span v-if="a.action === 'allow'" class="i-dot i-ok" />{{ a.action }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+
+      <template #footer>
+        <button class="i-btn i-quiet" @click="detailsOpen = false">Close</button>
+        <div class="i-right">
+          <RouterLink class="i-btn" :to="'/access-explorer'">
+            Explain an access decision
+          </RouterLink>
+        </div>
+      </template>
+    </Sheet>
+
+    <Sheet
+      v-model:open="pwOpen"
+      nested
+      title="Change password"
+      subtitle="The current password cannot be read, so it is replaced rather than shown."
+    >
+      <div class="i-formsec">
+        <div class="i-field">
+          <label for="user_new_password">New password<span class="i-req">*</span></label>
+          <input id="user_new_password" class="i-ctl" type="password" autocomplete="new-password" v-model="pwNew">
+          <p class="i-hint">At least 8 characters.</p>
+        </div>
+        <div class="i-field">
+          <label for="user_confirm_password">Confirm password<span class="i-req">*</span></label>
+          <input id="user_confirm_password" class="i-ctl" type="password" autocomplete="new-password" v-model="pwConfirm">
+          <p v-if="pwConfirm && pwNew !== pwConfirm" class="i-hint">These two do not match yet.</p>
+        </div>
+        <p class="i-demo-note">
+          Nothing here authenticates against a password, so the value is not
+          stored — only that it was changed, and when. The change is written to
+          the event log either way.
+        </p>
+      </div>
+      <template #footer>
+        <button class="i-btn i-quiet" @click="pwOpen = false">Cancel</button>
+        <div class="i-right">
+          <button class="i-btn i-primary" :disabled="pwSaving" @click="savePassword">
+            {{ pwSaving ? 'Saving…' : 'Change password' }}
           </button>
         </div>
       </template>

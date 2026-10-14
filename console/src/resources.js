@@ -699,8 +699,12 @@ export const RESOURCES = {
     emptyTitle: 'No Google providers',
     emptyBody: 'Add one to import users from a Google Workspace domain.',
     tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    /* Update Credentials takes the service account key as a JSON file, with
+       the filename shown beside it — the same shape as the keytab on Active
+       Directory, not a typed password. */
     secretActions: [
-      { key: 'credentials', label: 'Update Credentials', noun: 'service account key' }
+      { key: 'credentials', label: 'Update Credentials', noun: 'service account key',
+        type: 'file', accept: '.json', fileLabel: 'Service account key (JSON)' }
     ],
     /* Google carries an admin user and no tenant or client id; Azure carries
        tenant and client id and no admin user. One dropdown over one field set

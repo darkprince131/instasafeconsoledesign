@@ -1127,6 +1127,82 @@ Two things added, both in the same spirit as the rest of this work:
 The token is generated with the browser's own cryptographic random source and
 only its first six characters are stored. Nothing else about it is kept.
 
+## 32. Update Credentials is a file, not a password — FIXED
+
+Google's Update Credentials takes the **service account key as a JSON file**,
+with the filename shown beside it. It was built as two password boxes. It is
+the same shape as the keytab on Active Directory: a button over a hidden file
+input, `.json` only, and a read-only filename taken from the file.
+
+Secret actions can be files now. The rejection reads *Invalid file type.
+Allowed types: .json*, and the state line reads *sa-key.json uploaded 14 Oct
+2026. Its contents are not shown again.*
+
+## 33. The user form — velto's three tabs, and the fields that were missing
+
+Velto splits Add User across **Profile · Options · Advanced**. The demo had
+four headed sections and a field set that did not match on any of them. The
+segregation is kept, because it is load-bearing: Profile is the person,
+Options is what is checked when they sign in, Advanced is policy and
+networking.
+
+Read off veno's captures and then velto, which has four fields veno does not:
+
+| Tab | Fields |
+|---|---|
+| **Profile** | `first_name`* · `last_name` · `username`* · `email`* · `country_code` + `phone`* · `location` · Authentication Type* · Activation Method* · **SAML IDP Profile** · `new_password`* · `confirm_password`* |
+| **Options** | Member of Groups · Two Factor Authentication · Device Binding · Device checks · Device updates · Geo Binding · **IP Restriction** |
+| **Advanced** | Device DLP · Shift Schedule · Geofencing · Block Apps · Risk Profile · Device Policy · **Twin Tunnel Support** · **Static IP** · Auto Suspend |
+
+Bold are velto-only; veno has neither. **Static IP is `static_vpn_ip`, a text
+field on Advanced** — the address the account is always given on the tunnel.
+The demo had none of these, and had invented a Department field that the
+product does not have.
+
+### 33.1 What changes between add and edit
+- `username` is **disabled on edit**. Sessions, devices and the audit trail
+  all refer to the account by it.
+- the password fields are **add-only**. Edit offers **Change Password**
+  instead, which is what velto does, and the right split: a password that has
+  been set should not be readable from a form.
+- edit adds **Authentication Profile**, which add does not ask for.
+
+### 33.2 Activation Method has a third state nothing collected
+*On date time* is one of the three options and neither console asked for the
+date. Choosing it now reveals the datetime field and refuses the save without
+it, rather than creating an account that activates at an unset time.
+
+### 33.3 User Details — the modal, and the question it does not answer
+Velto's edit form has a **User Details** modal holding two tables: the devices
+enrolled to the account and the ACLs that apply to it. Nothing on the form
+says what is in either, so you open it to find out.
+
+The counts are on the form now — *2 devices enrolled · 1 access rule applies*
+— and the panel answers a question you already know you have. The ACL table
+keeps velto's columns exactly (Acl Name, Source Type, Source, Destination
+Type, Destination, Action) and the devices table drops the UUID: three
+identifiers in one row is not something anybody reads across, and it is on the
+device record.
+
+**A bug this found.** Membership is stored as group **ids** and a rule names
+its source **group**, so matching them raw found nothing — every user read as
+*no rule reaches this account*, which is the one answer that must never be
+wrong by accident. The ids are resolved to names before matching.
+
+### 33.4 Two things kept as they were
+- The MFA block stays exactly as built: enrolled or not, what that means, and
+  Reset for a lost phone. An admin cannot enrol somebody else's authenticator,
+  and this is the one MFA action an admin genuinely performs.
+- Nothing stores a typed password, here or in Change Password. There is
+  nothing to authenticate against and a browser database is no place for one,
+  so what is kept is that it was set, and when — and the change is written to
+  the event log either way.
+
+### 33.5 The country code select
+Velto's carries **216 options**. §16 already established that a list that long
+is not a control, so the common codes are offered here. If the full list is
+wanted it should be the searchable picker, not a longer select.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
