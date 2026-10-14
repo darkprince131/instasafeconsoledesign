@@ -45,12 +45,54 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
      generates the seed and posts it. Keeping generation in src/api/seed.js
      means there is one definition of the demo data rather than two that
      drift apart. */
+  /**
+   * Collections added after a tenant was first seeded.
+   *
+   * A visitor who arrived before these existed has a tenant that was seeded
+   * once and will never be seeded again, so every one of their screens stays
+   * empty — which is what happened: eleven collections were added to the mock
+   * adapter and not to this one, and the deployed console showed empty filter,
+   * device policy and blocked app screens while the same build was full
+   * locally. CLAUDE.md warns about exactly this split.
+   *
+   * Rather than resetting the tenant, which throws away whatever the visitor
+   * has done, each of these is posted only if it is still empty. It costs one
+   * count per collection on the first call of a session and nothing after.
+   */
+  const LATE_COLLECTIONS = [
+    ['devicePolicies', () => seed.seedDevicePolicies()],
+    ['userProviders', () => seed.seedUserProviders()],
+    ['blockedApps', () => seed.seedBlockedApps()],
+    ['deviceUpdates', () => seed.seedDeviceUpdates()],
+    ['urlFilters', () => seed.seedUrlFilters()],
+    ['contentFilters', () => seed.seedContentFilters()],
+    ['fileTypeFilters', () => seed.seedFileTypeFilters()],
+    ['domainLists', () => seed.seedDomainLists()],
+    ['subAdmins', () => seed.seedSubAdmins()],
+    ['roles', () => seed.seedRoles()],
+    ['reportSubscriptions', () => seed.seedReportSubscriptions()]
+  ]
+
+  async function topUp () {
+    for (const [resource, build] of LATE_COLLECTIONS) {
+      try {
+        const res = await request(`/${resource}?perPage=1`)
+        if (res?.total) continue
+        const rows = build()
+        if (rows.length) await request('/seed', { method: 'POST', body: { [resource]: rows } })
+      } catch {
+        /* One collection failing to top up must not stop the others, and must
+           not stop the console loading. */
+      }
+    }
+  }
+
   let seeding = null
   async function ensureSeeded () {
     if (seeding) return seeding
     seeding = (async () => {
       const { seeded } = await request('/seeded')
-      if (seeded) return
+      if (seeded) return topUp()
 
       const users = seed.seedUsers(SEED_SIZE.users)
       const groups = seed.seedGroups()
@@ -78,6 +120,22 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['geoFences', seed.seedGeoFences()],
         ['lockouts', seed.seedLockouts()],
         ['softwarePackages', seed.seedSoftwarePackages()],
+        /* These were seeded for the mock adapter and not here, so every one
+           of their screens was empty on the deployed site while being full
+           locally — the exact failure mode CLAUDE.md warns about. The backend
+           already stores them all as kinded records; only this list was
+           missing them. */
+        ['devicePolicies', seed.seedDevicePolicies()],
+        ['userProviders', seed.seedUserProviders()],
+        ['blockedApps', seed.seedBlockedApps()],
+        ['deviceUpdates', seed.seedDeviceUpdates()],
+        ['urlFilters', seed.seedUrlFilters()],
+        ['contentFilters', seed.seedContentFilters()],
+        ['fileTypeFilters', seed.seedFileTypeFilters()],
+        ['domainLists', seed.seedDomainLists()],
+        ['subAdmins', seed.seedSubAdmins()],
+        ['roles', seed.seedRoles()],
+        ['reportSubscriptions', seed.seedReportSubscriptions()],
         ['users', users],
         ['devices', seed.seedDevices(users, SEED_SIZE.devices)],
         ['sessions', seed.seedSessions(users, applications)],
