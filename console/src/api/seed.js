@@ -455,6 +455,42 @@ export function seedGateways () {
  *  profiles. Velto holds the IdP's real one in the same field. */
 const SAML_DEMO_CERT = '-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQZy92n5Z2xqpJy804i1XNoTANBgkqhkiG9w0BAQsFADA0\nMTIwMAYDVQQDEylEZW1vIElkUCBTaWduaW5nIENlcnRpZmljYXRlIChub3QgcmVh\nbCkwHhcNMjYwNzAyMDYzMjQ1WhcNMjkwNzAyMDYzMjQ1WjA0MTIwMAYDVQQDEylE\nZW1vIElkUCBTaWduaW5nIENlcnRpZmljYXRlIChub3QgcmVhbCk=\n-----END CERTIFICATE-----'
 
+/**
+ * User providers — Azure AD and Google.
+ *
+ * The collection existed and was never seeded, so both screens were empty
+ * whatever the config said. Fields are velto's: Azure holds a tenant and a
+ * client id, Google holds an admin user, and both hold a comma-separated
+ * group list that decides who is imported.
+ */
+export function seedUserProviders () {
+  return [
+    ['azuread', {
+      name: 'corp-azure', domain: 'corp.example.com',
+      tenantId: '9b41e7c2-55af-4d18-bd0e-1a7c3f6e2d84',
+      clientId: 'f466474e-422e-48ba-ac83-68c8f77caf0a',
+      groups: 'Engineering,Finance,Operations', authType: 'Certificate'
+    }],
+    ['azuread', {
+      name: 'contractors-azure', domain: 'ext.example.com',
+      tenantId: '71f74973-f8ae-402f-8267-0b94625d6d1d',
+      clientId: '008e455c-ccbb-4f48-a6da-7ea4b554a970',
+      groups: 'Contractors', authType: 'Password + Certs'
+    }],
+    ['google', {
+      name: 'workspace-primary', domain: 'example.com',
+      adminUser: 'directory-reader@example.com',
+      authType: 'Certificate', groups: 'Marketing,Sales'
+    }]
+  ].map(([type, row], i) => ({
+    id: `up_${pad(i + 1, 4)}`,
+    type,
+    ...row,
+    lastSyncAt: ago(2),
+    createdAt: ago(300)
+  }))
+}
+
 export function seedAuthProfiles () {
   const rows = [
     // Active Directory — Profile Name · Domain · Primary Server IP · Backup Server IP

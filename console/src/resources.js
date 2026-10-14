@@ -635,44 +635,93 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * User providers are three screens, not one with a type dropdown.
+   *
+   * This was a single config with a Provider select — Azure AD, Google
+   * Workspace, Okta, SCIM — aliased onto all three routes. Velto has an Azure
+   * screen and a Google screen with different field sets, and SCIM import is
+   * not a list at all (see ScimImport.vue).
+   *
+   * A provider pulls users in. An authentication profile decides how they
+   * sign in. The two are separate, which is why the same directory appears
+   * under both groups in the navigation.
+   */
   '/profile/azuread': {
-    singular: 'provider',
-    formSubtitle: 'A provider pulls users in. An authentication profile decides how they sign in - the two are separate.',
-    form: [
-      { key: 'name', label: 'Connection name', required: true, placeholder: 'Corp Azure AD' },
-      { key: 'kind', label: 'Provider', options: ['Azure AD', 'Google Workspace', 'Okta', 'SCIM'] },
-      { key: 'tenantId', label: 'Directory / tenant ID', placeholder: '00000000-0000-0000-0000-000000000000' },
-      { key: 'clientId', label: 'Client ID' },
-      { key: 'syncGroups', label: 'Import group membership too', type: 'switch' },
-      { key: 'enabled', label: 'Sync is active', type: 'switch' }
-    ],
-    title: 'User providers',
-    subtitle: 'Where users are imported from. Importing somebody does not by itself let them sign in.',
+    title: 'Azure AD',
+    subtitle: 'Where users are imported from. Importing somebody does not by itself let them sign in — that is an authentication profile.',
     resource: 'userProviders',
-    primaryAction: 'Add provider',
-    emptyTitle: 'No user providers',
-    emptyBody: 'Without one, users have to be created by hand or imported from CSV.',
+    baseFilter: { type: 'azuread' },
+    singular: 'Azure AD provider',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'domain', 'tenantId', 'groups'],
+    emptyTitle: 'No Azure AD providers',
+    emptyBody: 'Add one to import users and their group membership from a directory.',
+    tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    /* Two credentials, not one: the application registration has a client
+       secret, and the directory account has a password. Velto gives each its
+       own button on the view panel. */
+    secretActions: [
+      { key: 'clientSecret', label: 'Change Client Secret', noun: 'client secret' },
+      { key: 'accountPassword', label: 'Set Password', noun: 'password' }
+    ],
+    form: [
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
+        lockedOnEdit: LOCK_REASON },
+      { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'corp.example.com' },
+      { key: 'tenantId', name: 'tenant_id', label: 'Tenant ID', required: true, placeholder: 'Enter Tenant Id' },
+      { key: 'clientId', name: 'client_id', label: 'Client Id', required: true, placeholder: 'Enter Client Id' },
+      { key: 'groups', name: 'groups', label: 'Groups', required: true, placeholder: 'Mention AzureAD group names',
+        hint: 'Several separated by commas. Only members of these groups are imported, so this is the list that decides who gets an account.' },
+      { key: 'authType', name: 'auth_type', label: 'Authentication Type', required: true,
+        options: ['Certificate', 'Password + Certs'], default: 'Certificate' }
+    ],
     columns: [
-      { key: 'name', label: 'Connection', bold: true },
-      { key: 'kind', label: 'Provider' },
-      { key: 'tenantId', label: 'Directory', mono: true },
-      { key: 'syncGroups', label: 'Groups', bool: true },
-      { key: 'enabled', label: 'Active', bool: true }
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'tenantId', label: 'Tenant-ID', mono: true },
+      /* Velto prints the raw stored value here — certificate,
+         password_certificate — while its own form offers Certificate and
+         Password + Certs. The label is the one a person chose, so that is
+         what the list shows. */
+      { key: 'groups', label: 'Groups' },
+      { key: 'authType', label: 'Auth-Type' }
     ]
   },
 
-  '/profile/google': { alias: '/profile/azuread' },
-  '/profile/scim-import': { alias: '/profile/azuread' },
-  /**
-   * Software packages — a read-only inventory, not a list you edit.
-   *
-   * Velto's columns are Name · Version · Platform · Publisher · Package ·
-   * Status, and the toolbar has no Add, no CSV and no Delete: the catalogue
-   * is supplied, not authored. The `Package` column is a winget-style
-   * identifier (`RiotGames.LeagueOfLegends.KR`), which is what the agent
-   * actually matches on, so it is the column the app blocker needs and the
-   * one worth setting in mono.
-   */
+  '/profile/google': {
+    title: 'Google Profile',
+    subtitle: 'Google Workspace directories users are imported from.',
+    resource: 'userProviders',
+    baseFilter: { type: 'google' },
+    singular: 'Google provider',
+    primaryAction: 'Add profile',
+    searchFields: ['name', 'domain', 'groups'],
+    emptyTitle: 'No Google providers',
+    emptyBody: 'Add one to import users from a Google Workspace domain.',
+    tools: [{ key: 'sync', label: 'Sync Now', icon: 'fa-rotate' }],
+    secretActions: [
+      { key: 'credentials', label: 'Update Credentials', noun: 'service account key' }
+    ],
+    /* Google carries an admin user and no tenant or client id; Azure carries
+       tenant and client id and no admin user. One dropdown over one field set
+       could not express that, which is why these are two screens. */
+    form: [
+      { key: 'name', name: 'profile_name', label: 'Profile Name', required: true, placeholder: 'Enter Profile Name',
+        lockedOnEdit: LOCK_REASON },
+      { key: 'domain', name: 'domain', label: 'Domain', required: true, placeholder: 'example.com' },
+      { key: 'adminUser', name: 'bind_user', label: 'Admin User', required: true, placeholder: 'Admin User',
+        hint: 'A Workspace admin the directory is read as. It only needs to read users and groups.' },
+      { key: 'authType', name: 'auth_type', label: 'Authentication Type', required: true,
+        options: ['Certificate', 'Password + Certs'], default: 'Certificate' },
+      { key: 'groups', name: 'groups', label: 'Groups', required: true, placeholder: 'Mention group names',
+        hint: 'Several separated by commas. Only members of these groups are imported.' }
+    ],
+    columns: [
+      { key: 'name', label: 'Profile Name', bold: true },
+      { key: 'domain', label: 'Domain' }
+    ]
+  },
+
   '/software-packages': {
     title: 'Software packages',
     subtitle: 'What the agent has seen installed across the estate. Supplied, not authored — use App blocker to act on anything here.',

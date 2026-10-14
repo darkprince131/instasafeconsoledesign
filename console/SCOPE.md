@@ -42,7 +42,7 @@ Eight profile types, all with working add/edit/test.
 | Active Directory | `/profile/active-directory` | **S** | "Test connection" runs against a seeded directory tree and returns real-looking results |
 | LDAP / LDAPS | `/profile/ldap` | **S** | Same; TLS toggle changes the reported handshake |
 | RADIUS | `/profile/radius` | **S** | Shared-secret test, seeded NAS clients |
-| Azure AD / Google / SCIM | `/profile/azuread`, `/google`, `/scim-import` | **S** | SCIM import pulls a seeded user set, with a dry-run diff |
+| Azure AD / Google / SCIM | `/profile/azuread`, `/google`, `/scim-import` | **S** | Three separate screens, as velto has them. Azure holds a tenant, a client id and a group list with two credentials behind their own buttons; Google holds an admin user. SCIM import is not a list: generated endpoints you copy into the IdP, and a bearer token shown once |
 
 ## 3 · Devices and endpoint control
 

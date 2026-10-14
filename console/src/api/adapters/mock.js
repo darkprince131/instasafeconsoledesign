@@ -70,7 +70,10 @@ const RESHAPED = [
   ['authProfiles', 'provider', () => seed.seedAuthProfiles(),
     (rows) => rows.filter(r => r.type === 'oauth')],
   ['authProfiles', 'scopes', () => seed.seedAuthProfiles(),
-    (rows) => rows.filter(r => r.type === 'openid')]
+    (rows) => rows.filter(r => r.type === 'openid')],
+  /* Never seeded at all until now, so an existing visitor has an empty
+     collection rather than a stale one. */
+  ['userProviders', 'type', () => seed.seedUserProviders()]
 ]
 
 async function migrateReshaped () {
@@ -100,6 +103,7 @@ async function reseed () {
   await db.putMany('controllers', seed.seedControllers())
   await db.putMany('gateways', seed.seedGateways())
   await db.putMany('authProfiles', seed.seedAuthProfiles())
+  await db.putMany('userProviders', seed.seedUserProviders())
   await db.putMany('deviceChecks', seed.seedDeviceChecks())
   await db.putMany('timeSchedules', seed.seedTimeSchedules())
   await db.putMany('riskProfiles', seed.seedRiskProfiles())

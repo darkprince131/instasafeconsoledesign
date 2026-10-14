@@ -124,23 +124,32 @@ const secretOpen = ref(false)
 const secretNew = ref('')
 const secretConfirm = ref('')
 const secretSaving = ref(false)
+const secretActive = ref(null)
 
-function openSecret () {
+/* A screen can hold more than one. Azure AD carries both a Change Client
+   Secret and a Set Password, because the application registration and the
+   directory account are two different credentials. */
+const secretActions = computed(() => {
+  const c = cfg.value
+  if (!c) return []
+  return c.secretActions || (c.secretAction ? [c.secretAction] : [])
+})
+
+function openSecret (action) {
+  secretActive.value = action
   secretNew.value = ''
   secretConfirm.value = ''
   secretOpen.value = true
 }
 
-const secretState = computed(() => {
-  const a = cfg.value?.secretAction
-  if (!a) return ''
+function secretState (a) {
   if (!form.value[a.key + 'Set']) return `No ${a.noun} set yet.`
   const when = new Date(form.value[a.key + 'UpdatedAt'])
   return `${a.noun[0].toUpperCase()}${a.noun.slice(1)} set ${when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}. It is not shown again.`
-})
+}
 
 async function saveSecret () {
-  const a = cfg.value.secretAction
+  const a = secretActive.value
   if (secretNew.value.length < 8) { toast('Use at least 8 characters', 'bad'); return }
   if (secretNew.value !== secretConfirm.value) { toast(`The two ${a.noun}s do not match`, 'bad'); return }
   secretSaving.value = true
@@ -631,15 +640,15 @@ onMounted(load)
       </div>
       <!-- Velto's Change Password / Change Client Secret: its own button,
            never a field on the form. -->
-      <div v-if="cfg.secretAction" class="i-formsec">
-        <div class="i-field">
-          <label>{{ cfg.secretAction.label }}</label>
+      <div v-if="secretActions.length" class="i-formsec">
+        <div v-for="a in secretActions" :key="a.key" class="i-field">
+          <label>{{ a.label }}</label>
           <div>
-            <button class="i-btn i-sm" @click="openSecret">
-              <i class="fa-solid fa-key me-1" aria-hidden="true" />{{ cfg.secretAction.label }}
+            <button class="i-btn i-sm" @click="openSecret(a)">
+              <i class="fa-solid fa-key me-1" aria-hidden="true" />{{ a.label }}
             </button>
           </div>
-          <p class="i-hint">{{ secretState }}</p>
+          <p class="i-hint">{{ secretState(a) }}</p>
         </div>
       </div>
 
@@ -654,15 +663,15 @@ onMounted(load)
     </Sheet>
 
     <Sheet
-      v-if="cfg?.secretAction"
+      v-if="secretActive"
       v-model:open="secretOpen"
       nested
-      :title="cfg.secretAction.label"
-      :subtitle="`The ${cfg.secretAction.noun} is not shown again once saved.`"
+      :title="secretActive.label"
+      :subtitle="`The ${secretActive.noun} is not shown again once saved.`"
     >
       <div class="i-formsec">
         <div class="i-field">
-          <label for="secret_new">New {{ cfg.secretAction.noun }}<span class="i-req">*</span></label>
+          <label for="secret_new">New {{ secretActive.noun }}<span class="i-req">*</span></label>
           <input
             id="secret_new" class="i-ctl" type="password" autocomplete="new-password"
             v-model="secretNew"
@@ -670,7 +679,7 @@ onMounted(load)
           <p class="i-hint">At least 8 characters.</p>
         </div>
         <div class="i-field">
-          <label for="secret_confirm">Confirm {{ cfg.secretAction.noun }}<span class="i-req">*</span></label>
+          <label for="secret_confirm">Confirm {{ secretActive.noun }}<span class="i-req">*</span></label>
           <input
             id="secret_confirm" class="i-ctl" type="password" autocomplete="new-password"
             v-model="secretConfirm"

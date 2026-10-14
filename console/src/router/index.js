@@ -28,6 +28,7 @@ const bespoke = {
   '/access-explorer':  () => import('../views/network/AccessExplorer.vue'),
   '/controllers':      () => import('../views/network/Controllers.vue'),
   '/gateways':         () => import('../views/network/Gateways.vue'),
+  '/profile/scim-import': () => import('../views/settings/ScimImport.vue'),
   '/reports/live':     () => import('../views/monitoring/LiveSessions.vue'),
   '/reports/event-logs': () => import('../views/monitoring/EventLog.vue'),
   '/profile/export-log':  () => import('../views/monitoring/SiemExport.vue'),
