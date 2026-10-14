@@ -9,6 +9,15 @@ import ListTools from '../../components/ui/ListTools.vue'
 import GraphView from '../../components/ui/GraphView.vue'
 import { fmtAgo, statusPill } from '../../resources.js'
 
+/** velto's own format on this screen: 2026-06-26 15:56:58. */
+function fmtStamp (iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+    `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 /**
  * Devices, with the approval queue up front.
  *
@@ -160,6 +169,100 @@ async function rejectSelected () {
   await refreshCounts(); refreshStats(); load()
 }
 
+/* ---- add a device by hand, as velto does -------------------------------- */
+
+/**
+ * Velto's Add Device: Name, OS, Mac Address, Serial Number, UUID. Devices
+ * normally enrol themselves, so this is for the ones that cannot — a kiosk, a
+ * machine being staged before it is handed over.
+ *
+ * Its OS select carries 76 entries, from "11" to "AlmaLinux 10.2 (Lavender
+ * Lion)", which is the agent's own reported strings collected into a dropdown.
+ * The families are offered here and the exact build is what the agent reports
+ * when it first checks in.
+ */
+const OS_OPTIONS = [
+  'Microsoft Windows 11 Pro', 'Microsoft Windows 11 Home Single Language',
+  'Microsoft Windows 10 Pro', 'macOS Sonoma', 'macOS Sequoia',
+  'Ubuntu 22.04', 'Ubuntu 24.04', 'AlmaLinux', 'Amazon Linux 2023',
+  'Android', 'iOS', 'iPadOS'
+]
+
+const addOpen = ref(false)
+const addSaving = ref(false)
+const addForm = ref(blankDevice())
+
+function blankDevice () {
+  return { name: '', os: '', macAddress: '', serialNumber: '', uuid: '' }
+}
+
+const MAC = /^([0-9a-f]{1,2}:){5}[0-9a-f]{1,2}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function openAdd () { addForm.value = blankDevice(); addOpen.value = true }
+
+async function saveDevice () {
+  const f = addForm.value
+  if (!f.name.trim()) { toast('The device needs a name', 'bad'); return }
+  if (!f.os) { toast('Pick an operating system', 'bad'); return }
+  if (f.macAddress && !MAC.test(f.macAddress.trim())) {
+    toast('MAC address looks like 0:2b:67:60:f:6e', 'bad'); return
+  }
+  if (f.uuid && !UUID.test(f.uuid.trim())) {
+    toast('UUID looks like e45b7ec4-374f-4e67-9e7e-2004f89e713b', 'bad'); return
+  }
+  if (!f.macAddress.trim() && !f.serialNumber.trim() && !f.uuid.trim()) {
+    toast('Give at least one of MAC address, serial number or UUID — otherwise nothing identifies this device', 'bad')
+    return
+  }
+  addSaving.value = true
+  try {
+    await api.devices.create({
+      ...f,
+      name: f.name.trim(),
+      osFamily: f.os.split(' ')[0],
+      username: 'unassigned',
+      status: 'pending',
+      bound: false,
+      /* Velto stamps the moment it was added, to the second, and shows it in
+         the list. A device added by hand has no agent to report anything, so
+         this is the only time it has. */
+      enrolledAt: new Date().toISOString(),
+      lastSeenAt: null
+    })
+    toast(`${f.name.trim()} added — it is pending approval until it checks in`)
+    addOpen.value = false
+    filter.value = 'pending'
+    await refreshCounts(); refreshStats(); load()
+  } finally { addSaving.value = false }
+}
+
+/* ---- activate and suspend, which velto has and this did not -------------- */
+
+/**
+ * Velto's device actions depend on the state: a device that is not active can
+ * be activated, and one that is active can be suspended. Approve and reject
+ * were the only two here, so there was no way to take a working device out of
+ * service without rejecting it, which reads as a decision about enrolment
+ * rather than about the machine.
+ */
+async function setDeviceStatus (device, status) {
+  await api.devices.update(device.id, { status })
+  if (detail.value?.id === device.id) detail.value = { ...detail.value, status }
+  const verb = { approved: 'activated', suspended: 'suspended', rejected: 'rejected' }[status]
+  toast(`${device.name} ${verb}`)
+  await refreshCounts(); refreshStats(); load()
+}
+
+async function bulkStatus (status) {
+  const n = selectedIds.value.length
+  for (const did of selectedIds.value) await api.devices.update(did, { status })
+  table.value?.clearSelection()
+  const verb = { approved: 'activated', suspended: 'suspended' }[status]
+  toast(`${n} device${n === 1 ? '' : 's'} ${verb}`)
+  await refreshCounts(); refreshStats(); load()
+}
+
 /** Enrols the actual browser this is running in. */
 async function bindThisBrowser () {
   binding.value = true
@@ -208,6 +311,9 @@ onMounted(async () => {
         </label>
         <div class="i-tools">
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+        <button class="i-btn" @click="openAdd">
+          <i class="fa-solid fa-plus" aria-hidden="true" /> Add device
+        </button>
         <ListTools
           v-model:graph="graphOn"
           kind="devices" resource="devices"
@@ -259,7 +365,9 @@ onMounted(async () => {
     >
       <template #bulk>
         <button class="i-btn i-sm i-primary" @click="approveSelected">Approve</button>
-        <button class="i-btn i-sm i-danger" @click="rejectSelected">Reject</button>
+        <button class="i-btn i-sm ms-1" @click="bulkStatus('suspended')">Suspend</button>
+        <button class="i-btn i-sm ms-1" @click="bulkStatus('approved')">Activate</button>
+        <button class="i-btn i-sm i-danger ms-1" @click="rejectSelected">Reject</button>
       </template>
       <template #empty>
         <EmptyState
@@ -271,6 +379,61 @@ onMounted(async () => {
         />
       </template>
     </DataTable>
+
+    <!-- Velto's Add Device. Five fields, and at least one identifier, because
+         a device row that names no hardware cannot be matched to a machine. -->
+    <Sheet
+      v-model:open="addOpen"
+      title="Add device"
+      subtitle="For a machine that cannot enrol itself. It arrives pending, like any other."
+    >
+      <div class="i-formsec">
+        <div class="i-field">
+          <label for="profile_name">Name<span class="i-req">*</span></label>
+          <input id="profile_name" name="profile_name" class="i-ctl" v-model="addForm.name" placeholder="Enter Device Name">
+        </div>
+        <div class="i-field">
+          <label for="device_os">OS<span class="i-req">*</span></label>
+          <select id="device_os" name="device_os" class="i-ctl" v-model="addForm.os">
+            <option value="" disabled>Select Os</option>
+            <option v-for="o in OS_OPTIONS" :key="o">{{ o }}</option>
+          </select>
+          <p class="i-hint">
+            Velto lists 76, which is every string an agent has ever reported.
+            The families are here; the exact build is what the agent sends when
+            it first checks in.
+          </p>
+        </div>
+        <div class="i-frow">
+          <div class="i-field">
+            <label for="device_mac_address">Mac Address</label>
+            <input id="device_mac_address" name="device_mac_address" class="i-ctl i-tech" v-model="addForm.macAddress" placeholder="0:2b:67:60:f:6e">
+          </div>
+          <div class="i-field">
+            <label for="device_serial_no">Serial Number</label>
+            <input id="device_serial_no" name="device_serial_no" class="i-ctl i-tech" v-model="addForm.serialNumber" placeholder="Serial Number">
+          </div>
+        </div>
+        <div class="i-field">
+          <label for="uuid">UUID</label>
+          <input id="uuid" name="uuid" class="i-ctl i-tech" v-model="addForm.uuid" placeholder="e45b7ec4-374f-4e67-9e7e-2004f89e713b">
+          <p class="i-hint">
+            All three are optional in velto and at least one is needed to
+            identify a machine, so one of them is required here. A device is
+            matched on MAC, serial and UUID together, because any one of them
+            can be spoofed, reused after a board swap, or simply absent.
+          </p>
+        </div>
+      </div>
+      <template #footer>
+        <button class="i-btn i-quiet" @click="addOpen = false">Cancel</button>
+        <div class="i-right">
+          <button class="i-btn i-primary" :disabled="addSaving" @click="saveDevice">
+            {{ addSaving ? 'Saving…' : 'Add device' }}
+          </button>
+        </div>
+      </template>
+    </Sheet>
 
     <Sheet
       v-model:open="detailOpen"
@@ -288,7 +451,12 @@ onMounted(async () => {
             <div><dt>IP address</dt><dd class="i-tech">{{ detail.ipAddress }}</dd></div>
             <div><dt>Location</dt><dd>{{ detail.city }}</dd></div>
             <div><dt>Agent</dt><dd class="i-tech">{{ detail.agentVersion }}</dd></div>
-            <div><dt>Registered</dt><dd>{{ fmtAgo(detail.enrolledAt) }}</dd></div>
+            <!-- Velto prints the second it was registered. Relative time is
+                 what the list wants; the record wants the timestamp. -->
+            <div>
+              <dt>Registered on</dt>
+              <dd class="i-tech">{{ fmtStamp(detail.enrolledAt) }}</dd>
+            </div>
             <div><dt>Last seen</dt><dd>{{ fmtAgo(detail.lastSeenAt) }}</dd></div>
             <div>
               <dt>Bound to user</dt>
@@ -310,17 +478,27 @@ onMounted(async () => {
         </div>
       </template>
 
+      <!-- The verb depends on the state, as velto's does: a device that is
+           not active can be activated, one that is active can be suspended. -->
       <template #footer>
         <button class="i-btn i-quiet" @click="detailOpen = false">Close</button>
         <div class="i-right">
           <button
-            v-if="detail?.status !== 'rejected'"
+            v-if="detail?.status === 'pending'"
             class="i-btn i-danger" @click="setStatus('reject')"
           >Reject</button>
           <button
-            v-if="detail?.status !== 'approved'"
+            v-if="detail?.status === 'pending'"
             class="i-btn i-primary" @click="setStatus('approve')"
           >Approve</button>
+          <button
+            v-else-if="detail?.status === 'approved'"
+            class="i-btn" @click="setDeviceStatus(detail, 'suspended')"
+          >Suspend</button>
+          <button
+            v-else
+            class="i-btn i-primary" @click="setDeviceStatus(detail, 'approved')"
+          >Activate</button>
         </div>
       </template>
     </Sheet>

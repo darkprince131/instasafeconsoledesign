@@ -1309,6 +1309,65 @@ schedule.*
 The control is a field type in the shared template, so any screen with a start
 and an end can use it by naming the two keys.
 
+## 37. The nav count read as part of the label
+
+"Devices & che… 775" — the group label truncated and the count pressed against
+it, with a caret after that. Three things competing for one row, and the number
+reading as the end of a word.
+
+Two causes, both fixed: the count had no reserved space of its own, and the
+**group carried the same number as its child**, so an open group printed 775
+twice, a line apart, either side of a caret. The group shows the count only
+while it is shut; open, the child carries it, right-aligned with the label
+giving way first.
+
+## 38. Devices — Add, Bulk Ops, and a verb that depends on the state
+
+### 38.1 There was no way to add a device
+Velto has **Add Device**: Name*, OS*, Mac Address, Serial Number, UUID. Devices
+normally enrol themselves, which is why this screen leads with "Enrol this
+browser", but a machine being staged before it is handed over cannot enrol
+itself and there was nothing for it.
+
+Its OS select carries **76 entries** — every string an agent has ever reported,
+from "11" to "AlmaLinux 10.2 (Lavender Lion)". The families are offered here;
+the exact build is what the agent sends on first check-in.
+
+All three identifiers are optional in velto, which allows a device row that
+names no hardware at all and can never be matched to a machine. At least one is
+required here, and the reason is on the field: a device is matched on MAC,
+serial and UUID together, because any one of them can be spoofed, reused after
+a board swap, or simply absent.
+
+### 38.2 Activate and Suspend
+Velto's device actions depend on the state: a device that is not active can be
+activated, and an active one can be suspended. This screen had only Approve and
+Reject, so there was no way to take a working device out of service without
+rejecting it — which reads as a decision about enrolment rather than about the
+machine.
+
+The panel's verb now follows the state: pending offers Approve and Reject,
+approved offers Suspend, and anything else offers Activate. The same four are
+on the selection bar.
+
+### 38.3 Registered On
+Velto prints the second: `2026-06-26 15:56:58`. The list shows relative time,
+which is what a list wants, and the record now shows the timestamp, which is
+what a record wants — including for a device added by hand, where it is the
+only time the device has.
+
+### 38.4 Bulk Ops was missing from the toolbar
+The CSV wizard was built and reachable from users but not from devices, though
+velto offers it on both. It is on the toolbar now, with the operations velto
+gives devices: Activate, Suspend, Delete — and no Add, because devices enrol.
+
+### 38.5 Still to confirm
+Which fields lock when editing an existing device. There is no captured edit
+form for this screen, and the natural answer — MAC, serial, UUID and OS are
+reported by the agent and should not be typed over, while the name is a label a
+person chose — is a judgement rather than an observation. One look at a velto
+device edit panel settles it.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

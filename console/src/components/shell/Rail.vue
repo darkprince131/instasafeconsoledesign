@@ -77,7 +77,14 @@ function badge (key) {
             >
               <i class="fa-solid" :class="item.icon" aria-hidden="true" />
               <span class="i-lab">{{ item.label }}</span>
-              <span v-if="badge(item.badgeKey)" class="i-count">{{ badge(item.badgeKey) }}</span>
+              <!-- The group carries its child's count only while it is shut.
+                   Open, the same number is on the child a line below, and two
+                   copies of it either side of a caret is what made the row
+                   read as broken. -->
+              <span
+                v-if="badge(item.badgeKey) && !open.has(item.label)"
+                class="i-count"
+              >{{ badge(item.badgeKey) }}</span>
               <i class="fa-solid fa-chevron-right i-caret" aria-hidden="true" />
             </button>
 

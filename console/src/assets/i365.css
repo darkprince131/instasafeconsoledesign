@@ -267,11 +267,22 @@ html[data-i-rail="dark"]{
 .i-navitem .i-lab{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* a count on a nav item is a reason to click it; it earns its place only when
    something is actually waiting */
-.i-navitem .i-count{ font-size:11px; color:var(--i-c600); font-variant-numeric:tabular-nums; }
+.i-navitem .i-count{
+  flex:none; margin-left:auto; padding-left:8px;
+  font-size:11px; color:var(--i-c600); font-variant-numeric:tabular-nums;
+}
+/* The label gives way before the count does: a number squeezed against a
+   truncated word is the thing that looks broken, not the truncation. */
+.i-subitem .i-lab{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.i-subitem .i-count{
+  flex:none; margin-left:auto;
+  font-size:11px; color:var(--i-c600); font-variant-numeric:tabular-nums;
+}
 .i-navitem .i-caret{ width:14px; height:14px; color:var(--i-rail-mute); transition:transform .15s; }
 .i-navitem[aria-expanded="true"] .i-caret{ transform:rotate(90deg); }
 .i-subitem{
-  display:block; padding:6px 9px 6px 35px; border-radius:var(--i-r-ctl);
+  display:flex; align-items:center; gap:8px;
+  padding:6px 9px 6px 35px; border-radius:var(--i-r-ctl);
   color:var(--i-rail-dim); font-size:var(--i-t-meta); text-decoration:none;
 }
 .i-subitem:hover{ background:var(--i-rail-hover); color:var(--i-rail-ink); }
