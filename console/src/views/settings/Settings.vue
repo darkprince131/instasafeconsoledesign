@@ -148,47 +148,63 @@ const PAGES = {
     sections: [
       ['Email settings', [
         ['welcomeAdUsers', 'Send welcome emails to AD users', 'switch', false],
-        ['welcomeBulkUsers', 'Send welcome emails to bulk local users', 'switch', false]
+        ['welcomeBulkUsers', 'Send welcome emails to bulk local users', 'switch', false],
+        ['notifySubAdminsDeviceApproval', 'Notify sub-admins on device approval', 'switch', true,
+          'With 775 devices waiting, this is the difference between a queue somebody works and a queue nobody knows about.'],
+        ['notifyUsersCheckFailure', 'Notify users on device check failure', 'switch', true,
+          'A failed posture check looks like a broken product to the person it happens to, unless they are told what failed.']
       ]],
+      /**
+       * Velto offers these as three switches and does not ask for the
+       * interval anywhere on the screen. Three day-count fields were invented
+       * here instead. The switches are what the product has.
+       */
       ['Inactive users', [
-        ['inactiveWarnDays', 'Warn after days idle', 'number', '60'],
-        ['inactiveSuspendDays', 'Suspend after days idle', 'number', '90'],
-        ['inactiveDeleteDays', 'Delete after days idle', 'number', '365',
-          'Deletion is not reversible, so it should be the longest of the three — and well clear of anyone on parental or medical leave.']
+        ['inactiveWarn', 'Warning', 'switch', true,
+          'Mail the person before anything happens to their account.'],
+        ['inactiveSuspend', 'Suspend', 'switch', false],
+        ['inactiveDelete', 'Delete', 'switch', false,
+          'Deletion is not reversible. Anyone on parental or medical leave is idle by this measure.']
       ]],
       ['Authentication controls', [
         ['bypassMfaIps', 'Bypass MFA from public IPs', 'textarea', '',
           'Comma-separated. Every address here is somewhere multi-factor stops applying, so the list is worth keeping short.',
           '203.0.113.10, 198.51.100.0/24']
       ]],
-      ['Elevated access controls', [
-        ['webElevatedAccess', 'Web based elevated access', 'switch', false]
-      ]],
       ['Access controls', [
         ['deviceComplianceWeb', 'Device compliance for web access', 'switch', true,
           'Applies the posture checks to browser sessions, not only to the agent.'],
+        ['webElevatedAccess', 'Web based elevated access', 'switch', false],
         ['directAccessIps', 'Allow direct access from public IPs', 'textarea', '',
           'Comma-separated. These bypass the gateway.', '203.0.113.10'],
-        ['adminAccessIps', 'Limit admin access to public IPs', 'textarea', '',
+        ['adminAccessIps', 'Limit admin access from public IPs', 'textarea', '',
           'Comma-separated. Empty means admins may sign in from anywhere.', '203.0.113.10'],
-        ['userAccessIps', 'Limit user access to public IPs', 'textarea', '',
+        ['userAccessIps', 'Limit user access from public IPs', 'textarea', '',
           'Comma-separated. Empty means no restriction.', '203.0.113.0/24'],
         ['disallowedBrowsers', 'Disallowed browsers for users', 'textarea', '',
-          'Comma-separated.', 'Internet Explorer, Opera Mini']
+          'Comma-separated.', 'Internet Explorer, Opera Mini'],
+        ['whitelistedUrls', 'Whitelisted URLs', 'textarea', '',
+          'Comma-separated. Reachable even where direct access is otherwise closed.',
+          'https://www.instasafe.com, https://office.microsoft.com']
       ]],
       ['Force user disconnect', [
-        ['forceDisconnectHours', 'Disconnect the agent after (hours)', 'number', '12',
-          'A hard cap on session length, whatever the user is doing.']
+        ['forceDisconnectHours', 'Disconnect the agent after (hours)', 'number', '0',
+          'A hard cap on session length, whatever the user is doing. Zero means no cap.',
+          '', false, [0, 24]]
       ]],
       ['Agent idle timeout', [
-        ['agentIdleValue', 'Log idle agents out after', 'number', '30'],
+        ['agentIdleValue', 'Log idle agents out after', 'number', '0',
+          'Zero means idle agents are never logged out.', '', false, [0, 60]],
         ['agentIdleUnit', 'Unit', 'select', 'Minutes', '', ['Minutes', 'Hours']]
       ]],
       ['Portal session timeout', [
-        ['portalTimeoutMinutes', 'Log portal users out after (minutes)', 'number', '30']
+        ['portalTimeoutMinutes', 'Log portal users out after (minutes)', 'number', '180',
+          'Velto ships 180. The console holds every administrative control in the tenant, so this is the one of the three worth shortening.',
+          '', false, [0, 600]]
       ]]
     ]
   },
+
   '/settings/dns-wins': {
     title: 'DNS and WINS',
     subtitle: 'Name resolution handed to the agent when a tunnel comes up.',
@@ -362,6 +378,7 @@ onMounted(load)
                 v-else :id="'s_' + f[0]" class="i-ctl" :type="f[2]"
                 v-model="form[f[0]]" :disabled="cfg.readOnly"
                 :placeholder="f[5] || ''"
+                :min="f[7] ? f[7][0] : undefined" :max="f[7] ? f[7][1] : undefined"
               >
             </template>
             <p v-if="f[4]" class="i-hint">{{ f[4] }}</p>

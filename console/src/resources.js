@@ -567,15 +567,12 @@ export const RESOURCES = {
     form: [
       { key: 'name', label: 'Name', required: true, placeholder: 'morning_shift' },
       { key: 'timezone', label: 'Timezone', required: true, options: TIMEZONES },
-      /* `type="time"` rather than a text box.
-         Typing a time into a plain input means guessing the format it wants
-         and finding out on save; the native control accepts keyboard entry,
-         offers a picker, respects the locale's 12- or 24-hour convention and
-         will not let through 25:70. No dependency, and it is the one input
-         every phone already knows how to render well. */
-      { key: 'startTime', label: 'Start time', type: 'time', required: true },
-      { key: 'endTime', label: 'End time', type: 'time', required: true,
-        hint: 'An end before the start runs through midnight — which is what a night shift is.' },
+      /* One control for the pair, because they are one fact.
+         Two time inputs are correct and say nothing: you cannot see from them
+         that 22:00-06:00 runs through midnight, that a window is eleven hours
+         long, or that somebody has typed fifteen minutes. The native inputs
+         are still there underneath for typing and for the keyboard. */
+      { key: 'window', type: 'timewindow', startKey: 'startTime', endKey: 'endTime' },
       { key: 'days', label: 'Schedule days', type: 'days', required: true,
         hint: 'A schedule with no days selected matches nothing.' }
     ],

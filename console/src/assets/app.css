@@ -144,6 +144,28 @@ html[data-i-theme="dark"] .i-inbox-msg.is-unread{ background:rgba(114,101,224,.1
 .i-kv dd{ margin:0; color:var(--i-ink); }
 .i-bar-mini{ height:5px; border-radius:99px; background:var(--i-rule); overflow:hidden; }
 .i-bar-mini > span{ display:block; height:100%; border-radius:99px; background:var(--i-v500); }
+/* The shift window. A span you can see, rather than two times you compare in
+   your head. In the page flow, so it earns no shadow. */
+.i-tw{ margin-top:4px; }
+.i-tw-track{
+  position:relative; height:34px; border:1px solid var(--i-rule);
+  border-radius:var(--i-r-ctl); background:var(--i-canvas); overflow:hidden;
+}
+.i-tw-fill{
+  position:absolute; top:0; bottom:0; background:var(--i-v500); opacity:.26;
+}
+.i-tw-tick{
+  position:absolute; top:0; bottom:0; width:1px; background:var(--i-rule);
+}
+.i-tw-scale{ position:relative; height:16px; margin-top:3px; }
+.i-tw-scale > span{
+  position:absolute; transform:translateX(-50%);
+  font-family:var(--i-mono); font-size:10.5px; color:var(--i-mute);
+}
+.i-tw-scale > span:first-child{ transform:none; }
+.i-tw-scale > span:last-child{ transform:translateX(-100%); }
+.i-tw-len{ margin:6px 0 0; font-size:12px; color:var(--i-ink); }
+
 /* An uploaded logo or background, shown at a size you can judge it at.
    In the page flow, so no shadow: a rule and the canvas behind it. */
 .i-imgprev{

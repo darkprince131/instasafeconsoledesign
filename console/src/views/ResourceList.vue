@@ -11,6 +11,7 @@ import PickList from '../components/ui/PickList.vue'
    again for a map they never show. */
 const LocationPicker = defineAsyncComponent(() => import('../components/ui/LocationPicker.vue'))
 import GraphView from '../components/ui/GraphView.vue'
+import TimeWindow from '../components/ui/TimeWindow.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
 import Sheet from '../components/ui/Sheet.vue'
@@ -58,6 +59,13 @@ const editable = computed(() => Array.isArray(cfg.value?.form) && cfg.value.form
 function blankForm () {
   const out = {}
   for (const f of cfg.value?.form || []) {
+    /* One control standing for two keys still has to seed both, or a new
+       schedule opens with an empty window and saves as one. */
+    if (f.type === 'timewindow') {
+      out[f.startKey] = f.startDefault || '09:00'
+      out[f.endKey] = f.endDefault || '18:00'
+      continue
+    }
     /* A field the form never lets you fill still has to be saved with its
        value — OpenLDAP's Protocol is fixed at TCP and disabled, so without a
        default a new profile would be created with no protocol at all. Velto
@@ -654,6 +662,13 @@ onMounted(load)
             <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
           </div>
 
+          <TimeWindow
+            v-else-if="f.type === 'timewindow'"
+            :start="form[f.startKey]"
+            :end="form[f.endKey]"
+            @update:start="form[f.startKey] = $event"
+            @update:end="form[f.endKey] = $event"
+          />
           <LocationPicker
             v-else-if="f.type === 'location'"
             :lat="form.lat" :lon="form.lon" :radius="form.radiusMetres"

@@ -1254,6 +1254,61 @@ to write one, rather than an empty table.
 Adding users from the group's side was already right — the searchable picker,
 not a native list of 1,821 names — so it is unchanged.
 
+## 35. User settings — three controls missing, and one section invented
+
+Checked field by field against the capture. Velto's six sections are all
+present now; three controls were absent and one section was not velto's.
+
+**Missing, now added:**
+- *Notify sub-admins on device approval*. With 775 devices waiting, this is
+  the difference between a queue somebody works and a queue nobody knows
+  about.
+- *Notify users on device check failure*. A failed posture check looks like a
+  broken product to the person it happens to unless they are told what failed.
+- *Whitelisted URLs* — reachable even where direct access is otherwise closed.
+
+**Inactive Users was invented.** Velto offers three switches — Warning,
+Suspend, Delete — and asks for no interval anywhere on the screen. Three
+day-count fields had been invented here instead. The switches are what the
+product has.
+
+*Open question:* where the inactivity period is actually set. It is not on
+this screen, so it is either fixed, or a tenant-level value InstaSafe holds.
+Worth asking before an implementer has to guess.
+
+**Elevated access was its own section** here and is one switch inside Access
+Controls in velto. Merged.
+
+Velto's bounds and defaults are kept rather than the invented ones: force
+disconnect 0–24 hours defaulting to 0, agent idle 0–60 with a Minutes/Hours
+unit defaulting to 0, portal timeout 0–600 defaulting to **180**. Zero means
+no cap in the first two, which is worth saying on the field rather than
+leaving as a number that looks unset.
+
+## 36. The shift window is one fact, so it is one control
+
+Two time inputs side by side are correct and say nothing. You cannot see from
+them that 22:00–06:00 runs through midnight, that a window is eleven hours
+long, or that somebody has typed a window of fifteen minutes. Velto's is worse
+again: a **date-picker component asked to pick a time**, calendar icon and
+all, with `inputmode="none"` so it cannot be typed into at all.
+
+The window is drawn on a 24-hour track now, with the hours written under it:
+
+- the filled span is the window, and one that runs past midnight draws as
+  **two segments**, because that is what it is
+- the length is said in words — *8 hours, through midnight*
+- the native time inputs stay underneath, so it can still be typed and still
+  works from the keyboard
+- three presets — Business hours, Night shift, Round the clock — because those
+  are most of what anybody sets
+
+A window of zero says so in the open: *No window — nothing matches this
+schedule.*
+
+The control is a field type in the shared template, so any screen with a start
+and an end can use it by naming the two keys.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
