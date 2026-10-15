@@ -4,6 +4,7 @@ import api from '../../api'
 import PageHeader from '../../components/ui/PageHeader.vue'
 import DataTable from '../../components/ui/DataTable.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
+import ListTools from '../../components/ui/ListTools.vue'
 import ConfirmModal from '../../components/ui/ConfirmModal.vue'
 import Sheet from '../../components/ui/Sheet.vue'
 import SessionSurface from '../../components/ui/SessionSurface.vue'
@@ -59,7 +60,10 @@ const TYPES = [
       { key: 'directAccess', label: 'Allow direct access' },
       { key: 'useInternalIp', label: 'Resolve to the internal IP' }
     ],
-    controls: ['blockCopyPaste', 'watermark', 'blockDownloads'] },
+    /* Velto offers Block Copy Paste on a web application and nothing else:
+       no watermark, no download block. Both were offered here, and a control
+       that cannot be enforced is worse than one that is missing. */
+    controls: ['blockCopyPaste'] },
 
   { key: 'fqdn', label: 'FQDN', icon: 'fa-at', hint: 'A named host reached by domain name.',
     fields: [
@@ -97,7 +101,8 @@ const TYPES = [
       { key: 'host', label: 'Host', required: true, placeholder: '10.20.4.33' },
       { key: 'port', label: 'Port', type: 'number' }
     ],
-    controls: ['sessionRecording'] },
+    /* Velto records RDP, SSH and VNC sessions and not database ones. */
+    controls: [] },
 
   { key: 'wfs', label: 'File share', icon: 'fa-folder-open', hint: 'A Windows file share.',
     fields: [
@@ -109,6 +114,26 @@ const TYPES = [
 ]
 
 const DEFAULT_PORT = { web: 443, fqdn: 443, rdp: 3389, ssh: 22, vnc: 5900, db: 5432, wfs: 445 }
+
+/**
+ * Bulk Add, which velto has here too.
+ *
+ * Four columns rather than the union of every type's fields: a CSV that could
+ * express an SSH port and a database driver and a file-share domain in one
+ * header row would be unreadable. Name, type, host and port cover every type,
+ * and the per-type detail is edited afterwards.
+ */
+const BULK_COLUMNS = [
+  { key: 'name', label: 'Name', required: true, sample: 'Jira' },
+  { key: 'type', label: 'Type', required: true, sample: 'web' },
+  { key: 'host', label: 'Host', required: true, sample: 'https://jira.internal' },
+  { key: 'port', label: 'Port', sample: '443' }
+]
+
+function onBulkApplied ({ count }) {
+  toast(`${count} application${count === 1 ? '' : 's'} created`)
+  load()
+}
 
 /** The data-loss controls, and what each one actually does. */
 const CONTROLS = {
@@ -280,6 +305,11 @@ onMounted(async () => {
         </label>
         <div class="i-tools">
         <button class="i-btn"><i class="fa-solid fa-download" aria-hidden="true" /> Export</button>
+        <ListTools
+          kind="generic" resource="applications" noun="application"
+          :add-columns="BULK_COLUMNS" :rows="rows" :total="total"
+          @apply="onBulkApplied"
+        />
         <button class="i-btn i-primary" @click="openAdd">
           <i class="fa-solid fa-plus" aria-hidden="true" /> Add application
         </button>

@@ -512,6 +512,7 @@ export const RESOURCES = {
       { key: 'protocol', label: 'Protocol', options: ['tcp', 'udp', 'icmp'] },
       { key: 'port', label: 'Port', type: 'number', required: true, placeholder: '443' }
     ],
+    bulkAdd: true,
     title: 'Application services',
     subtitle: 'Protocol and port definitions that applications reference.',
     resource: 'appServices',
@@ -857,9 +858,27 @@ export const RESOURCES = {
            addresses rather than applications, so the picker goes quiet. */
         filters: (form) => form.type && form.type !== 'NET'
           ? { type: String(form.type).toLowerCase() } : { type: '__none__' },
-        hint: 'Only applications of the type chosen above belong in the group.' },
+        /* A NET group holds addresses, so velto does not offer the picker at
+           all there — it asks for an IP and its services instead. */
+        when: (form) => form.type !== 'NET',
+        /* The picker prints each application's host beside its name. An
+           application called "gitlab" can point anywhere, and picking one by
+           name alone is how a group ends up holding something nobody meant. */
+        hint: 'Only applications of the type chosen above. Each shows the host it actually points at.' },
+      /* A NET group holds addresses rather than applications, and velto asks
+         for them here: an IP or network, and the service ports reachable on
+         it. Without these a NET group could be created and never filled. */
+      { key: 'ipAddress', label: 'IP Address/Network', required: true,
+        placeholder: 'Eg: 192.168.1.21', half: true,
+        when: (form) => form.type === 'NET' },
+      { key: 'serviceIds', label: 'Service - Port / Port Range', type: 'pick',
+        resource: 'appServices', placeholder: 'Select services…',
+        labelKey: 'name', hintKey: 'port', half: true,
+        when: (form) => form.type === 'NET',
+        hint: 'The ports reachable on that address. Each one shows its protocol and port.' },
       { key: 'description', label: 'Description', placeholder: 'What this group is for' }
     ],
+    bulkAdd: true,
     title: 'Application groups',
     subtitle: 'A rule pointing at a group covers every application in it.',
     resource: 'appGroups',

@@ -1510,6 +1510,50 @@ session and avoids resetting a tenant that somebody has been using.
 Verified on the deployed site, not locally: URL filter 1-5 of 5, and device
 policy showing the Registry row.
 
+## 44. Bulk Add on the application screens, and what the app form had too much of
+
+Velto puts a **Bulk Add** on application services, applications and application
+groups. None of the three had one. Rather than a planner per shape, a screen
+now declares the columns it wants and the CSV wizard checks them: required
+fields present, no name that already exists. Any list screen gets it with one
+flag.
+
+That found a bug in the wizard itself. Headers arrive lower-cased from the
+parser, and a column declared by its label carries its capitals, so the
+comparison failed and **every row read as having no name**. The comparison
+ignores case now, which also makes the existing users and gateways uploads
+tolerant of a capitalised header.
+
+### 44.1 The application form offered two controls velto does not
+Checked type by type against the captured forms. The form was not larger than
+velto's overall — it was missing nothing — but two controls were offered where
+the product offers none:
+
+- **Web**: watermark and block-downloads. Velto offers Block Copy Paste alone.
+- **Database**: session recording. Velto records RDP, SSH and VNC, not DB.
+
+Both removed. A control that cannot be enforced is worse than one that is
+absent, because it reads as a setting somebody has already made.
+
+Still missing, and not built: the **Logo** upload velto has on database and
+file-share applications. It is decoration rather than policy, so it is recorded
+rather than guessed at.
+
+### 44.2 Application groups hold addresses, not only applications
+Velto's group list is `Name · Type · IP/Network & Service - Port / Port Range /
+Application`, and its form asks for either — an application of the chosen type,
+or an **IP address with the services reachable on it**. A NET group here could
+be created and never filled, because only the application picker existed.
+
+The IP and the service ports are asked for now when the type is NET, and the
+application picker is hidden there, which is what velto does.
+
+**The picker keeps naming applications**, which velto does not do — it is the
+better control, and the reason is the one the reviewer gave: an application
+called `gitlab` can point at any address at all. So the picker prints each
+application's host beside its name, and the hint says so. Choosing by name is
+quick; seeing where it points is what stops the wrong one being chosen.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

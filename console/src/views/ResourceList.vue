@@ -54,6 +54,20 @@ const form = ref({})
 /* A screen can be edited as soon as resources.js gives it a `form`. Without
    one the rows stay read-only rather than opening an empty panel that saves
    nothing - which is worse than no edit at all. */
+/**
+ * The columns a bulk upload offers: the plain fields this screen asks for.
+ * Pickers, maps, files and switches are left out — a CSV cannot express them,
+ * and offering a column that silently does nothing is worse than omitting it.
+ */
+const bulkColumns = computed(() => (cfg.value?.form || [])
+  .filter(f => !['pick', 'location', 'file', 'days', 'switch', 'note', 'timewindow'].includes(f.type))
+  .map(f => ({
+    key: f.key,
+    label: f.label,
+    required: !!f.required,
+    sample: f.placeholder || (Array.isArray(f.options) ? f.options[0] : '')
+  })))
+
 const editable = computed(() => Array.isArray(cfg.value?.form) && cfg.value.form.length > 0)
 
 function blankForm () {
@@ -91,6 +105,11 @@ const atLimit = computed(() => {
   const l = cfg.value?.limit
   return !!l && (total.value || 0) >= l.max
 })
+
+function onBulkApplied ({ count }) {
+  toast(`${count} ${cfg.value.singular || 'record'}${count === 1 ? '' : 's'} created`)
+  refreshStats(); load()
+}
 
 function openAdd () {
   if (atLimit.value) { limitHit.value = true; return }
@@ -584,6 +603,15 @@ onMounted(load)
           <ListTools
             v-model:graph="graphOn"
             :rows="rows" :dimensions="graphDims" :total="total"
+          />
+          <ListTools
+            v-if="cfg.bulkAdd"
+            kind="generic"
+            :resource="cfg.resource"
+            :add-columns="bulkColumns"
+            :noun="cfg.singular || 'record'"
+            :rows="rows" :total="total"
+            @apply="onBulkApplied"
           />
           <button v-if="cfg.primaryAction && editable" class="i-btn i-primary" @click="openAdd">
             <i class="fa-solid fa-plus" aria-hidden="true" /> {{ cfg.primaryAction }}

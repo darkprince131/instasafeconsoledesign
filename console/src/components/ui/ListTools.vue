@@ -38,6 +38,10 @@ const props = defineProps({
   rows: { type: Array, default: () => [] },
   /** Gateways only: the licensed maximum, from the subscription. */
   limit: { type: Number, default: 0 },
+  /** Generic bulk add: [{ key, label, required, placeholder }] */
+  addColumns: { type: Array, default: () => [] },
+  /** What one of these is called, for the copy. */
+  noun: { type: String, default: 'record' },
   dimensions: { type: Array, default: () => [] },
   total: { type: Number, default: 0 }
 })
@@ -63,6 +67,13 @@ const OPS = {
      against the tenant before anything is written. */
   gateways: [
     { key: 'add', label: 'Add gateways' }
+  ],
+  /* Velto puts a Bulk Add on application services, applications and
+     application groups too. Those are three different shapes, so rather than
+     a planner each, the screen passes the columns it wants and this checks
+     them: required fields present, no name that already exists. */
+  generic: [
+    { key: 'add', label: 'Add' }
   ]
 }
 
@@ -80,10 +91,17 @@ const GATEWAY_COLUMNS = ['Gateway Name', 'Backup Gateway Name', 'Location', 'Pro
 const isAdd = computed(() => op.value === 'add')
 const isGateway = computed(() => props.kind === 'gateways')
 
-const columns = computed(() =>
-  isGateway.value ? GATEWAY_COLUMNS : (isAdd.value ? ADD_COLUMNS : ['username']))
+const isGeneric = computed(() => props.kind === 'generic')
+
+const columns = computed(() => {
+  if (isGeneric.value) return props.addColumns.map(c => c.label)
+  return isGateway.value ? GATEWAY_COLUMNS : (isAdd.value ? ADD_COLUMNS : ['username'])
+})
 
 const sampleRows = computed(() => {
+  if (isGeneric.value) {
+    return [props.addColumns.map(c => c.sample || c.placeholder || '')]
+  }
   if (isGateway.value) {
     return [
       ['gw-pun-01', 'gw-pun-02', 'Pune', '10.150.0.0/16 192.168.15.0/24'],
@@ -126,7 +144,11 @@ function parseCsv (text) {
 /** Accept the header however it was spelled: "Login Id", "login_id", "username". */
 function pick (row, ...names) {
   for (const n of names) {
-    const k = Object.keys(row).find(x => x.replace(/[\s_-]/g, '') === n.replace(/[\s_-]/g, ''))
+    /* Headers arrive lower-cased from the parser, and a column name given as
+       a label carries its capitals, so the comparison ignores case as well as
+       spacing. Without this every row read as having no name. */
+    const norm = (x) => x.replace(/[\s_-]/g, '').toLowerCase()
+    const k = Object.keys(row).find(x => norm(x) === norm(n))
     if (k && row[k]) return row[k]
   }
   return ''
@@ -227,9 +249,41 @@ function planGateways (parsed, existing) {
   return { actions, willRun: willRun.length, skipped: actions.length - willRun.length }
 }
 
+/**
+ * The generic plan: one row becomes one record, checked against the columns
+ * the screen declared and against the names already there.
+ */
+function planGeneric (parsed, existing) {
+  const taken = new Set(existing.map(x => String(x.name || '').toLowerCase()))
+  const actions = []
+  for (const row of parsed) {
+    const payload = {}
+    for (const c of props.addColumns) payload[c.key] = pick(row, c.label, c.key)
+    const name = payload.name || ''
+    if (!name) { actions.push({ name: '—', verb: 'skip', why: 'No name in this row.' }); continue }
+    if (taken.has(name.toLowerCase())) {
+      actions.push({ name, verb: 'skip', why: 'One with this name already exists.' }); continue
+    }
+    const missing = props.addColumns.find(c => c.required && !payload[c.key])
+    if (missing) {
+      actions.push({ name, verb: 'skip', why: `${missing.label} is required.` }); continue
+    }
+    taken.add(name.toLowerCase())
+    actions.push({
+      name, verb: 'create',
+      why: props.addColumns.filter(c => c.key !== 'name' && payload[c.key])
+        .map(c => `${c.label}: ${payload[c.key]}`).join(' · ') || 'No other detail given',
+      payload
+    })
+  }
+  const willRun = actions.filter(a => a.verb !== 'skip')
+  return { actions, willRun: willRun.length, skipped: actions.length - willRun.length }
+}
+
 async function buildPlan (parsed) {
   const api = (await import('../../api')).default
   const existing = (await api[props.resource].list({ perPage: 0 })).data
+  if (isGeneric.value) return planGeneric(parsed, existing)
   if (isGateway.value) return planGateways(parsed, existing)
   const byName = new Map(existing.map(r => [(r.username || r.name || '').toLowerCase(), r]))
 
@@ -323,13 +377,13 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
   <button
     v-if="ops.length"
     class="i-btn"
-    :title="isGateway
-      ? 'Create gateways from an uploaded list'
+    :title="isGateway || isGeneric
+      ? 'Create from an uploaded list'
       : 'Add, delete, activate or suspend from an uploaded list'"
     @click="opsOpen = true"
   >
     <i class="fa-solid fa-file-csv" aria-hidden="true" />
-    <span class="d-none d-lg-inline">{{ isGateway ? 'Bulk Add' : 'Bulk Ops' }}</span>
+    <span class="d-none d-lg-inline">{{ isGateway || isGeneric ? 'Bulk Add' : 'Bulk Ops' }}</span>
   </button>
 
   <button
@@ -343,7 +397,7 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
 
   <Sheet
     v-model:open="opsOpen"
-    :title="isGateway ? 'Bulk add gateways' : `Bulk operations for ${kind}`"
+    :title="isGeneric ? `Bulk add ${noun}s` : (isGateway ? 'Bulk add gateways' : `Bulk operations for ${kind}`)"
     subtitle="The uploaded file is the list. What is ticked in the table is not used."
   >
     <!-- One operation needs no chooser. Velto's gateway modal has none
@@ -361,7 +415,12 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
     <div class="i-formsec">
       <h3>{{ ops.length > 1 ? '2' : '1' }} · Make the list</h3>
       <p class="i-secsub">
-        <template v-if="isGateway">
+        <template v-if="isGeneric">
+          One row per {{ noun }}. The columns below are the fields this screen
+          asks for; a row missing a required one is listed as skipped rather
+          than half-created.
+        </template>
+        <template v-else-if="isGateway">
           One row per gateway. <strong>Every column is required</strong>: each
           gateway needs a name of its own, a backup gateway, a location, and at
           least one protected network. Put several networks in the one cell,
@@ -387,7 +446,10 @@ const graphOn = defineModel('graph', { type: Boolean, default: false })
         </tbody>
       </table>
 
-      <p v-if="isGateway" class="i-hint">
+      <p v-if="isGeneric" class="i-hint">
+        A name that already exists is skipped rather than duplicated.
+      </p>
+      <p v-else-if="isGateway" class="i-hint">
         This tenant is licensed for {{ GATEWAY_LIMIT }} gateways. Rows beyond
         the licence, rows repeating a name that already exists, and rows
         missing a backup gateway are listed as skipped below before anything
