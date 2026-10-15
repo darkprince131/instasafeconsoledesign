@@ -1488,6 +1488,28 @@ so it was never empty. `exportProfiles` has no screen reading it at all; the
 store exists and nothing points at it, which is worth removing rather than
 filling.
 
+## 43. Seeded for one adapter and not the other
+
+Everything added to the seed went into the mock adapter only. `npm run dev`
+uses the mock; Netlify sets `VITE_BACKEND=http`. So filters, device policies,
+blocked apps, device updates, sub-admins and report subscriptions were full
+locally and empty on the deployed console — and every local check passed.
+
+CLAUDE.md warns about this split in as many words, and it still happened,
+because adding a collection touches two files that look nothing alike: a
+`putMany` in the mock adapter and an entry in a batch array in the HTTP one.
+
+The backend already stored all of them as kinded records; only the batch list
+was missing them.
+
+**A tenant seeded before a collection existed never gets it**, because seeding
+runs once per tenant. Each new collection is now topped up on load if it is
+still empty, which costs one count per collection on the first call of a
+session and avoids resetting a tenant that somebody has been using.
+
+Verified on the deployed site, not locally: URL filter 1-5 of 5, and device
+policy showing the Registry row.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
