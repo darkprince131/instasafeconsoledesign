@@ -740,7 +740,7 @@ export function seedAnomalies (users, count = 50) {
       const [, to] = pick(PLACES)
       const speed = 900 + r() * 2400
       out.push({
-        id, at, actor, detector: 'travel-speed', kind: 'Travel speed', severity: 'high',
+        id, at, actor, detector: 'travel-speed', anomalyType: 'Travel speed', severity: 'high',
         detail: `Travel speed ${speed.toFixed(8)} km/h detected.`,
         extra: { Speed: speed, Last_location: from, Current_location: to }
       })
@@ -750,7 +750,7 @@ export function seedAnomalies (users, count = 50) {
       const names = Array.from({ length: 2 + Math.floor(r() * 3) },
         () => users[Math.floor(r() * users.length)].username)
       out.push({
-        id, at, actor, detector: 'shared-ip', kind: 'Shared source IP',
+        id, at, actor, detector: 'shared-ip', anomalyType: 'Shared source IP',
         severity: names.length >= 4 ? 'high' : 'medium',
         detail: `${names.length} users from IP ${ip}`,
         extra: { Usernames: names.join(', ') }
@@ -759,7 +759,7 @@ export function seedAnomalies (users, count = 50) {
       /* "User switched between 2 IPs." */
       const ips = [pick(PUBLIC), pick(PUBLIC)]
       out.push({
-        id, at, actor, detector: 'ip-switching', kind: 'IP switching', severity: 'medium',
+        id, at, actor, detector: 'ip-switching', anomalyType: 'IP switching', severity: 'medium',
         detail: `User switched between ${ips.length} IPs.`,
         extra: { Ips: ips.join(', ') }
       })
@@ -768,7 +768,7 @@ export function seedAnomalies (users, count = 50) {
       const ip = pick(DEST)
       const n = 1 + Math.floor(r() * 8)
       out.push({
-        id, at, actor, detector: 'blocked-attempts', kind: 'Blocked attempts',
+        id, at, actor, detector: 'blocked-attempts', anomalyType: 'Blocked attempts',
         severity: n >= 6 ? 'high' : n >= 3 ? 'medium' : 'low',
         detail: `${n} blocked attempts on ${ip}`,
         extra: { Attempts: n, Username: actor, Application_ip: ip }

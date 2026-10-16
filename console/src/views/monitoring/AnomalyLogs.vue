@@ -125,7 +125,7 @@ async function scan () {
       if (kmh < 900) continue            // a commercial flight cruises ~900 km/h
       found.push({
         id: 'anm_' + Date.now().toString(36) + found.length,
-        kind: 'Impossible travel', actor, severity: 'high',
+        anomalyType: 'Impossible travel', actor, severity: 'high',
         detail: `${b.city} → ${a.city}, ${km.toLocaleString()} km in ${hours.toFixed(1)}h (${kmh.toLocaleString()} km/h)`,
         at: a.at
       })
@@ -144,7 +144,7 @@ async function scan () {
     if (n < 3) continue
     found.push({
       id: 'anm_' + Date.now().toString(36) + 'f' + found.length,
-      kind: 'Repeated auth failure', actor,
+      anomalyType: 'Repeated auth failure', actor,
       severity: n >= 6 ? 'high' : 'medium',
       detail: `${n} failed attempts in the retained window`,
       at: new Date().toISOString()
@@ -156,7 +156,7 @@ async function scan () {
   if (postureFails > 4) {
     found.push({
       id: 'anm_' + Date.now().toString(36) + 'p',
-      kind: 'Posture failures elevated', actor: '—', severity: 'medium',
+      anomalyType: 'Posture failures elevated', actor: '—', severity: 'medium',
       detail: `${postureFails} device checks failed across the tenant`,
       at: new Date().toISOString()
     })
