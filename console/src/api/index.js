@@ -120,6 +120,9 @@ export const api = {
   softwarePackages: resource('softwarePackages'),
 
   // ---- network and applications ---------------------------------------
+  /** GET /app-access-log — one row per connection attempt */
+  appAccessLog: resource('appAccessLog'),
+
   controllers: {
     ...resource('controllers'),
     /** POST /controllers/:id/:action — stop | restart | commit */

@@ -60,6 +60,16 @@ const TIMEZONES = [
   '(UTC+12:00) New Zealand Standard Time'
 ]
 const fmtDate = (v) => v ? new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : dash
+/* Velto stamps a log row to the second: 2026-10-16 14:05:00. A log is read
+   by lining rows up against each other, which relative time cannot do. */
+const fmtStamp = (v) => {
+  if (!v) return dash
+  const d = new Date(v)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+    `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 const fmtAgo = (v) => {
   if (!v) return 'never'
   const s = (Date.now() - new Date(v)) / 1000
@@ -641,6 +651,34 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Application access log — velto's columns exactly.
+   *
+   * Access Date, Username, Public IP, Country, Destination, Port, Action.
+   * The route rendered a usage chart here, so the screen that answers "what
+   * did this person actually try to reach, and was it allowed" did not exist.
+   */
+  '/reports/application-access-logs': {
+    title: 'Application access logs',
+    subtitle: 'Every connection an agent attempted, and whether the policy let it through.',
+    resource: 'appAccessLog',
+    searchFields: ['username', 'destination', 'publicIp', 'country'],
+    emptyTitle: 'No connection attempts logged',
+    emptyBody: 'Nothing has tried to reach an application through a gateway yet.',
+    filters: [{ key: 'action', options: ['Blocked', 'Allowed'] }],
+    columns: [
+      { key: 'at', label: 'Access Date', cell: fmtStamp, mono: true },
+      { key: 'username', label: 'Username' },
+      { key: 'publicIp', label: 'Public IP', mono: true },
+      { key: 'country', label: 'Country' },
+      { key: 'destination', label: 'Destination', mono: true },
+      { key: 'port', label: 'Port', mono: true, align: 'right' },
+      /* Blocked is the exception and takes the mark; allowed is the ordinary
+         case and stays plain, as the colour budget requires. */
+      { key: 'action', label: 'Action', pill: (v) => v === 'Blocked' ? 'bad' : null }
+    ]
+  },
+
   '/reports/access-logs': {
     title: 'Access logs',
     subtitle: 'Every allow and deny decision, with the rule that made it.',
@@ -868,14 +906,11 @@ export const RESOURCES = {
       /* A NET group holds addresses rather than applications, and velto asks
          for them here: an IP or network, and the service ports reachable on
          it. Without these a NET group could be created and never filled. */
-      { key: 'ipAddress', label: 'IP Address/Network', required: true,
-        placeholder: 'Eg: 192.168.1.21', half: true,
+      /* Velto offers Add More under this pair, because a NET group is
+         normally several addresses. One pair could be filled in and the
+         second had nowhere to go. */
+      { key: 'netEntries', type: 'netentries',
         when: (form) => form.type === 'NET' },
-      { key: 'serviceIds', label: 'Service - Port / Port Range', type: 'pick',
-        resource: 'appServices', placeholder: 'Select services…',
-        labelKey: 'name', hintKey: 'port', half: true,
-        when: (form) => form.type === 'NET',
-        hint: 'The ports reachable on that address. Each one shows its protocol and port.' },
       { key: 'description', label: 'Description', placeholder: 'What this group is for' }
     ],
     bulkAdd: true,

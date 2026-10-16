@@ -12,6 +12,7 @@ import PickList from '../components/ui/PickList.vue'
 const LocationPicker = defineAsyncComponent(() => import('../components/ui/LocationPicker.vue'))
 import GraphView from '../components/ui/GraphView.vue'
 import TimeWindow from '../components/ui/TimeWindow.vue'
+import NetEntries from '../components/ui/NetEntries.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
 import Sheet from '../components/ui/Sheet.vue'
@@ -714,6 +715,11 @@ onMounted(load)
             <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
           </div>
 
+          <NetEntries
+            v-else-if="f.type === 'netentries'"
+            :model-value="form[f.key] || []"
+            @update:model-value="form[f.key] = $event"
+          />
           <TimeWindow
             v-else-if="f.type === 'timewindow'"
             :start="form[f.startKey]"

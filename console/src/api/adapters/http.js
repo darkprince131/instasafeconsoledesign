@@ -70,7 +70,8 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
     ['domainLists', () => seed.seedDomainLists()],
     ['subAdmins', () => seed.seedSubAdmins()],
     ['roles', () => seed.seedRoles()],
-    ['reportSubscriptions', () => seed.seedReportSubscriptions()]
+    ['reportSubscriptions', () => seed.seedReportSubscriptions()],
+    ['appAccessLog', () => seed.seedAppAccessLog(seed.seedUsers(60))]
   ]
 
   async function topUp () {
@@ -136,6 +137,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['subAdmins', seed.seedSubAdmins()],
         ['roles', seed.seedRoles()],
         ['reportSubscriptions', seed.seedReportSubscriptions()],
+        ['appAccessLog', seed.seedAppAccessLog(users)],
         ['users', users],
         ['devices', seed.seedDevices(users, SEED_SIZE.devices)],
         ['sessions', seed.seedSessions(users, applications)],

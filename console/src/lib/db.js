@@ -14,7 +14,7 @@ const DB_NAME = 'i365-console'
    created at the old version, so without a bump `onupgradeneeded` never runs
    and the new store simply is not there — which surfaces as
    NotFoundError on the first list() against it. */
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 /** Every collection the console needs. Mirrors the eventual table list. */
 export const STORES = [
@@ -25,7 +25,7 @@ export const STORES = [
   'authProfiles', 'userProviders', 'idamServices',
   'subAdmins', 'roles', 'timeSchedules', 'riskProfiles',
   'urlFilters', 'contentFilters', 'fileTypeFilters', 'domainLists',
-  'sessions', 'eventLog', 'accessLog', 'anomalies', 'inbox',
+  'sessions', 'eventLog', 'accessLog', 'appAccessLog', 'anomalies', 'inbox',
   'settings', 'reportSubscriptions', 'exportProfiles'
 ]
 

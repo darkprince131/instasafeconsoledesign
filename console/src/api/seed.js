@@ -640,6 +640,44 @@ export function seedReportSubscriptions () {
   }))
 }
 
+/**
+ * Application access log.
+ *
+ * Velto's is a flat list of connection attempts — access date, username,
+ * public IP with its source port, country, destination address, destination
+ * port and whether it was allowed or blocked. This console rendered a usage
+ * chart at that route instead, so the one screen that answers "what did this
+ * person actually try to reach" was not there.
+ *
+ * Mostly blocked rows, because that is what the real one shows: an agent
+ * probing addresses it is not entitled to is the ordinary case, and the
+ * blocked ones are the reason anybody opens this screen.
+ */
+export function seedAppAccessLog (users, count = 372) {
+  const DEST = [
+    '172.31.12.75', '172.31.13.231', '172.31.5.124', '13.235.73.156',
+    '13.232.6.65', '65.1.110.5', '10.20.4.17', '10.130.9.40'
+  ]
+  const PORTS = [389, 389, 389, 636, 443, 3389, 22, 1433]
+  const COUNTRIES = ['India', 'India', 'India', 'Singapore', 'United Kingdom', 'United States']
+  const out = []
+  for (let i = 0; i < count; i++) {
+    const u = users[Math.floor(r() * users.length)]
+    const blocked = chance(0.72)
+    out.push({
+      id: `aal_${pad(i + 1, 5)}`,
+      at: ago(r() * 2),
+      username: chance(0.35) ? 'InstaSafeHelper' : u.username,
+      publicIp: `13.200.153.189:${40000 + Math.floor(r() * 20000)}`,
+      country: pick(COUNTRIES),
+      destination: pick(DEST),
+      port: pick(PORTS),
+      action: blocked ? 'Blocked' : 'Allowed'
+    })
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at))
+}
+
 export function seedDevicePolicies () {
   return [
     ['Encrypt contractor laptops', 'Windows', 'Config', 'Enabled',

@@ -36,7 +36,7 @@ const bespoke = {
   '/reports/data-uses-log':            () => import('../views/monitoring/UsageReport.vue'),
   '/reports/time-uses-log':            () => import('../views/monitoring/UsageReport.vue'),
   '/reports/gateway':                  () => import('../views/monitoring/UsageReport.vue'),
-  '/reports/application-access-logs':  () => import('../views/monitoring/UsageReport.vue'),
+
   '/reports/anomaly-logs':             () => import('../views/monitoring/AnomalyLogs.vue'),
 
   // filters: four routes, one component - same object, different matcher

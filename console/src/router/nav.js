@@ -48,7 +48,7 @@ export const NAV = [
         children: [
           { label: 'Local',             to: '/profile/local' },
           { label: 'Active Directory',  to: '/profile/active-directory' },
-          { label: 'LDAP',              to: '/profile/ldap' },
+          { label: 'OpenLDAP',              to: '/profile/ldap' },
           { label: 'RADIUS',            to: '/profile/radius' },
           { label: 'SAML',              to: '/profile/saml' },
           { label: 'OAuth',             to: '/profile/oauth' },
@@ -131,25 +131,25 @@ export const NAV = [
       {
         label: 'Logs & reports', icon: 'fa-chart-line',
         children: [
-          { label: 'Live sessions',        to: '/reports/live' },
-          { label: 'Event logs',           to: '/reports/event-logs' },
-          { label: 'Access logs',          to: '/reports/access-logs' },
-          { label: 'Application access',   to: '/reports/application-access-logs' },
-          { label: 'Gateway report',       to: '/reports/gateway' },
-          { label: 'User last login',      to: '/reports/user-last-login' },
-          { label: 'Data usage',           to: '/reports/data-uses-log' },
-          { label: 'Time usage',           to: '/reports/time-uses-log' },
-          { label: 'Anomaly logs',         to: '/reports/anomaly-logs' },
-          { label: 'Session recording',    to: '/reports/session-recording' },
-          { label: 'Session log',          to: '/reports/session-log' },
-          { label: 'Network test',         to: '/reports/network-test' }
+          { label: 'Live Users',           to: '/reports/live' },
+          { label: 'Event Log',            to: '/reports/event-logs' },
+          { label: 'Access Log',           to: '/reports/access-logs' },
+          { label: 'Application Access Log', to: '/reports/application-access-logs' },
+          { label: 'Live Gateways',        to: '/reports/gateway' },
+          { label: 'User Last Login Report', to: '/reports/user-last-login' },
+          { label: 'Data Usage Report',    to: '/reports/data-uses-log' },
+          { label: 'Time Usage Report',    to: '/reports/time-uses-log' },
+          { label: 'Risk Report',          to: '/reports/anomaly-logs' },
+          { label: 'Session Recording',    to: '/reports/session-recording' },
+          { label: 'Session Log',          to: '/reports/session-log' },
+          { label: 'Network Test Report',  to: '/reports/network-test' }
         ]
       },
       {
         label: 'Report settings', icon: 'fa-file-export',
         children: [
-          { label: 'SIEM / export log',    to: '/profile/export-log' },
-          { label: 'Report subscriptions', to: '/report-subscriptions' }
+          { label: 'Export Log',           to: '/profile/export-log' },
+          { label: 'Report Subscriptions', to: '/report-subscriptions' }
         ]
       },
       {
