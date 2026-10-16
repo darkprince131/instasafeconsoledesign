@@ -82,7 +82,12 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         const res = await request(`/${resource}?perPage=1`)
         if (res?.total) continue
         const rows = build()
-        if (rows.length) await request('/seed', { method: 'POST', body: { [resource]: rows } })
+        /* Sliced like the first seed is: one POST of several hundred rows
+           runs the function past its time limit, and a partial write is not
+           rolled back. */
+        for (let i = 0; i < rows.length; i += 300) {
+          await request('/seed', { method: 'POST', body: { [resource]: rows.slice(i, i + 300) } })
+        }
       } catch {
         /* One collection failing to top up must not stop the others, and must
            not stop the console loading. */
