@@ -74,7 +74,13 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
     ['appAccessLog', () => seed.seedAppAccessLog(seed.seedUsers(60))],
     ['accessLog', () => seed.seedAccessLog()],
     ['exportProfiles', () => seed.seedExportProfiles()],
-    ['anomalies', () => seed.seedAnomalies(seed.seedUsers(60))]
+    ['anomalies', () => seed.seedAnomalies(seed.seedUsers(60))],
+    ['scimExports', () => seed.seedScimExports()],
+    ['scimSyncLogs', () => seed.seedScimSyncLogs(seed.seedScimExports())],
+    ['oauthServices', () => seed.seedOauthServices()],
+    ['openidServices', () => seed.seedOpenidServices()],
+    ['samlIdps', () => seed.seedSamlIdps()],
+    ['radiusServices', () => seed.seedRadiusServices()]
   ]
 
   async function topUp () {
@@ -114,6 +120,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
          a timeout mid-seed leaves a tenant holding whatever happened to have
          been written before the clock ran out. Resource by resource, each
          call is small, and a failure is both visible and retryable. */
+      const scimProfiles = seed.seedScimExports()
       const batches = [
         ['groups', groups],
         ['applications', applications],
@@ -149,6 +156,12 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['accessLog', seed.seedAccessLog()],
         ['exportProfiles', seed.seedExportProfiles()],
         ['anomalies', seed.seedAnomalies(users)],
+        ['scimExports', scimProfiles],
+        ['scimSyncLogs', seed.seedScimSyncLogs(scimProfiles)],
+        ['oauthServices', seed.seedOauthServices()],
+        ['openidServices', seed.seedOpenidServices()],
+        ['samlIdps', seed.seedSamlIdps()],
+        ['radiusServices', seed.seedRadiusServices()],
         ['users', users],
         ['devices', seed.seedDevices(users, SEED_SIZE.devices)],
         ['sessions', seed.seedSessions(users, applications)],

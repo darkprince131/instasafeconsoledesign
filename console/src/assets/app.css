@@ -233,3 +233,62 @@ html[data-i-theme="dark"] .i-intro { background: rgba(114,101,224,.12); }
   display: grid; place-items: center;
   background: var(--i-v50); color: var(--i-v700); font-size: 12px;
 }
+
+/* A repeating single-value field — redirect URIs and the like. The remove
+   control sits outside the input so the inputs stay on one left edge. */
+.i-mtrow { display:flex; gap:6px; align-items:center; margin-bottom:6px }
+.i-mtrow .i-ctl { flex:1; min-width:0 }
+
+/* A View panel: labels in a narrow column, values in the rest, machine
+   strings wrapping rather than scrolling the panel sideways. */
+.i-readkv { display:grid; grid-template-columns:200px 1fr; gap:10px 16px; margin:0 }
+.i-readkv dt { color:var(--i-dim); font-size:13px; font-weight:400 }
+.i-readkv dd { margin:0; white-space:pre-wrap; word-break:break-word }
+@media (max-width:640px) { .i-readkv { grid-template-columns:1fr; gap:2px 0 } }
+
+/* A utility that was missing: muted text outside a table cell. */
+.i-dim{ color:var(--i-dim); }
+
+/* An accordion header. Used by the SCIM mapping, where two tables that are
+   rarely edited together would otherwise both be open all the time. */
+.i-acc{
+  display:flex; align-items:center; gap:8px; width:100%;
+  background:none; border:0; padding:10px 0; text-align:left;
+  font-size:14px; font-weight:500; color:var(--i-ink); cursor:pointer;
+  border-bottom:1px solid var(--i-line);
+}
+.i-acc:hover{ color:var(--i-v600); }
+.i-acc:focus-visible{ outline:2px solid var(--i-v600); outline-offset:2px; }
+.i-acc i{ font-size:11px; color:var(--i-dim); width:12px; }
+
+/* SAML custom attributes: name, a switch, a value, and room to remove it. */
+.i-claimhead,.i-claimrow{
+  display:grid; grid-template-columns:1fr 120px 1fr 36px;
+  gap:8px; align-items:center;
+}
+.i-claimhead{ font-size:11.5px; color:var(--i-dim); margin-bottom:4px; }
+.i-claimrow{ margin-bottom:6px; }
+.i-claimrow .i-sw{ justify-content:center; }
+@media (max-width:720px){
+  .i-claimhead{ display:none; }
+  .i-claimrow{ grid-template-columns:1fr; }
+}
+
+/* The endpoint strip under an IDAM list header. Chrome, so it may carry the
+   tint; the table below it stays on the canvas. */
+.i-endpoints{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px;
+  padding:8px 10px; margin:0 0 14px; border-radius:6px;
+  background:var(--i-tint); border:1px solid var(--i-line);
+}
+.i-ep{
+  display:inline-flex; align-items:center; gap:7px;
+  background:none; border:0; padding:3px 6px; border-radius:4px; cursor:pointer;
+  font-size:12px; color:var(--i-ink);
+}
+.i-ep span{ color:var(--i-dim); }
+.i-ep code{ font-size:11px; color:var(--i-ink); }
+.i-ep i{ font-size:10px; color:var(--i-dim); opacity:0; }
+.i-ep:hover{ background:var(--i-canvas); }
+.i-ep:hover i{ opacity:1; }
+.i-ep:focus-visible{ outline:2px solid var(--i-v600); outline-offset:1px; }

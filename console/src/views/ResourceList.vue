@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, inject, onMounted, defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import PageHeader from '../components/ui/PageHeader.vue'
 import DataTable from '../components/ui/DataTable.vue'
@@ -13,6 +13,8 @@ const LocationPicker = defineAsyncComponent(() => import('../components/ui/Locat
 import GraphView from '../components/ui/GraphView.vue'
 import TimeWindow from '../components/ui/TimeWindow.vue'
 import NetEntries from '../components/ui/NetEntries.vue'
+import MultiText from '../components/ui/MultiText.vue'
+import ClaimRows from '../components/ui/ClaimRows.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ConfirmModal from '../components/ui/ConfirmModal.vue'
 import Sheet from '../components/ui/Sheet.vue'
@@ -31,6 +33,7 @@ const props = defineProps({
 })
 
 const r = useRoute()
+const router = useRouter()
 const toast = inject('toast', () => {})
 const refreshStats = inject('refreshStats', () => {})
 
@@ -61,7 +64,7 @@ const form = ref({})
  * and offering a column that silently does nothing is worse than omitting it.
  */
 const bulkColumns = computed(() => (cfg.value?.form || [])
-  .filter(f => !['pick', 'location', 'file', 'days', 'switch', 'note', 'timewindow'].includes(f.type))
+  .filter(f => !['pick', 'location', 'file', 'days', 'switch', 'note', 'timewindow', 'multitext', 'claims'].includes(f.type))
   .map(f => ({
     key: f.key,
     label: f.label,
@@ -88,6 +91,8 @@ function blankForm () {
     out[f.key] = f.default !== undefined ? f.default
       : f.type === 'switch' ? false
       : f.type === 'days' ? []
+      : f.type === 'multitext' ? []
+      : f.type === 'claims' ? []
       : f.type === 'pick' ? (f.multiple === false ? '' : [])
       : ''
   }
@@ -115,6 +120,7 @@ function onBulkApplied ({ count }) {
 function openAdd () {
   if (atLimit.value) { limitHit.value = true; return }
   return reallyOpenAdd()
+  reading.value = false
 }
 
 function reallyOpenAdd () {
@@ -162,6 +168,52 @@ const secretActions = computed(() => {
   if (!c) return []
   return c.secretActions || (c.secretAction ? [c.secretAction] : [])
 })
+
+/**
+ * An action taken on the record itself, from the View panel.
+ *
+ * Velto's SAML IdP offers Download Metadata and Change Password; its OAuth2
+ * and OpenID services offer a client secret you can change. These are not
+ * form fields — they act immediately and some of them cannot be undone — so
+ * they live behind the View panel rather than inside the form.
+ *
+ * The config supplies `run(form, helpers)`. Returning a string leaves a note
+ * under the buttons, which is how the irreversible ones say what they did.
+ */
+const readNote = ref('')
+
+/* A path is relative to this origin unless it already names a scheme —
+   radius:// among them, which no browser resolves. */
+function absolute (p) { return /^[a-z]+:\/\//i.test(p) ? p : location.origin + p }
+function copyEndpoint (p) { navigator.clipboard?.writeText(absolute(p)); toast('Copied') }
+
+function saveFile (filename, text, mime = 'application/octet-stream') {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }))
+  const a = document.createElement('a')
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/** Write a patch straight back to the record, without leaving the panel. */
+async function patchRecord (patch) {
+  Object.assign(form.value, patch)
+  if (editingId.value) {
+    await api[cfg.value.resource].update(editingId.value, plainPatch(patch))
+    await load()
+  }
+}
+function plainPatch (p) { return JSON.parse(JSON.stringify(p)) }
+
+async function runReadAction (a) {
+  readNote.value = ''
+  try {
+    const out = await a.run(form.value, { toast, api, saveFile, patch: patchRecord, origin: location.origin })
+    if (typeof out === 'string') readNote.value = out
+  } catch (e) {
+    readNote.value = 'That did not complete: ' + e.message
+  }
+}
 
 function openSecret (action) {
   secretActive.value = action
@@ -331,12 +383,39 @@ function onFile (f, e) {
   reader.readAsDataURL(file)
 }
 
+/**
+ * Reading before editing.
+ *
+ * Most screens open the editable panel on a row click. Three do not, and they
+ * are velto's own behaviour rather than a drift: Controllers, and in IDAM the
+ * SAML IdP, open a **View** panel first, with Edit inside it. The reason is
+ * that those records carry actions you take *on* the record — download its
+ * metadata, change its secret — which do not belong on a form you might
+ * cancel out of.
+ *
+ * SCIM Export goes further and opens a page of its own, because it has tabs.
+ */
+const reading = ref(false)
+
 function openEdit (row) {
+  if (cfg.value?.rowTo) { router.push(cfg.value.rowTo(row)); return }
   if (!editable.value) return
   form.value = { ...blankForm(), ...row }
   editingId.value = row.id
+  reading.value = !!cfg.value?.readFirst
   sheetOpen.value = true
   loadAcls()
+}
+
+/** The fields a View panel shows, in form order, skipping what has no value. */
+const readFields = computed(() => (cfg.value?.form || [])
+  .filter(f => f.type !== 'note' && visible(f)))
+
+function readValue (f) {
+  const v = form.value[f.key]
+  if (Array.isArray(v)) return v.filter(Boolean).join(String.fromCharCode(10)) || '—'
+  if (f.type === 'switch') return v ? 'Yes' : 'No'
+  return (v === '' || v === undefined || v === null) ? '—' : String(v)
 }
 
 async function saveForm () {
@@ -567,6 +646,21 @@ onMounted(load)
       <PageHeader :title="cfg.title" :subtitle="cfg.subtitle">
       </PageHeader>
 
+    <!-- Endpoints a list screen describes. IDAM's five are the identity
+         provider this demo actually runs at /idp, so the URLs here are live
+         and an integrator can point something at them during a demo. -->
+    <div v-if="(cfg.endpoints || []).length" class="i-endpoints">
+      <span class="i-meta">{{ cfg.endpointsLabel || 'Endpoints' }}</span>
+      <template v-for="[label, path] in cfg.endpoints" :key="label">
+        <button class="i-ep" @click="copyEndpoint(path)">
+          <span>{{ label }}</span>
+          <code class="i-tech">{{ absolute(path) }}</code>
+          <i class="fa-regular fa-copy" aria-hidden="true" />
+        </button>
+      </template>
+    </div>
+
+
       <!-- Search leads, the actions sit against it, the filters follow.
            The page header above carries the title and one line of context and
            nothing else: a title competing with two buttons is a title that
@@ -684,10 +778,40 @@ onMounted(load)
     <Sheet
       v-if="editable"
       v-model:open="sheetOpen"
-      :title="(editingId ? 'Edit ' : 'Add ') + (cfg.singular || 'record')"
-      :subtitle="cfg.formSubtitle || ''"
+      :title="(reading ? 'View ' : editingId ? 'Edit ' : 'Add ') + (cfg.singular || 'record')"
+      :subtitle="reading ? (cfg.readSubtitle || '') : (cfg.formSubtitle || '')"
     >
-      <div class="i-formsec">
+      <!-- Read mode: the record as it stands, and the actions you take on it.
+           Nothing here is a control you could leave half-changed. -->
+      <template v-if="reading">
+        <div class="i-formsec">
+          <dl class="i-readkv">
+            <template v-for="f in readFields" :key="f.key">
+              <dt>{{ f.label }}</dt>
+              <dd :class="{ 'i-tech': f.mono }">{{ readValue(f) }}</dd>
+            </template>
+            <!-- Facts about the record that are not fields on it. The
+                 certificate's expiry is the one that matters: velto shows it
+                 only here, which is how a certificate quietly runs out. -->
+            <template v-for="x in (cfg.readExtra || [])" :key="x.key">
+              <dt>{{ x.label }}</dt>
+              <dd class="i-tech">{{ x.cell ? x.cell(form[x.key], form) : (form[x.key] ?? '—') }}</dd>
+            </template>
+          </dl>
+        </div>
+        <div v-if="(cfg.readActions || []).length" class="i-formsec">
+          <h3>Actions</h3>
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              v-for="a in cfg.readActions" :key="a.key"
+              class="i-btn i-sm" @click="runReadAction(a)"
+            ><i class="fa-solid me-1" :class="a.icon || 'fa-bolt'" aria-hidden="true" />{{ a.label }}</button>
+          </div>
+          <p v-if="readNote" class="i-hint">{{ readNote }}</p>
+        </div>
+      </template>
+
+      <div v-if="!reading" class="i-formsec">
         <div
           v-for="(fieldRow, ri) in formRows" :key="'row' + ri"
           class="i-frow"
@@ -715,6 +839,20 @@ onMounted(load)
             <p v-if="f.hint" class="i-hint">{{ f.hint }}</p>
           </div>
 
+          <ClaimRows
+            v-else-if="f.type === 'claims'"
+            :model-value="form[f.key] || []"
+            :label="f.label" :hint="f.hint || ''"
+            @update:model-value="form[f.key] = $event"
+          />
+          <MultiText
+            v-else-if="f.type === 'multitext'"
+            :model-value="form[f.key] || []"
+            :label="f.label" :name="f.name || f.key" :required="!!f.required"
+            :placeholder="f.placeholder || ''" :hint="f.hint || ''"
+            :type="f.inputType || 'text'" :add-label="f.addLabel || 'Add More'"
+            @update:model-value="form[f.key] = $event"
+          />
           <NetEntries
             v-else-if="f.type === 'netentries'"
             :model-value="form[f.key] || []"
@@ -801,7 +939,7 @@ onMounted(load)
       </div>
       <!-- Velto's Change Password / Change Client Secret: its own button,
            never a field on the form. -->
-      <div v-if="secretActions.length" class="i-formsec">
+      <div v-if="secretActions.length && !reading" class="i-formsec">
         <div v-for="a in secretActions" :key="a.key" class="i-field">
           <label>{{ a.label }}</label>
           <div>
@@ -813,7 +951,7 @@ onMounted(load)
         </div>
       </div>
 
-      <div v-if="cfg.aclPanel && editingId" class="i-formsec">
+      <div v-if="cfg.aclPanel && editingId && !reading" class="i-formsec">
         <h3>Access rules</h3>
         <p class="i-secsub">
           {{ aclsLoading
@@ -829,9 +967,14 @@ onMounted(load)
       </div>
 
       <template #footer>
-        <button class="i-btn i-quiet" @click="sheetOpen = false">Cancel</button>
+        <button class="i-btn i-quiet" @click="sheetOpen = false">
+          {{ reading ? 'Close' : 'Cancel' }}
+        </button>
         <div class="i-right">
-          <button class="i-btn i-primary" :disabled="saving" @click="saveForm">
+          <button v-if="reading" class="i-btn i-primary" @click="reading = false">
+            <i class="fa-solid fa-pen me-1" aria-hidden="true" />Edit
+          </button>
+          <button v-else class="i-btn i-primary" :disabled="saving" @click="saveForm">
             {{ saving ? 'Saving…' : (editingId ? 'Save changes' : 'Create') }}
           </button>
         </div>

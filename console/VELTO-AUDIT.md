@@ -1708,6 +1708,88 @@ Neither screen serves a binary — there is nothing to serve. A request writes
 `download.requested` to the event log instead, which is where a real one would
 be audited from, so the trail is honest even though the file is absent.
 
+## 52. IDAM was five static pages where velto has five lists
+
+Every IDAM screen rendered one configuration form describing the identity
+provider's endpoints. Velto's are lists: a tenant runs several OAuth2 clients,
+several SAML service providers, several SCIM export targets. Velto's own
+tenant holds 8 SCIM profiles, 4 OAuth2 clients, 4 OIDC relying parties, 29
+SAML service providers and 4 RADIUS clients. None of that could be expressed.
+
+| Screen | Velto's add form | Row click opens |
+|---|---|---|
+| SCIM Export | Name, Description | a **page** with five tabs |
+| OAuth2 Service | Name, Redirect URIs (Add More), Post Logout Redirect URIs | View panel + **Regenerate** |
+| OpenID Provider | same three | View panel + **Regenerate** |
+| SAML IDP | eleven fields, see below | View panel + **Download Metadata**, **Change Password** |
+| RADIUS Service | Name, Client IP | View panel + **Change Client Secret** |
+
+**Reading before editing.** Four of the five open a *View* panel on a row
+click, with Edit inside it — the same behaviour Controllers has (§22), and for
+the same reason: these records carry actions you take *on* the record, and a
+secret you regenerate does not belong on a form you might cancel out of. The
+list template now supports `readFirst`, and `readExtra` for facts that are not
+fields — the client ID, when the secret was last set, and the certificate's
+expiry.
+
+**SAML IDP, where velto has moved on from the capture.** The captured veno
+tenant shows eight fields; velto has grown three more since:
+
+| Field | Note |
+|---|---|
+| Name | locked on edit |
+| SP Type | Azure · Google · Custom |
+| SP Entity ID, SP ACS URL | |
+| **Override Default IDP Entity ID** | toggle, revealing IDP Entity ID |
+| NameID Attribute, NameID Value | **Custom only** — Azure and Google pin them, and velto hides both controls for those two |
+| **Custom Attributes** | repeating: name, Use Standard Claim toggle, value — a standard claim (Username/Email/UPN/Immutable ID) or a constant |
+| SP Certificate | |
+| IP Filter | |
+| **IP Filter Excluded Groups** | group picker |
+
+Expiration Date is read-only and velto shows it only once a record is open —
+which is how a signing certificate quietly expires. It is a column here as
+well, so an expiry is visible without opening anything.
+
+**Change Password on a SAML IdP** is velto's wording for rotating the signing
+keystore. It reissues the certificate, so every service provider holding the
+old metadata has to take the new one. Said plainly on the screen.
+
+### SCIM Export has a record page, and it is the only one that does
+
+Velto's `/scim-export/<id>#about` carries five tabs, because a SCIM profile is
+not a set of fields — it is a connection you test, a mapping you edit, a scope
+you choose and a run you read the result of.
+
+| Tab | Velto |
+|---|---|
+| About | Name, Description (both read-only), Status toggle, Tenant URL*, Secret token*, **Test Connection** — and **Provision on demand** top right |
+| Mapping | User Mapping and Group Mapping accordions, each a table: `# · Local Mapping Type (Direct/Constant) · Local Attribute / Value · Default Value if Null · SCIM Attribute · Action`, with Add Row and Save |
+| Users | `# · Username · Last synced at` |
+| Groups | a group multi-select, **Sync**, then `# · Name · Last synced at` |
+| Logs | `# · Type · Name · Operation · Status · Last synced at · Message` |
+
+The attribute lists are velto's own, including the SCIM filter paths —
+`emails[type eq "work"].value` and the rest.
+
+**What this console adds: Preview the payload.** Velto lets you save a mapping
+and find out whether it was right from the log, one sync later. Here the
+mapping is *applied* to two real users and the resulting SCIM body is shown —
+nested paths built, filter paths turned into the array entry they mean,
+defaults substituted where a value is null. A wrong mapping is visible before
+a sync instead of after one.
+
+**Where it stops being real, and says so.** Test Connection checks the shape of
+the tenant URL and that a token is set, then explains that a true test is a
+server-side GET of `/ServiceProviderConfig` — a browser cannot make it,
+because no SCIM provider allows cross-origin reads. Sync and Provision on
+demand write to the profile's own log rather than pretending to reach a
+provider. Both are honest about it on screen.
+
+**What was kept from the old screens.** The endpoint lists were the one real
+thing there: they describe the IdP this demo runs at `/idp`. They are now a
+strip under each IDAM page header, click-to-copy, still live.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

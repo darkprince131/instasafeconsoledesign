@@ -479,6 +479,9 @@ const RESOURCE_TABLE = {
   fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
   riskProfiles: 'records', userProviders: 'records', downloads: 'records',
   appAccessLog: 'records', accessLog: 'records', anomalies: 'records',
+  scimExports: 'records', scimSyncLogs: 'records',
+  oauthServices: 'records', openidServices: 'records',
+  samlIdps: 'records', radiusServices: 'records',
   exportProfiles: 'records'
 }
 
@@ -494,6 +497,9 @@ const RECORD_KINDS = {
   idamServices: 'idam-service', riskProfiles: 'risk-profile',
   userProviders: 'user-provider', downloads: 'download',
   appAccessLog: 'app-access-log', accessLog: 'access-log', anomalies: 'anomaly',
+  scimExports: 'scimExport', scimSyncLogs: 'scimSyncLog',
+  oauthServices: 'oauthService', openidServices: 'openidService',
+  samlIdps: 'samlIdp', radiusServices: 'radiusService',
   exportProfiles: 'export-profile'
 }
 

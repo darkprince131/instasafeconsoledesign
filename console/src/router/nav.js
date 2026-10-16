@@ -174,11 +174,11 @@ export const NAV = [
       {
         label: 'IDAM', icon: 'fa-fingerprint',
         children: [
-          { label: 'SCIM export',    to: '/scim-export' },
-          { label: 'OAuth2 service', to: '/oauth2-service' },
-          { label: 'OpenID IdP',     to: '/openid-idp' },
-          { label: 'SAML IdP',       to: '/saml-idp' },
-          { label: 'RADIUS server',  to: '/authserver/radius' }
+          { label: 'SCIM Export',    to: '/scim-export' },
+          { label: 'OAuth2 Service', to: '/oauth2-service' },
+          { label: 'OpenID Provider', to: '/openid-idp' },
+          { label: 'SAML IDP',       to: '/saml-idp' },
+          { label: 'RADIUS Service', to: '/authserver/radius' }
         ]
       },
       { label: 'Tech support', icon: 'fa-headset', to: '/tech-support' }

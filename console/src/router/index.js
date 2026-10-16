@@ -48,11 +48,10 @@ const bespoke = {
   '/domainlists':     () => import('../views/security/Filters.vue'),
 
   // IDAM: i365 as the provider. These describe the IdP running at /idp.
-  '/openid-idp':       () => import('../views/identity/IdamServices.vue'),
-  '/saml-idp':         () => import('../views/identity/IdamServices.vue'),
-  '/oauth2-service':   () => import('../views/identity/IdamServices.vue'),
-  '/scim-export':      () => import('../views/identity/IdamServices.vue'),
-  '/authserver/radius':() => import('../views/identity/IdamServices.vue'),
+  /* IDAM is five lists now, not five static pages: a tenant runs several
+     OAuth2 clients and several SAML service providers, and velto lists them.
+     They render through the shared list template like every other list.
+     SCIM export alone has a record page, because its record has tabs. */
 
   // settings: six routes of grouped fields saved as a blob
   '/settings/company-details':      () => import('../views/settings/CompanyDetails.vue'),
@@ -126,6 +125,16 @@ for (const dest of flatRoutes()) {
     })
   }
 }
+
+/* A record page under a list. The loop above only registers nav
+   destinations, and this is not one — it is reached by clicking a row. */
+routes.push({
+  path: '/scim-export/:id',
+  name: 'scim-export-detail',
+  component: () => import('../views/identity/ScimExportDetail.vue'),
+  meta: { section: 'Administration', parent: 'SCIM Export',
+    label: 'Profile', title: 'SCIM Export Profile' }
+})
 
 routes.push({
   path: '/:pathMatch(.*)*',

@@ -39,6 +39,15 @@ const ago = (days) => new Date(Date.now() - days * 86400000).toISOString()
 
 function pad (n, w = 4) { return String(n).padStart(w, '0') }
 
+/* A UUID from the seeded PRNG rather than crypto, so a client ID is the same
+   on every visit and a screenshot taken today still matches the demo. */
+const HEX = '0123456789abcdef'
+function uuid () {
+  return [8, 4, 4, 4, 12]
+    .map(n => Array.from({ length: n }, () => HEX[Math.floor(r() * 16)]).join(''))
+    .join('-')
+}
+
 // ---------------------------------------------------------------- users
 export function seedUsers (count = 1820) {
   const out = []
@@ -785,6 +794,159 @@ export function seedExportProfiles () {
     timezone: '(UTC+05:30) Indian Standard Time',
     batchSize: 100, enabled: true,
     createdAt: ago(90 + r() * 200)
+  }))
+}
+
+/**
+ * IDAM — this tenant acting as the provider.
+ *
+ * Five small collections, shaped from velto's own records: eight SCIM export
+ * profiles, four OAuth2 clients, four OIDC relying parties, ten SAML service
+ * providers and a handful of RADIUS clients. The SAML set keeps velto's own
+ * mix of SP types, because Azure and Google behave differently on the form
+ * and a demo with only Custom never shows that.
+ */
+export function seedScimExports () {
+  const SRC = [
+    ['testexport', 'for testin', true],
+    ['timeexport', 'Test scim export', true],
+    ['exporting', 'securetovelto', false],
+    ['databricksbhu', 'provision to databrics', true],
+    ['Pravinexport', 'Testing SCIM Export', true],
+    ['DatabricksExport', 'Provision to Databricks', true],
+    ['demotest', 'export user', false],
+    ['databricks', 'provision to databricks', true]
+  ]
+  const GROUPS = ['developers', 'Finance', 'Contractors', 'Support']
+  return SRC.map(([name, description, on], i) => ({
+    id: `scimx_${pad(i + 1, 3)}`,
+    name, description, status: on,
+    tenantUrl: `https://${name.toLowerCase()}.cloud.databricks.com/api/2.0/accounts/scim/v2`,
+    secretTokenSet: on,
+    secretTokenUpdatedAt: on ? ago(20 + r() * 300) : null,
+    /* Velto's own default mapping: the two every provider needs. */
+    userMapping: [
+      { type: 'Direct', local: 'username', fallback: '', scim: 'userName' },
+      { type: 'Direct', local: 'email', fallback: '', scim: 'emails[type eq "work"].value' },
+      { type: 'Direct', local: 'first_name', fallback: '', scim: 'name.givenName' },
+      { type: 'Direct', local: 'last_name', fallback: '', scim: 'name.familyName' }
+    ],
+    groupMapping: [
+      { type: 'Direct', local: 'name', fallback: '', scim: 'displayName' },
+      { type: 'Direct', local: 'members', fallback: '', scim: 'members' }
+    ],
+    groups: on ? GROUPS.slice(0, 1 + Math.floor(r() * 3)) : [],
+    lastSyncedAt: on ? ago(r() * 14) : null
+  }))
+}
+
+export function seedScimSyncLogs (profiles) {
+  const out = []
+  let n = 0
+  for (const p of profiles) {
+    if (!p.lastSyncedAt) continue
+    for (const g of p.groups) {
+      out.push({
+        id: `scimlog_${pad(++n, 4)}`, profileId: p.id, type: 'group', name: g,
+        operation: 'create', status: 'success', at: p.lastSyncedAt,
+        message: 'Group created successfully on SCIM provider'
+      })
+    }
+    /* One failure per tenant, because a log where everything succeeded
+       teaches nobody what a failure looks like. */
+    if (chance(0.35)) {
+      out.push({
+        id: `scimlog_${pad(++n, 4)}`, profileId: p.id, type: 'user',
+        name: 'contractor.temp', operation: 'update', status: 'failed',
+        at: p.lastSyncedAt,
+        message: 'Provider rejected the payload: userName already exists'
+      })
+    }
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+function oauthRows (prefix, names) {
+  return names.map(([name, uri], i) => ({
+    id: `${prefix}_${pad(i + 1, 3)}`,
+    name,
+    clientId: uuid(),
+    clientSecretSet: true,
+    clientSecretUpdatedAt: ago(30 + r() * 400),
+    redirectUris: [uri],
+    postLogoutUris: chance(0.4) ? [uri.replace(/\/[^/]*$/, '/logout')] : []
+  }))
+}
+
+export function seedOauthServices () {
+  return oauthRows('oa', [
+    ['zendesk', 'https://accounts.cloud.databricks.com/oidc/consume'],
+    ['oauthdebugger', 'https://oauthdebugger.com/debug'],
+    ['oauth2', 'https://instasafe.myfreshworks.com/sp/OAUTH/962343122010690857/callback'],
+    ['freshwork', 'https://isa1.myfreshworks.com/sp/OAUTH/860063758629978387/callback']
+  ])
+}
+
+export function seedOpenidServices () {
+  return oauthRows('oi', [
+    ['grafana', 'https://grafana.velto.internal/login/generic_oauth'],
+    ['harbor', 'https://harbor.velto.internal/c/oidc/callback'],
+    ['vault', 'https://vault.velto.internal/ui/vault/auth/oidc/oidc/callback'],
+    ['oidcdebugger', 'https://oidcdebugger.com/debug']
+  ])
+}
+
+export function seedSamlIdps () {
+  const SRC = [
+    ['showcase-velto', 'IAMShowcase', 'https://sptest.iamshowcase.com/acs', 'Custom'],
+    ['mocksamlscs', 'https://saml.sp.com', 'https://saml.sp.com/api/saml/sso', 'Custom'],
+    ['sxcvb', 'IAMShowcase', 'https://sptest.iamshowcase.com/acs', 'Custom'],
+    ['freshworknewshree', 'https://isa1-860063758629978387.myfreshworks.com/sp/SAML/1013028/metadata',
+      'https://isa1-860063758629978387.myfreshworks.com/sp/SAML/1013028/callback', 'Custom'],
+    ['1normalidp', 'urn:federation:MicrosoftOnline',
+      'https://login.microsoftonline.com/login.srf', 'Azure'],
+    ['googleqa', 'https://accounts.google.com/samlrp/02fpsfi52p96tj4',
+      'https://accounts.google.com/samlrp/acs?rpid=02fpsfi52p96tj4', 'Google'],
+    ['velto222', 'urn:federation:MicrosoftOnlines',
+      'https://login.microsoftonline.com/login.srf', 'Azure'],
+    ['newnoorsaml', 'https://instasafe-1010917410296239211.myfreshworks.com/sp/SAML/1010917/metadata',
+      'https://instasafe-1010917410296239211.myfreshworks.com/sp/SAML/1010917/callback', 'Custom'],
+    ['shankarnew', 'urn:federation:MicrosoftOnlines',
+      'https://login.microsoftonline.com/login.srf', 'Azure'],
+    ['fedIDP', 'urn:federation:MicrosoftOnlines',
+      'https://login.microsoftonline.com/login.srf', 'Azure']
+  ]
+  return SRC.map(([name, spEntityId, spAcsUrl, spType], i) => ({
+    id: `saml_${pad(i + 1, 3)}`,
+    name, spType, spEntityId, spAcsUrl,
+    overrideIdpEntityId: false,
+    idpEntityId: '',
+    /* Azure and Google pin these themselves, so velto leaves them unset. */
+    nameidAttribute: spType === 'Custom' ? pick(['Email', 'Persistent', 'Unspecified']) : '',
+    nameidValue: spType === 'Custom' ? pick(['Email', 'Username', 'UPN']) : '',
+    customAttributes: chance(0.4)
+      ? [{ name: 'Email', standard: true, value: 'Email' }]
+      : [],
+    spCertificate: '',
+    ipFilter: chance(0.25) ? '10.20.0.0/16,122.176.64.0/24' : '',
+    ipFilterExcludedGroups: [],
+    /* A certificate that expires is the thing this screen exists to warn
+       about, so one of them is inside ninety days. */
+    expiresAt: new Date(Date.now() + (i === 2 ? 71 : 180 + r() * 600) * 86400000).toISOString(),
+    keystoreUpdatedAt: ago(100 + r() * 500)
+  }))
+}
+
+export function seedRadiusServices () {
+  const SRC = [
+    ['google', '172.31.23.4'], ['mum-wifi-ctrl', '10.20.4.10'],
+    ['blr-vpn-concentrator', '10.30.1.5'], ['lab-switch', '10.40.9.2']
+  ]
+  return SRC.map(([name, clientIp], i) => ({
+    id: `rad_${pad(i + 1, 3)}`,
+    name, clientIp,
+    clientSecretSet: true,
+    clientSecretUpdatedAt: ago(40 + r() * 400)
   }))
 }
 

@@ -90,6 +90,15 @@ const RESHAPED = [
   ['accessLog', 'activity', () => seed.seedAccessLog()],
   ['exportProfiles', 'serverType', () => seed.seedExportProfiles()],
   ['anomalies', 'detector', () => seed.seedAnomalies(seed.seedUsers())],
+  /* IDAM. The marker column is one the record cannot have been written
+     without, so a tenant seeded before these existed tops up rather than
+     being left with five empty lists. */
+  ['scimExports', 'tenantUrl', () => seed.seedScimExports()],
+  ['scimSyncLogs', 'operation', () => seed.seedScimSyncLogs(seed.seedScimExports())],
+  ['oauthServices', 'clientId', () => seed.seedOauthServices()],
+  ['openidServices', 'clientId', () => seed.seedOpenidServices()],
+  ['samlIdps', 'spAcsUrl', () => seed.seedSamlIdps()],
+  ['radiusServices', 'clientIp', () => seed.seedRadiusServices()],
   /* Groups gained the five switches velto has and a real rule count. */
   ['groups', 'deviceDlp', () => {
     const groups = seed.seedGroups()
@@ -153,6 +162,13 @@ async function reseed () {
   await db.putMany('accessLog', seed.seedAccessLog())
   await db.putMany('exportProfiles', seed.seedExportProfiles())
   await db.putMany('anomalies', seed.seedAnomalies(users))
+  const scimProfiles = seed.seedScimExports()
+  await db.putMany('scimExports', scimProfiles)
+  await db.putMany('scimSyncLogs', seed.seedScimSyncLogs(scimProfiles))
+  await db.putMany('oauthServices', seed.seedOauthServices())
+  await db.putMany('openidServices', seed.seedOpenidServices())
+  await db.putMany('samlIdps', seed.seedSamlIdps())
+  await db.putMany('radiusServices', seed.seedRadiusServices())
   await db.putMany('sessions', seed.seedSessions(users, apps))
 
   localStorage.setItem(SEED_FLAG, new Date().toISOString())

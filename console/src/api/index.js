@@ -166,6 +166,21 @@ export const api = {
   },
   idam: resource('idamServices'),
 
+  /* IDAM: this tenant acting as the provider. Five lists, and one of them —
+     SCIM export — carries a log of its own runs. */
+  /** GET /scim-export */
+  scimExports: resource('scimExports'),
+  /** GET /scim-export/{id}/logs */
+  scimSyncLogs: resource('scimSyncLogs'),
+  /** GET /oauth2-service */
+  oauthServices: resource('oauthServices'),
+  /** GET /openid-idp */
+  openidServices: resource('openidServices'),
+  /** GET /saml-idp */
+  samlIdps: resource('samlIdps'),
+  /** GET /authserver/radius */
+  radiusServices: resource('radiusServices'),
+
   // ---- filters --------------------------------------------------------
   urlFilters: resource('urlFilters'),
   contentFilters: resource('contentFilters'),

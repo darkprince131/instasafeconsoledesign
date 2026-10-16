@@ -123,6 +123,24 @@ const statusPill = (raw) => {
   }[v] ?? null)
 }
 
+/**
+ * OAuth2 and OpenID register the same three things. One definition, used
+ * twice, so the two screens cannot drift apart.
+ */
+const OAUTH_FORM = (what) => [
+  { key: 'name', name: 'profile_name', label: 'Name', required: true,
+    placeholder: 'Enter Profile Name', lockedOnEdit: LOCK_REASON },
+  { key: 'redirectUris', name: 'redirect_uris', type: 'multitext',
+    label: 'Redirect URIs', required: true, inputType: 'url',
+    placeholder: 'https://your-app.com/callback',
+    hint: `Where this ${what} may be returned to after sign-in. A URI not listed here is refused, which is the whole point of listing them.` },
+  { key: 'postLogoutUris', name: 'post_logout_redirect_uris', type: 'multitext',
+    label: 'Post Logout Redirect URIs', inputType: 'url',
+    placeholder: 'https://your-app.com/logout' },
+  { key: 'note', type: 'note',
+    hint: 'The client ID and secret are issued on save. The secret is shown once and stored write-only; Regenerate, on the View panel, issues another.' }
+]
+
 const LOCK_REASON = 'Access rules and sessions refer to a profile by name, so a renamed profile is a new one. Create another profile and move the rules across.'
 
 export const RESOURCES = {
@@ -1251,6 +1269,321 @@ export const RESOURCES = {
    * it as account status put a destructive Delete where Unblock belongs and
    * hid the one fact the admin actually needs, which is when it lifts.
    */
+  /* ------------------------------------------------------------------ IDAM
+   *
+   * i365 as the identity provider rather than a consumer of one. Every screen
+   * here was a single static configuration page describing endpoints; velto's
+   * are lists — a tenant runs several OAuth2 clients, several SAML service
+   * providers, several SCIM export targets — so they are lists now, with
+   * velto's own fields.
+   *
+   * The endpoint descriptions that were here are not lost: they are what the
+   * IdP at /idp actually serves, and the Add form's hints point at them.
+   */
+
+  /**
+   * SCIM Export — push this tenant's users and groups to a downstream system.
+   *
+   * The list carries only Name and Description because everything that makes a
+   * profile work — the tenant URL, the token, the attribute mapping, which
+   * groups are in scope — lives on a page of its own. A row click opens it.
+   */
+  '/scim-export': {
+    endpointsLabel: 'This tenant as a SCIM source',
+    endpoints: [
+      ['Base', '/scim/v2'],
+      ['Users', '/scim/v2/Users'],
+      ['Groups', '/scim/v2/Groups']
+    ],
+
+    title: 'SCIM Export',
+    singular: 'SCIM export profile',
+    subtitle: 'Provision this tenant’s users and groups into a downstream system over SCIM 2.0.',
+    resource: 'scimExports',
+    searchFields: ['name', 'description'],
+    primaryAction: 'Add profile',
+    emptyTitle: 'No SCIM export profile yet',
+    emptyBody: 'A profile names one downstream system and the attributes it receives.',
+    rowTo: (row) => `/scim-export/${row.id}`,
+    columns: [
+      { key: 'name', label: 'Application Name', bold: true },
+      { key: 'description', label: 'Description', dim: true },
+      /* Not velto's, and the two that answer "is this working". A profile
+         that has never synced looks exactly like a working one in velto. */
+      { key: 'status', label: 'Status',
+        cell: (v) => v === false ? 'Disabled' : 'Enabled',
+        pill: (v) => v === false ? 'att' : null },
+      { key: 'lastSyncedAt', label: 'Last synced', cell: fmtAgo, dim: true }
+    ],
+    form: [
+      { key: 'name', name: 'name', label: 'Name', required: true,
+        placeholder: 'Enter Provider Name' },
+      { key: 'description', name: 'description', label: 'Description', required: true,
+        placeholder: 'Enter Description' },
+      { key: 'note', type: 'note',
+        hint: 'The tenant URL, secret token, attribute mapping and the groups in scope are set on the profile’s own page, which opens when you click its row.' }
+    ]
+  },
+
+  /**
+   * OAuth2 Service and OpenID Provider are the same form twice.
+   *
+   * Velto ships them as two screens with identical fields, because the
+   * records are different — an OAuth2 client is not an OIDC relying party
+   * even when the shape of the registration matches — and merging them would
+   * put somebody's API client in the sign-in list.
+   */
+  '/oauth2-service': {
+    endpointsLabel: 'Live endpoints',
+    endpoints: [
+      ['Authorize', '/idp/authorize'],
+      ['Token', '/idp/token'],
+      ['Introspect', '/idp/introspect']
+    ],
+
+    title: 'OAuth2 Service',
+    singular: 'OAuth2 service',
+    subtitle: 'Applications registered to obtain tokens from this tenant.',
+    resource: 'oauthServices',
+    searchFields: ['name', 'clientId'],
+    primaryAction: 'Add service',
+    emptyTitle: 'No OAuth2 service yet',
+    emptyBody: 'Registering one issues a client ID and a secret the application signs in with.',
+    readFirst: true,
+    readSubtitle: 'The registration as it stands. Editing is a separate step, because the secret cannot be put back.',
+    readExtra: [
+      { key: 'clientId', label: 'Client Id' },
+      { key: 'clientSecretUpdatedAt', label: 'Client Secret',
+        cell: (v) => v ? `Set ${fmtAgo(v)}. Stored write-only and not shown again.` : 'Not set' }
+    ],
+    readActions: [{
+      key: 'regen', label: 'Regenerate', icon: 'fa-rotate',
+      run: async (form, h) => {
+        const secret = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+        await h.patch({ clientSecretSet: true, clientSecretUpdatedAt: new Date().toISOString() })
+        await navigator.clipboard?.writeText(secret).catch(() => {})
+        return `New client secret copied to the clipboard. It is not stored in a readable form and will not be shown again — paste it into ${form.name} now.`
+      }
+    }],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'clientId', label: 'Client Id', mono: true },
+      { key: 'redirectUris', label: 'Redirect Uri', dim: true,
+        cell: (v) => (v || []).join(', ') || dash }
+    ],
+    form: OAUTH_FORM('oauth2 client')
+  },
+
+  '/openid-idp': {
+    endpointsLabel: 'Live endpoints',
+    endpoints: [
+      ['Issuer', '/idp'],
+      ['Discovery', '/idp/.well-known/openid-configuration'],
+      ['Authorize', '/idp/authorize'],
+      ['Token', '/idp/token'],
+      ['JWKS', '/idp/jwks']
+    ],
+
+    title: 'OpenID Provider',
+    singular: 'OpenID provider registration',
+    subtitle: 'Relying parties that delegate sign-in to this tenant over OIDC.',
+    resource: 'openidServices',
+    searchFields: ['name', 'clientId'],
+    primaryAction: 'Add provider',
+    emptyTitle: 'No OpenID relying party yet',
+    emptyBody: 'Registering one issues a client ID and a secret, and lists the URIs it may return to.',
+    readFirst: true,
+    readSubtitle: 'The registration as it stands. Editing is a separate step, because the secret cannot be put back.',
+    readExtra: [
+      { key: 'clientId', label: 'Client Id' },
+      { key: 'clientSecretUpdatedAt', label: 'Client Secret',
+        cell: (v) => v ? `Set ${fmtAgo(v)}. Stored write-only and not shown again.` : 'Not set' }
+    ],
+    readActions: [{
+      key: 'regen', label: 'Regenerate', icon: 'fa-rotate',
+      run: async (form, h) => {
+        const secret = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+        await h.patch({ clientSecretSet: true, clientSecretUpdatedAt: new Date().toISOString() })
+        await navigator.clipboard?.writeText(secret).catch(() => {})
+        return `New client secret copied to the clipboard. It is not stored in a readable form and will not be shown again — paste it into ${form.name} now.`
+      }
+    }],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'clientId', label: 'Client Id', mono: true },
+      { key: 'redirectUris', label: 'Redirect Uri', dim: true,
+        cell: (v) => (v || []).join(', ') || dash }
+    ],
+    form: OAUTH_FORM('relying party')
+  },
+
+  /**
+   * SAML IdP — one record per service provider that federates here.
+   *
+   * The longest form in IDAM, and the one where velto and the captured veno
+   * tenant disagree: velto has grown Override Default IDP Entity ID, Custom
+   * Attributes and IP Filter Excluded Groups since the capture. Velto wins.
+   *
+   * SP Type drives the rest. Azure and Google fix the NameID themselves, so
+   * velto hides both NameID controls for those two and shows them only for
+   * Custom. That is kept.
+   */
+  '/saml-idp': {
+    endpointsLabel: 'Live endpoints',
+    endpoints: [
+      ['Entity ID', '/idp'],
+      ['Metadata', '/idp/saml/metadata'],
+      ['Single sign-on', '/idp/saml/sso']
+    ],
+
+    title: 'SAML IDP',
+    singular: 'SAML IdP registration',
+    subtitle: 'Service providers that federate to this tenant over SAML 2.0.',
+    resource: 'samlIdps',
+    searchFields: ['name', 'spEntityId'],
+    primaryAction: 'Add service provider',
+    emptyTitle: 'No service provider yet',
+    emptyBody: 'Registering one lets that application send its users here to sign in.',
+    readFirst: true,
+    readSubtitle: 'The registration as it stands, with the signing certificate’s expiry.',
+    readExtra: [
+      { key: 'expiresAt', label: 'Expiration Date',
+        cell: (v) => {
+          if (!v) return '—'
+          const days = Math.round((new Date(v) - Date.now()) / 86400000)
+          return `${fmtStamp(v)}  (${days < 0 ? `expired ${-days} days ago` : `${days} days left`})`
+        } },
+      { key: 'keystoreUpdatedAt', label: 'Keystore last changed', cell: fmtAgo }
+    ],
+    readActions: [
+      {
+        key: 'metadata', label: 'Download Metadata', icon: 'fa-download',
+        run: (form, h) => {
+          const entity = form.overrideIdpEntityId && form.idpEntityId
+            ? form.idpEntityId : h.origin
+          const xml = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            `<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="${entity}">`,
+            '  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">',
+            `    <NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:${(form.nameidAttribute || 'Email').toLowerCase()}</NameIDFormat>`,
+            '    <SingleSignOnService',
+            '      Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"',
+            `      Location="${h.origin}/idp/saml/sso"/>`,
+            '  </IDPSSODescriptor>',
+            '</EntityDescriptor>'
+          ].join('\n')
+          h.saveFile(`${form.name || 'idp'}-metadata.xml`, xml, 'application/xml')
+          return 'Metadata downloaded. It names this tenant as the identity provider and carries the SSO endpoint the service provider posts to.'
+        }
+      },
+      {
+        key: 'rotate', label: 'Change Password', icon: 'fa-key',
+        run: async (form, h) => {
+          const until = new Date(Date.now() + 365 * 2 * 86400000).toISOString()
+          await h.patch({ expiresAt: until, keystoreUpdatedAt: new Date().toISOString() })
+          return 'The signing keystore’s passphrase has been changed and the certificate reissued, valid for two years. Every service provider using the old certificate must take the new metadata before its next sign-in.'
+        }
+      }
+    ],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'spEntityId', label: 'SP Entity ID', mono: true },
+      { key: 'spAcsUrl', label: 'SP ACS URL', mono: true, dim: true },
+      { key: 'spType', label: 'SP TYPE' },
+      /* Velto shows the expiry only once you open a record, which is how a
+         certificate quietly expires. A column makes it unmissable. */
+      { key: 'expiresAt', label: 'Certificate expires', cell: fmtUntil, mono: true }
+    ],
+    form: [
+      { key: 'name', name: 'profile_name', label: 'Name', required: true,
+        placeholder: 'Enter Profile Name', lockedOnEdit: LOCK_REASON, half: true },
+      { key: 'spType', name: 'sp_type', label: 'SP Type', required: true,
+        options: ['Azure', 'Google', 'Custom'], default: 'Custom', half: true },
+      { key: 'spEntityId', name: 'sp_entity_id', label: 'SP Entity ID', required: true,
+        placeholder: 'http://sp.instasafe.com', mono: true },
+      { key: 'spAcsUrl', name: 'sp_acs_url', label: 'SP ACS URL', required: true,
+        placeholder: 'http://sp.instasafe.com', mono: true },
+      { key: 'overrideIdpEntityId', type: 'switch', label: 'Override Default IDP Entity ID',
+        hint: 'Off, the entity ID is this tenant’s own URL. Some service providers were registered against a different one and cannot be changed.' },
+      { key: 'idpEntityId', label: 'IDP Entity ID', mono: true,
+        placeholder: 'http://velto.instasafe.com',
+        when: (f) => !!f.overrideIdpEntityId },
+      /* Azure and Google pin the NameID themselves. Velto hides both
+         controls for them rather than showing fields that are ignored. */
+      { key: 'nameidAttribute', name: 'nameid_attribute', label: 'NameID Attribute',
+        required: true, default: 'Email', half: true,
+        options: ['Entity', 'Persistent', 'Transient', 'Email', 'Unspecified'],
+        when: (f) => f.spType === 'Custom' },
+      { key: 'nameidValue', name: 'nameid_value', label: 'NameID Value',
+        required: true, default: 'Email', half: true,
+        options: ['Username', 'Email', 'UPN'],
+        when: (f) => f.spType === 'Custom' },
+      { key: 'customAttributes', type: 'claims', label: 'Custom Attributes',
+        hint: 'Extra assertions the service provider expects. A standard claim takes its value from the user; anything else is sent as typed.' },
+      { key: 'spCertificate', name: 'sp_certificate', type: 'textarea',
+        label: 'SP Certificate',
+        placeholder: '-----BEGIN CERTIFICATE-----' },
+      { key: 'ipFilter', name: 'ip_filter', label: 'IP Filter',
+        placeholder: 'IP/Network seperated by commas', mono: true },
+      { key: 'ipFilterExcludedGroups', type: 'pick', resource: 'groups',
+        name: 'ip_filter_exclude_groups', label: 'IP Filter Excluded Groups',
+        placeholder: 'Select IP Filter Excluded Groups…',
+        hint: 'Members of these groups reach this service provider from any address. Without an IP filter set, this does nothing.' }
+    ]
+  },
+
+  /**
+   * RADIUS Service — one record per network device that authenticates here.
+   *
+   * Two fields, and the secret is not one of them: velto issues it and offers
+   * Change Client Secret from the View panel, because a shared secret you can
+   * read off a form is a shared secret in a screenshot.
+   */
+  '/authserver/radius': {
+    endpointsLabel: 'Listeners',
+    endpoints: [
+      ['Authentication', 'radius://auth.instasafe.com:1812'],
+      ['Accounting', 'radius://auth.instasafe.com:1813']
+    ],
+
+    title: 'RADIUS Service',
+    singular: 'RADIUS client',
+    subtitle: 'Network devices that authenticate users against this tenant over RADIUS.',
+    resource: 'radiusServices',
+    searchFields: ['name', 'clientIp'],
+    primaryAction: 'Add client',
+    emptyTitle: 'No RADIUS client yet',
+    emptyBody: 'A client is one network device, named by the address it calls from.',
+    readFirst: true,
+    readSubtitle: 'RADIUS is spoken by hardware over UDP, so nothing here can be tested from a browser.',
+    readExtra: [
+      { key: 'clientSecretUpdatedAt', label: 'Shared Secret',
+        cell: (v) => v ? `Set ${fmtAgo(v)}. Stored write-only and not shown again.` : 'Not set' }
+    ],
+    readActions: [{
+      key: 'secret', label: 'Change Client Secret', icon: 'fa-key',
+      run: async (form, h) => {
+        const secret = crypto.randomUUID().replace(/-/g, '')
+        await h.patch({ clientSecretSet: true, clientSecretUpdatedAt: new Date().toISOString() })
+        await navigator.clipboard?.writeText(secret).catch(() => {})
+        return `New shared secret copied to the clipboard. Set it on ${form.name} before its next authentication, or that device stops authenticating.`
+      }
+    }],
+    columns: [
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'clientIp', label: 'Client IP', mono: true },
+      { key: 'clientSecretUpdatedAt', label: 'Secret set', cell: fmtAgo, dim: true }
+    ],
+    form: [
+      { key: 'name', name: 'profile_name', label: 'Name', required: true,
+        placeholder: 'Enter Profile Name', lockedOnEdit: LOCK_REASON, half: true },
+      { key: 'clientIp', name: 'client_ip', label: 'Client IP', required: true,
+        placeholder: 'Eg: 10.x.x.x', mono: true, half: true },
+      { key: 'note', type: 'note',
+        hint: 'The shared secret is issued when the client is created and is never shown again. Change Client Secret, on the client’s View panel, issues a new one.' }
+    ]
+  },
+
   '/limit-exceeders': {
     title: 'Blocked users',
     subtitle: 'Source addresses locked out by the rate limiter after repeated failed sign-ins. Each lockout expires on its own; unblocking only lifts it early.',
