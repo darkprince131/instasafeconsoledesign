@@ -1674,6 +1674,40 @@ Several reports in one subscription is the one that matters: velto sends one
 mail with the week's reports in it, and this sent four separate mails because
 it could only name one.
 
+## 51. Downloads was one invented list standing in for two screens
+
+Both `/downloads/user-agents` and `/downloads/gateway-agents` were aliased to a
+single config over `deviceUpdates`, with columns Platform / Version / Mandatory
+/ Notes. Neither velto screen looks like that, and the thing being listed —
+agent *releases* — is a third screen that already exists under Device updates.
+
+**User Agents** is not a table. Velto gives five destinations, one per platform,
+and two of them are stores rather than files:
+
+| Platform | Velto's destination |
+|---|---|
+| Windows | `/downloads/user-agents/windows` |
+| Linux | `/downloads/user-agents/linux` |
+| macOS | `/storage/InstaSafe.dmg` |
+| iOS | App Store |
+| Android | Google Play |
+
+Built as five tiles with the platform's own brand mark, the filename shown for
+the three that serve a file, and a store link for the two that do not. The
+difference matters: offering a "Download" for iOS would be a lie about how the
+product ships.
+
+**Gateway Agents** is a table of the tenant's own gateways — *Gateway Name,
+Type, Location, Downloads* — with the primary and its backup as separate rows,
+because a gateway's installer carries that gateway's identity and the two are
+not interchangeable. Velto's tenant shows `Bhubaneshwar | primary | bbsr` and
+`bbsrbackup | backup | bbsr`. Built over the real gateway list, so the rows
+track whatever gateways the tenant has.
+
+Neither screen serves a binary — there is nothing to serve. A request writes
+`download.requested` to the event log instead, which is where a real one would
+be audited from, so the trail is honest even though the file is absent.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

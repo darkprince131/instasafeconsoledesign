@@ -797,22 +797,6 @@ export const RESOURCES = {
     ]
   },
 
-  '/downloads/gateway-agents': { alias: '/downloads/user-agents' },
-
-  '/downloads/user-agents': {
-    title: 'User agents',
-    subtitle: 'The client people install. An out-of-date agent is the commonest cause of a posture failure.',
-    resource: 'deviceUpdates',
-    emptyTitle: 'No agent releases listed',
-    emptyBody: 'Add a release under Device updates and it appears here.',
-    columns: [
-      { key: 'platform', label: 'Platform', bold: true },
-      { key: 'version', label: 'Version', mono: true },
-      { key: 'mandatory', label: 'Mandatory', bool: true },
-      { key: 'notes', label: 'Release notes', dim: true }
-    ]
-  },
-
   '/sub-admin/all': {
     singular: 'sub admin',
     formSubtitle: 'A sub admin signs into this console with a role that limits what they can touch.',

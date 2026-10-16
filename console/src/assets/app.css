@@ -166,6 +166,24 @@ html[data-i-theme="dark"] .i-inbox-msg.is-unread{ background:rgba(114,101,224,.1
 .i-tw-scale > span:last-child{ transform:translateX(-100%); }
 .i-tw-len{ margin:6px 0 0; font-size:12px; color:var(--i-ink); }
 
+/* Downloads. Five platforms read as five things to choose between, which a
+   table of five rows does not — and the icon is the fastest way to find the
+   one you came for. In the page flow, so no shadow: a rule and the canvas. */
+.i-dlgrid{
+  display:grid; gap:12px; margin-top:4px;
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+}
+.i-dltile{
+  display:flex; align-items:center; gap:14px;
+  border:1px solid var(--i-rule); border-radius:var(--i-r-ctl);
+  padding:14px 16px; background:var(--i-canvas);
+}
+.i-dlicon{ font-size:26px; color:var(--i-mute); flex:none; width:30px; text-align:center; }
+.i-dlbody{ flex:1; min-width:0; }
+.i-dlbody h3{ margin:0 0 2px; font-size:13px; font-weight:500; color:var(--i-ink); }
+.i-dlnote{ margin:0; font-size:11.5px; color:var(--i-mute); }
+.i-dlfile{ margin:3px 0 0; font-size:11px; color:var(--i-dim); }
+
 /* An uploaded logo or background, shown at a size you can judge it at.
    In the page flow, so no shadow: a rule and the canvas behind it. */
 .i-imgprev{
