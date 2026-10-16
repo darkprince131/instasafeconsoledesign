@@ -463,7 +463,12 @@ const RESOURCE_TABLE = {
   authProfiles: 'auth_profiles', timeSchedules: 'time_schedules',
   geoFences: 'geo_fences', sessions: 'sessions',
   eventLog: 'event_log', inbox: 'outbound',
-  anomalies: 'anomalies', reportSubscriptions: 'report_subscriptions',
+  /* Anomalies moved to `records`: a finding carries an Additional
+     Informations block whose keys differ per detector — Speed and two
+     locations, or a list of usernames — and a fixed-column table drops it.
+     The column rendered as an em dash on the deployed site while being right
+     locally, which is the mock/HTTP split again. */
+  reportSubscriptions: 'report_subscriptions',
   /* Everything below shares the `records` table. Without an entry here the
      route 404s silently and the screen renders empty with no error - which is
      exactly how several screens would have shipped looking broken. */
@@ -473,7 +478,7 @@ const RESOURCE_TABLE = {
   urlFilters: 'records', contentFilters: 'records',
   fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
   riskProfiles: 'records', userProviders: 'records', downloads: 'records',
-  appAccessLog: 'records', accessLog: 'records'
+  appAccessLog: 'records', accessLog: 'records', anomalies: 'records'
 }
 
 /* Resources sharing `records` are scoped by kind, so one screen's rows never
@@ -487,7 +492,7 @@ const RECORD_KINDS = {
   fileTypeFilters: 'filetype-filter', domainLists: 'domain-list',
   idamServices: 'idam-service', riskProfiles: 'risk-profile',
   userProviders: 'user-provider', downloads: 'download',
-  appAccessLog: 'app-access-log', accessLog: 'access-log'
+  appAccessLog: 'app-access-log', accessLog: 'access-log', anomalies: 'anomaly'
 }
 
 // ------------------------------------------------------------- the handler
