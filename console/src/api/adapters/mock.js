@@ -87,6 +87,8 @@ const RESHAPED = [
   ['roles', 'canViewLogs', () => seed.seedRoles()],
   ['reportSubscriptions', 'cadence', () => seed.seedReportSubscriptions()],
   ['appAccessLog', 'destination', () => seed.seedAppAccessLog(seed.seedUsers())],
+  ['accessLog', 'activity', () => seed.seedAccessLog()],
+  ['anomalies', 'detector', () => seed.seedAnomalies(seed.seedUsers())],
   /* Groups gained the five switches velto has and a real rule count. */
   ['groups', 'deviceDlp', () => {
     const groups = seed.seedGroups()
@@ -147,6 +149,8 @@ async function reseed () {
   await db.putMany('softwarePackages', seed.seedSoftwarePackages())
   await db.putMany('eventLog', seed.seedEvents(users, 794, apps))
   await db.putMany('appAccessLog', seed.seedAppAccessLog(users))
+  await db.putMany('accessLog', seed.seedAccessLog())
+  await db.putMany('anomalies', seed.seedAnomalies(users))
   await db.putMany('sessions', seed.seedSessions(users, apps))
 
   localStorage.setItem(SEED_FLAG, new Date().toISOString())

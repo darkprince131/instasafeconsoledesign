@@ -678,6 +678,106 @@ export function seedAppAccessLog (users, count = 372) {
   return out.sort((a, b) => b.at.localeCompare(a.at))
 }
 
+/**
+ * Access Log — and what velto means by it.
+ *
+ * Not allow and deny decisions, which is what this console assumed: velto's
+ * Access Log is the **administrator activity trail**. User, what they opened
+ * or did, and when. The screen that shows access decisions is the Event Log
+ * filtered, and that already exists.
+ */
+export function seedAccessLog (count = 240) {
+  const WHO = [
+    'debajyoti@instasafe.com', 'priya.nair@example.com',
+    'asha.rao@example.com', 'deepak.menon@example.com'
+  ]
+  const WHAT = [
+    'all logs & reports', 'all users', 'all devices', 'all access rules',
+    'all gateways', 'all controllers', 'company details', 'user settings',
+    'device checks', 'all applications', 'subscription details',
+    'exported users to CSV', 'approved a device', 'suspended a user',
+    'edited an access rule', 'signed in', 'signed out'
+  ]
+  return Array.from({ length: count }, (_, i) => ({
+    id: `acl_${pad(i + 1, 5)}`,
+    actor: pick(WHO),
+    activity: pick(WHAT),
+    at: ago(r() * 30)
+  })).sort((a, b) => b.at.localeCompare(a.at))
+}
+
+/**
+ * Risk Report findings.
+ *
+ * Velto's columns are Detected At, Username, Message and **Additional
+ * Informations** — a block of key/value pairs under the message, which is
+ * where the detail that makes a finding actionable lives: how many attempts,
+ * which address, which user.
+ *
+ * The detector in AnomalyLogs.vue is real and still runs on demand. These are
+ * the findings a tenant arrives holding, so the screen is not empty on a
+ * first visit.
+ */
+export function seedAnomalies (users, count = 50) {
+  const DEST = ['172.31.12.75', '172.31.13.231', '172.31.5.124', '13.235.73.156', '65.1.110.5']
+  const PUBLIC = ['122.176.64.111', '223.188.154.89', '13.200.153.189', '49.37.220.14']
+  const PLACES = [
+    ['Mumbai', '19.0760, 72.8777'], ['Kanpur', '26.4631, 80.3479'],
+    ['Gurugram', '28.4927, 77.5358'], ['Bengaluru', '12.9716, 77.5946'],
+    ['London', '51.5072, -0.1276'], ['Singapore', '1.3521, 103.8198']
+  ]
+  const out = []
+  for (let i = 0; i < count; i++) {
+    const u = users[Math.floor(r() * users.length)]
+    const actor = chance(0.3) ? 'InstaSafeHelper' : u.username
+    const id = `anm_${pad(i + 1, 4)}`
+    const at = ago(r() * 21)
+    const roll = r()
+
+    if (roll < 0.3) {
+      /* "Travel speed 2804.66348638 km/h detected." */
+      const [, from] = pick(PLACES)
+      const [, to] = pick(PLACES)
+      const speed = 900 + r() * 2400
+      out.push({
+        id, at, actor, detector: 'travel-speed', kind: 'Travel speed', severity: 'high',
+        detail: `Travel speed ${speed.toFixed(8)} km/h detected.`,
+        extra: { Speed: speed, Last_location: from, Current_location: to }
+      })
+    } else if (roll < 0.52) {
+      /* "4 users from IP 122.176.64.111" */
+      const ip = pick(PUBLIC)
+      const names = Array.from({ length: 2 + Math.floor(r() * 3) },
+        () => users[Math.floor(r() * users.length)].username)
+      out.push({
+        id, at, actor, detector: 'shared-ip', kind: 'Shared source IP',
+        severity: names.length >= 4 ? 'high' : 'medium',
+        detail: `${names.length} users from IP ${ip}`,
+        extra: { Usernames: names.join(', ') }
+      })
+    } else if (roll < 0.72) {
+      /* "User switched between 2 IPs." */
+      const ips = [pick(PUBLIC), pick(PUBLIC)]
+      out.push({
+        id, at, actor, detector: 'ip-switching', kind: 'IP switching', severity: 'medium',
+        detail: `User switched between ${ips.length} IPs.`,
+        extra: { Ips: ips.join(', ') }
+      })
+    } else {
+      /* "1 blocked attempts on 172.31.12.75" — veno's wording, kept */
+      const ip = pick(DEST)
+      const n = 1 + Math.floor(r() * 8)
+      out.push({
+        id, at, actor, detector: 'blocked-attempts', kind: 'Blocked attempts',
+        severity: n >= 6 ? 'high' : n >= 3 ? 'medium' : 'low',
+        detail: `${n} blocked attempts on ${ip}`,
+        extra: { Attempts: n, Username: actor, Application_ip: ip }
+      })
+    }
+  }
+  return out.sort((x, y) => y.at.localeCompare(x.at))
+}
+
 export function seedDevicePolicies () {
   return [
     ['Encrypt contractor laptops', 'Windows', 'Config', 'Enabled',

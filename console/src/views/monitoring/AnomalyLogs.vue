@@ -42,14 +42,53 @@ function distance (a, b) {
   return Math.round(2 * R * Math.asin(Math.sqrt(h)))
 }
 
+/* Velto's columns: Detected At, Username, Message, Additional Informations.
+   The last is a block of key/value pairs under the message — how many
+   attempts, which address — and it is the part that makes a finding
+   actionable, so it is a column rather than something to open a row for.
+   Severity is this console's addition, and it is what the list is sorted by
+   in the eye: a high finding should not look like a low one. */
 const columns = [
-  { key: 'at', label: 'Detected', cell: fmtAgo, dim: true },
-  { key: 'kind', label: 'Anomaly', bold: true },
-  { key: 'actor', label: 'User' },
-  { key: 'detail', label: 'Why it fired' },
+  { key: 'at', label: 'Detected At', mono: true,
+    cell: (v) => {
+      const d = new Date(v)
+      const p = (n) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+        `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    } },
+  { key: 'actor', label: 'Username', bold: true },
+  { key: 'detail', label: 'Message' },
+  { key: 'extra', label: 'Additional Informations', dim: true,
+    cell: (v) => v ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(' · ') : '—' },
   { key: 'severity', label: 'Severity',
     pill: (v) => v === 'high' ? 'bad' : v === 'medium' ? 'att' : null }
 ]
+
+/* Velto's own periods on this screen. A risk report with no window is a wall
+   of findings; the window is how you ask "what happened since lunchtime". */
+const PERIODS = [
+  { key: 'hour', label: 'Hour', hours: 1 },
+  { key: 'today', label: 'Today', hours: null },
+  { key: '24h', label: 'Last 24 Hours', hours: 24 },
+  { key: 'week', label: 'Week', hours: 24 * 7 },
+  { key: 'month', label: 'Month', hours: 24 * 30 }
+]
+const period = ref('month')
+
+/** The rows the chosen window actually covers. */
+const visibleRows = computed(() => rows.value.filter(withinPeriod))
+
+function withinPeriod (row) {
+  const p = PERIODS.find(x => x.key === period.value)
+  if (!p) return true
+  const at = new Date(row.at)
+  if (p.hours === null) {
+    const now = new Date()
+    return at.getFullYear() === now.getFullYear() &&
+      at.getMonth() === now.getMonth() && at.getDate() === now.getDate()
+  }
+  return Date.now() - at.getTime() <= p.hours * 3600 * 1000
+}
 
 async function load () {
   loading.value = true
@@ -141,12 +180,20 @@ onMounted(load)
 <template>
   <div class="i-page">
     <PageHeader
-      title="Anomaly logs"
-      subtitle="Behaviour that does not fit the pattern. A healthy tenant produces none, which is why this screen has a button."
+      title="Risk Report"
+      subtitle="Behaviour that does not fit the pattern: impossible travel, one address shared by several accounts, a session hopping between addresses, and attempts the policy blocked."
     >
     </PageHeader>
 
     <div class="i-strip">
+      <div class="i-ftabs">
+        <button
+          v-for="p in PERIODS" :key="p.key"
+          class="i-chip" :class="{ 'is-on': period === p.key }"
+          :aria-pressed="period === p.key"
+          @click="period = p.key"
+        >{{ p.label }}</button>
+      </div>
       <div class="i-tools">
         <button class="i-btn i-primary" :disabled="scanning" @click="scan">
           <i class="fa-solid fa-satellite-dish" aria-hidden="true" />
@@ -156,7 +203,7 @@ onMounted(load)
     </div>
 
     <DataTable
-      :columns="columns" :rows="rows" :total="rows.length" :loading="loading"
+      :columns="columns" :rows="visibleRows" :total="visibleRows.length" :loading="loading"
       :selectable="false" :per-page="50"
     >
       <template #empty>

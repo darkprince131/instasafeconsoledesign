@@ -679,33 +679,28 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Access Log is the administrator activity trail, not access decisions.
+   *
+   * This was built as the event log filtered to allow and deny — a reasonable
+   * guess, and the wrong one. Velto's columns are User, Log Activity, When:
+   * who opened which screen, and when they did it. The allow/deny view it was
+   * confused with is the Event Log, which already exists.
+   */
   '/reports/access-logs': {
-    title: 'Access logs',
-    subtitle: 'Every allow and deny decision, with the rule that made it.',
-    resource: 'events',
-    baseFilter: { type: ['access.granted', 'access.denied'] },
+    title: 'Access Log',
+    subtitle: 'What administrators did in this console, and when.',
+    resource: 'accessLog',
+    searchFields: ['actor', 'activity'],
+    emptyTitle: 'No administrator activity yet',
+    emptyBody: 'Opening a screen or changing a setting writes a row here.',
     columns: [
-      { key: 'at', label: 'When', cell: fmtAgo, dim: true },
-      { key: 'actor', label: 'User' },
-      { key: 'message', label: 'Event' },
-      { key: 'ip', label: 'Source IP', mono: true },
-      { key: 'city', label: 'Location' },
-      { key: 'severity', label: 'Severity', pill: (v) => v === 'warning' ? 'att' : null }
+      { key: 'actor', label: 'User', bold: true },
+      { key: 'activity', label: 'Log Activity' },
+      { key: 'at', label: 'When', cell: fmtStamp, mono: true }
     ]
   },
 
-  /**
-   * User providers are three screens, not one with a type dropdown.
-   *
-   * This was a single config with a Provider select — Azure AD, Google
-   * Workspace, Okta, SCIM — aliased onto all three routes. Velto has an Azure
-   * screen and a Google screen with different field sets, and SCIM import is
-   * not a list at all (see ScimImport.vue).
-   *
-   * A provider pulls users in. An authentication profile decides how they
-   * sign in. The two are separate, which is why the same directory appears
-   * under both groups in the navigation.
-   */
   '/profile/azuread': {
     title: 'Azure AD',
     subtitle: 'Where users are imported from. Importing somebody does not by itself let them sign in — that is an authentication profile.',
@@ -1199,14 +1194,23 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Velto's report is two columns: User name and Last Login, stamped to the
+   * second. Those two lead here, because that is the report somebody came
+   * for; the rest are kept behind them rather than in front, and the column
+   * chooser can drop them.
+   */
   '/reports/user-last-login': {
-    title: 'User last login',
+    title: 'User Last Login Report',
+    subtitle: 'When each account last signed in. An account that has never signed in says so.',
     resource: 'users',
+    searchFields: ['username', 'email'],
     columns: [
-      { key: 'username', label: 'Username', bold: true },
+      { key: 'username', label: 'User name', bold: true },
+      { key: 'lastSeenAt', label: 'Last Login', mono: true,
+        cell: (v) => v ? fmtStamp(v) : 'Never signed in' },
       { key: 'email', label: 'Email', dim: true },
       { key: 'authProfile', label: 'Auth profile' },
-      { key: 'lastSeenAt', label: 'Last login', cell: fmtAgo },
       { key: 'status', label: 'Status', pill: statusPill }
     ]
   },

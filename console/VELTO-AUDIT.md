@@ -1554,6 +1554,51 @@ called `gitlab` can point at any address at all. So the picker prints each
 application's host beside its name, and the hint says so. Choosing by name is
 quick; seeing where it points is what stops the wrong one being chosen.
 
+## 45. Access Log is the administrator activity trail, not access decisions
+
+Built here as the event log filtered to allow and deny. That is a reasonable
+guess and the wrong one. Velto's columns are **User · Log Activity · When** —
+who opened which screen, and when. The allow/deny view it was confused with is
+the Event Log, which already existed, so the console had two of one thing and
+none of the other.
+
+Rebuilt over its own collection, 240 rows. `accessLog` was a dead store named
+in §43; it is the right home for this after all.
+
+## 46. Risk Report — the Additional Informations column, and four detectors
+
+Read on velto with its own data. Columns are **Detected At · Username ·
+Message · Additional Informations**, and the last is a block of key/value
+pairs. That block is the part that makes a finding actionable, so it is a
+column rather than something to open a row for.
+
+Velto's detectors, with the message each writes:
+
+| Detector | Message | Additional Informations |
+|---|---|---|
+| Travel speed | `Travel speed 2804.66348638 km/h detected.` | Speed, Last_location, Current_location |
+| Shared source IP | `4 users from IP 122.176.64.111` | Usernames |
+| IP switching | `User switched between 2 IPs.` | Ips |
+| Blocked attempts | `1 blocked attempts on 172.31.12.75` | Attempts, Username, Application_ip |
+
+All four are seeded, 50 findings, so the screen is not empty on arrival — the
+on-demand detector still runs and still appends. Velto's period selector is
+there too: Hour · Today · Last 24 Hours · Week · Month.
+
+Severity is this console's one addition. Velto prints four columns of equal
+weight; a finding at 2,800 km/h should not look like one blocked attempt.
+
+## 47. User Last Login Report is two columns
+
+`User name · Last Login`, stamped to the second. This had five columns with
+relative time in the middle of them. The two velto asks for lead now and the
+rest sit behind them, where the column chooser can drop them.
+
+One difference kept: velto lists 715 of the tenant's accounts, which is the
+ones that have ever signed in. This lists every account and says **Never
+signed in** against the rest — an account that has never been used is the one
+worth finding on a report about last logins.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

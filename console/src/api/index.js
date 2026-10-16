@@ -120,6 +120,9 @@ export const api = {
   softwarePackages: resource('softwarePackages'),
 
   // ---- network and applications ---------------------------------------
+  /** GET /access-log — the administrator activity trail */
+  accessLog: resource('accessLog'),
+
   /** GET /app-access-log — one row per connection attempt */
   appAccessLog: resource('appAccessLog'),
 
