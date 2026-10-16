@@ -478,7 +478,8 @@ const RESOURCE_TABLE = {
   urlFilters: 'records', contentFilters: 'records',
   fileTypeFilters: 'records', domainLists: 'records', idamServices: 'records',
   riskProfiles: 'records', userProviders: 'records', downloads: 'records',
-  appAccessLog: 'records', accessLog: 'records', anomalies: 'records'
+  appAccessLog: 'records', accessLog: 'records', anomalies: 'records',
+  exportProfiles: 'records'
 }
 
 /* Resources sharing `records` are scoped by kind, so one screen's rows never
@@ -492,7 +493,8 @@ const RECORD_KINDS = {
   fileTypeFilters: 'filetype-filter', domainLists: 'domain-list',
   idamServices: 'idam-service', riskProfiles: 'risk-profile',
   userProviders: 'user-provider', downloads: 'download',
-  appAccessLog: 'app-access-log', accessLog: 'access-log', anomalies: 'anomaly'
+  appAccessLog: 'app-access-log', accessLog: 'access-log', anomalies: 'anomaly',
+  exportProfiles: 'export-profile'
 }
 
 // ------------------------------------------------------------- the handler

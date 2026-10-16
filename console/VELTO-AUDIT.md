@@ -1617,6 +1617,63 @@ Verified on the deployed site after a tenant reset: fifty findings, with the
 Additional Informations block intact. **A tenant seeded before this still
 shows an empty Risk Report**; Reset demo fills it.
 
+## 49. Export Log was one destination; velto keeps a list of them
+
+The screen rendered four real wire formats with a live preview, and the
+preview is the good part. What it was not was velto's screen.
+
+| | Velto | Was here |
+|---|---|---|
+| Shape | a **list** of profiles | one destination |
+| Columns | Profile Name · Server Type · Server Ip · Protocol · Port | none |
+| Server type | QRADAR · ARCSIGHT · SPLUNK · SYSLOG · SCP · SFTP · EMAIL | syslog · CEF · LEEF · JSON |
+| **Log to be Exported** | Event Log · Session Log · App Access Log | **not asked — always events** |
+| Time Zone | yes | no |
+| Backup Server Ip | yes | no |
+
+A tenant ships its event log to the SIEM and its session log somewhere else,
+and one destination cannot say that. Worse, **two thirds of what velto can
+export could not be configured at all**: the log type was never asked for.
+
+Built as a list over `exportProfiles` — a store that existed and was read by
+nothing — keeping the preview inside the profile, where it now renders
+whichever of the three logs the profile ships.
+
+### 49.1 What is honest about its limits
+SCP, SFTP and EMAIL are file deliveries, and a browser cannot open an SSH
+connection. The batch is rendered identically; only the delivery differs, and
+the note under the field says exactly that rather than implying a transport
+that is not there. QRADAR maps to LEEF, ARCSIGHT to CEF, SPLUNK to JSON lines
+for the HTTP Event Collector — those are the formats each product actually
+parses, and all four renderers were already real.
+
+### 49.2 Invented here, and kept
+`batchSize` and the severity filters are not velto's. Both are ordinary SIEM
+configuration and neither claims a capability the product lacks, so they stay.
+
+## 50. Report Subscriptions had about half the fields
+
+| Velto | Was here |
+|---|---|
+| Name | Name |
+| **Reports** — several in one subscription | one report from a list of five |
+| Frequency — **Once** · Daily · Weekly · Monthly | Daily · Weekly · Monthly |
+| **Repeat Day** | — |
+| **Time** | — |
+| **Timezone** | — |
+| Email Addresses | Recipients |
+| **Email to CC** | — |
+| — | `enabled` — **invented** |
+
+Columns are velto's five now: Name · Email · Reports · Schedule · Email to CC.
+Schedule is one column reading as a sentence — *Mondays at 07:00*, *Day 1 at
+08:00* — rather than frequency, day and time in three, because that is how
+anybody says it.
+
+Several reports in one subscription is the one that matters: velto sends one
+mail with the week's reports in it, and this sent four separate mails because
+it could only name one.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

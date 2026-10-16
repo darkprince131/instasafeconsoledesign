@@ -73,6 +73,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
     ['reportSubscriptions', () => seed.seedReportSubscriptions()],
     ['appAccessLog', () => seed.seedAppAccessLog(seed.seedUsers(60))],
     ['accessLog', () => seed.seedAccessLog()],
+    ['exportProfiles', () => seed.seedExportProfiles()],
     ['anomalies', () => seed.seedAnomalies(seed.seedUsers(60))]
   ]
 
@@ -146,6 +147,7 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
         ['reportSubscriptions', seed.seedReportSubscriptions()],
         ['appAccessLog', seed.seedAppAccessLog(users)],
         ['accessLog', seed.seedAccessLog()],
+        ['exportProfiles', seed.seedExportProfiles()],
         ['anomalies', seed.seedAnomalies(users)],
         ['users', users],
         ['devices', seed.seedDevices(users, SEED_SIZE.devices)],

@@ -628,31 +628,25 @@ export function seedRoles () {
 /** Reports that go out without anybody opening the console. */
 export function seedReportSubscriptions () {
   return [
-    ['Weekly access summary', 'Access logs', 'Weekly', 'security@example.com', true],
-    ['Daily event digest', 'Event logs', 'Daily', 'soc@example.com, asha.rao@example.com', true],
-    ['Monthly data usage', 'Data usage', 'Monthly', 'it-leads@example.com', true],
-    ['Dormant account review', 'User last login', 'Monthly', 'hr@example.com, it-leads@example.com', false]
-  ].map(([name, report, cadence, recipients, enabled], i) => ({
+    ['Weekly access summary', ['Access Log', 'Application Access Log'], 'Weekly', 'Monday', '07:00',
+      'security@example.com', 'it-leads@example.com'],
+    ['Daily event digest', ['Event Log'], 'Daily', '', '06:30',
+      'soc@example.com, asha.rao@example.com', ''],
+    ['Monthly usage', ['Data Usage Report', 'Time Usage Report'], 'Monthly', '', '08:00',
+      'it-leads@example.com', ''],
+    ['Dormant account review', ['User Last Login Report'], 'Monthly', '', '09:00',
+      'hr@example.com', 'it-leads@example.com'],
+    ['Risk digest', ['Risk Report'], 'Daily', '', '07:15', 'soc@example.com', '']
+  ].map(([name, reports, frequency, day, time, recipients, ccEmails], i) => ({
     id: `rsb_${pad(i + 1, 4)}`,
-    name, report, cadence, recipients, enabled,
-    lastSentAt: enabled ? ago(r() * 14) : null,
+    name, reports, frequency, day, time, recipients, ccEmails,
+    dayOfMonth: frequency === 'Monthly' ? 1 : null,
+    timezone: '(UTC+05:30) Indian Standard Time',
+    lastSentAt: ago(r() * 14),
     createdAt: ago(150 + r() * 200)
   }))
 }
 
-/**
- * Application access log.
- *
- * Velto's is a flat list of connection attempts — access date, username,
- * public IP with its source port, country, destination address, destination
- * port and whether it was allowed or blocked. This console rendered a usage
- * chart at that route instead, so the one screen that answers "what did this
- * person actually try to reach" was not there.
- *
- * Mostly blocked rows, because that is what the real one shows: an agent
- * probing addresses it is not entitled to is the ordinary case, and the
- * blocked ones are the reason anybody opens this screen.
- */
 export function seedAppAccessLog (users, count = 372) {
   const DEST = [
     '172.31.12.75', '172.31.13.231', '172.31.5.124', '13.235.73.156',
@@ -776,6 +770,22 @@ export function seedAnomalies (users, count = 50) {
     }
   }
   return out.sort((x, y) => y.at.localeCompare(x.at))
+}
+
+/** Export profiles — velto keeps a list of them, one per destination. */
+export function seedExportProfiles () {
+  return [
+    ['SOC syslog', 'SYSLOG', 'Event Log', '10.20.4.60', '10.20.4.61', 'TLS', 6514],
+    ['QRadar events', 'QRADAR', 'Event Log', '10.20.4.70', '', 'TCP', 514],
+    ['Splunk app access', 'SPLUNK', 'App Access Log', '10.20.4.80', '', 'TLS', 8088],
+    ['Audit archive', 'SFTP', 'Session Log', '10.20.4.90', '', 'TCP', 22]
+  ].map(([name, serverType, logType, serverIp, backupServerIp, protocol, port], i) => ({
+    id: `exp_${pad(i + 1, 4)}`,
+    name, serverType, logType, serverIp, backupServerIp, protocol, port,
+    timezone: '(UTC+05:30) Indian Standard Time',
+    batchSize: 100, enabled: true,
+    createdAt: ago(90 + r() * 200)
+  }))
 }
 
 export function seedDevicePolicies () {

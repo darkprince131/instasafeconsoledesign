@@ -39,7 +39,7 @@ export const RISK_TYPES = [
 
 export const RISK_ACTIONS = ['Email Admin', 'Deny Access', 'Suspend User', 'Disconnect User']
 
-const TIMEZONES = [
+export const TIMEZONES = [
   '(UTC-11:00) Niue Time',
   '(UTC-10:00) Hawaii-Aleutian Time',
   '(UTC-08:00) Pacific Standard Time',
@@ -1168,38 +1168,73 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Velto's fields, which this had about half of.
+   *
+   * Missing were: several reports in one subscription rather than one, the
+   * Once frequency, the day a weekly run lands on, the time of day, the
+   * timezone that time is read in, and a CC list. `enabled` was invented —
+   * velto has no such column.
+   */
   '/report-subscriptions': {
-    singular: 'subscription',
-    formSubtitle: 'Scheduled reports are delivered by mail. In the demo they arrive in the Demo Inbox.',
-    form: [
-      { key: 'name', label: 'Subscription name', required: true, placeholder: 'Weekly access summary' },
-      { key: 'report', label: 'Report',
-        options: ['Access logs', 'Event logs', 'Data usage', 'Time usage', 'User last login'] },
-      { key: 'cadence', label: 'Cadence', options: ['Daily', 'Weekly', 'Monthly'] },
-      { key: 'recipients', label: 'Recipients', placeholder: 'security@example.com' },
-      { key: 'enabled', label: 'Subscription is active', type: 'switch' }
-    ],
-    title: 'Report subscriptions',
+    title: 'Report Subscriptions',
     subtitle: 'Reports that go out on a schedule without anyone opening the console.',
     resource: 'reportSubscriptions',
+    singular: 'subscription',
     primaryAction: 'Add subscription',
+    searchFields: ['name', 'recipients'],
     emptyTitle: 'No scheduled reports',
-    emptyBody: 'A subscription mails a report on a cadence, so nobody has to remember to run it.',
+    emptyBody: 'A subscription mails a report to people who do not sign in here.',
+    bulkAdd: true,
+    form: [
+      { key: 'name', name: 'report_name', label: 'Name', required: true,
+        placeholder: 'Enter Report Name', half: true },
+      { key: 'frequency', name: 'frequency', label: 'Frequency', required: true,
+        options: ['Once', 'Daily', 'Weekly', 'Monthly'], default: 'Weekly', half: true },
+      /* Velto asks for several reports in one subscription — one mail with
+         the week's reports in it, rather than four mails. */
+      { key: 'reports', name: 'report_name', label: 'Reports', required: true,
+        type: 'pick', resource: null,
+        choices: ['Access Log', 'Application Access Log', 'Event Log', 'Session Log',
+          'Data Usage Report', 'Time Usage Report', 'User Last Login Report', 'Risk Report'],
+        placeholder: 'Select Reports to add…',
+        hint: 'Several arrive in one mail rather than one mail each.' },
+      { key: 'day', name: 'day', label: 'Repeat Day', half: true,
+        options: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        default: 'Monday',
+        when: (f) => f.frequency === 'Weekly',
+        hint: 'Which day a weekly run lands on.' },
+      { key: 'dayOfMonth', label: 'Repeat Day', type: 'number', half: true,
+        default: 1, when: (f) => f.frequency === 'Monthly',
+        hint: 'Day of the month. The 29th to 31st are skipped in months that are shorter.' },
+      { key: 'time', name: 'time', label: 'Time', type: 'time', default: '07:00', half: true },
+      { key: 'timezone', name: 'user_timezone', label: 'Timezone', required: true,
+        options: TIMEZONES, half: true,
+        hint: 'The time above is read in this zone, not in whatever zone the reader happens to be in.' },
+      { key: 'recipients', name: 'emails', label: 'Email Addresses', required: true,
+        placeholder: 'security@example.com, soc@example.com',
+        hint: 'Separated by commas. These are addresses, not console accounts.' },
+      { key: 'ccEmails', name: 'cc_emails', label: 'Email to CC',
+        placeholder: 'it-leads@example.com' }
+    ],
     columns: [
-      { key: 'name', label: 'Subscription', bold: true },
-      { key: 'report', label: 'Report' },
-      { key: 'cadence', label: 'Cadence' },
-      { key: 'recipients', label: 'Recipients', dim: true },
-      { key: 'enabled', label: 'Active', bool: true }
+      { key: 'name', label: 'Name', bold: true },
+      { key: 'recipients', label: 'Email', dim: true },
+      { key: 'reports', label: 'Reports',
+        cell: (v) => Array.isArray(v) ? (v.length > 2 ? `${v.slice(0, 2).join(', ')} +${v.length - 2}` : v.join(', ')) : (v || dash) },
+      /* Velto prints one Schedule column rather than frequency, day and time
+         in three. It reads as a sentence, which is how anybody says it. */
+      { key: 'frequency', label: 'Schedule',
+        cell: (v, row) => {
+          if (v === 'Daily') return `Daily at ${row.time || '—'}`
+          if (v === 'Weekly') return `${row.day || 'Monday'}s at ${row.time || '—'}`
+          if (v === 'Monthly') return `Day ${row.dayOfMonth || 1} at ${row.time || '—'}`
+          return `Once at ${row.time || '—'}`
+        } },
+      { key: 'ccEmails', label: 'Email to CC', dim: true, cell: (v) => v || dash }
     ]
   },
 
-  /**
-   * Velto's report is two columns: User name and Last Login, stamped to the
-   * second. Those two lead here, because that is the report somebody came
-   * for; the rest are kept behind them rather than in front, and the column
-   * chooser can drop them.
-   */
   '/reports/user-last-login': {
     title: 'User Last Login Report',
     subtitle: 'When each account last signed in. An account that has never signed in says so.',
