@@ -1599,6 +1599,24 @@ ones that have ever signed in. This lists every account and says **Never
 signed in** against the rest — an account that has never been used is the one
 worth finding on a report about last logins.
 
+## 48. `kind`, `name` and `id` are not free in the records store
+
+Resources that have no table of their own share a `records` table, where
+`kind` is the column separating one screen's rows from another's. A risk
+finding carried its own `kind` — the detector's name, "Travel speed" — so
+every row was filed under that instead of under `anomaly`, and the list, which
+asks for `anomaly`, found none.
+
+The POST answered `{ok: true, seeded: {anomalies: 1}}` and the GET answered
+`0`. Both were telling the truth.
+
+The detector name is `anomalyType` now. Anything moved into `records` later
+should be checked for a field called `kind`, `name` or `id` first.
+
+Verified on the deployed site after a tenant reset: fifty findings, with the
+Additional Informations block intact. **A tenant seeded before this still
+shows an empty Risk Report**; Reset demo fills it.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
