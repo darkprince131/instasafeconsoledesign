@@ -1816,8 +1816,10 @@ grants that let an InstaSafe engineer into the tenant.
 | Buttons | Add, CSV |
 
 Status is not a stored field: it is read off the expiry. Velto's own tenant
-holds one row, `biju@instasafe.com`, Expired — which is the realistic state,
-since a grant is made for one investigation and then runs out.
+holds a single expired row — which is the realistic state, since a grant is
+made for one investigation and then runs out. The engineer it names is a real
+person, so the seed here uses invented addresses on `example.com` rather than
+copying a work address into a public repository.
 
 This console had none of it. The route rendered only a diagnostics bundle,
 which velto has no equivalent for. **Both now**: the grant list is velto's,

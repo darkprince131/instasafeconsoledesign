@@ -691,7 +691,7 @@ export function seedAppAccessLog (users, count = 372) {
  */
 export function seedAccessLog (count = 240) {
   const WHO = [
-    'debajyoti@instasafe.com', 'priya.nair@example.com',
+    'admin@example.com', 'priya.nair@example.com',
     'asha.rao@example.com', 'deepak.menon@example.com'
   ]
   const WHAT = [
@@ -815,16 +815,19 @@ export function seedExportProfiles () {
  */
 export function seedTechSupportAccess () {
   const day = 86400000
+  /* Invented people on example.com, never a real address at a real domain.
+     Velto's own row names an actual InstaSafe engineer; copying it into a
+     public demo repository would publish that person's work address. */
   return [
-    { id: 'tsa_001', email: 'biju@instasafe.com',
+    { id: 'tsa_001', email: 'support.l1@example.com',
       expiresAt: new Date(Date.now() - 204 * day).toISOString(),
-      grantedBy: 'debajyoti@instasafe.com', grantedAt: ago(211) },
-    { id: 'tsa_002', email: 'support.l2@instasafe.com',
+      grantedBy: 'admin@example.com', grantedAt: ago(211) },
+    { id: 'tsa_002', email: 'support.l2@example.com',
       expiresAt: new Date(Date.now() - 12 * day).toISOString(),
-      grantedBy: 'debajyoti@instasafe.com', grantedAt: ago(19) },
-    { id: 'tsa_003', email: 'ravi.menon@instasafe.com',
+      grantedBy: 'admin@example.com', grantedAt: ago(19) },
+    { id: 'tsa_003', email: 'support.escalation@example.com',
       expiresAt: new Date(Date.now() + 2 * day).toISOString(),
-      grantedBy: 'debajyoti@instasafe.com', grantedAt: ago(1) }
+      grantedBy: 'admin@example.com', grantedAt: ago(1) }
   ]
 }
 
