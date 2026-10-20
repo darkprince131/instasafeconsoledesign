@@ -397,10 +397,36 @@ function onFile (f, e) {
  */
 const reading = ref(false)
 
+/**
+ * A datetime-local control speaks "YYYY-MM-DDTHH:mm" in the viewer's own
+ * clock; the record holds an ISO instant in UTC. Hand one straight to the
+ * other and the field renders blank, which reads as "no expiry set" on a
+ * record that has one.
+ */
+function toLocalInput (iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+function fromLocalInput (v) {
+  if (!v) return v
+  const d = new Date(v)
+  return isNaN(d) ? v : d.toISOString()
+}
+/** Both directions over every datetime-local field the config declares. */
+function convertTimes (obj, fn) {
+  for (const f of cfg.value?.form || []) {
+    if (f.type === 'datetime-local' && obj[f.key]) obj[f.key] = fn(obj[f.key])
+  }
+  return obj
+}
+
 function openEdit (row) {
   if (cfg.value?.rowTo) { router.push(cfg.value.rowTo(row)); return }
   if (!editable.value) return
-  form.value = { ...blankForm(), ...row }
+  form.value = convertTimes({ ...blankForm(), ...row }, toLocalInput)
   editingId.value = row.id
   reading.value = !!cfg.value?.readFirst
   sheetOpen.value = true
@@ -413,6 +439,7 @@ const readFields = computed(() => (cfg.value?.form || [])
 
 function readValue (f) {
   const v = form.value[f.key]
+  if (f.type === 'datetime-local' && v) return String(v).replace('T', ' ')
   if (Array.isArray(v)) return v.filter(Boolean).join(String.fromCharCode(10)) || '—'
   if (f.type === 'switch') return v ? 'Yes' : 'No'
   return (v === '' || v === undefined || v === null) ? '—' : String(v)
@@ -424,9 +451,10 @@ async function saveForm () {
     .filter(f => f.required && !form.value[f.key])
   if (required.length) { toast(required[0].label + ' is required', 'bad'); return }
   saving.value = true
+  const payload = convertTimes({ ...form.value }, fromLocalInput)
   try {
     if (editingId.value) {
-      await api[cfg.value.resource].update(editingId.value, { ...form.value })
+      await api[cfg.value.resource].update(editingId.value, payload)
       toast('Saved')
     } else {
       /* A screen that shows one slice of a collection has to stamp the
@@ -434,7 +462,7 @@ async function saveForm () {
          display. Every authentication-profile screen is one type out of
          authProfiles, so a profile created without its `type` was saved and
          then vanished from the list it was created on. */
-      await api[cfg.value.resource].create({ ...cfg.value.baseFilter, ...form.value })
+      await api[cfg.value.resource].create({ ...cfg.value.baseFilter, ...payload })
       toast('Created')
     }
     sheetOpen.value = false
@@ -1114,5 +1142,11 @@ onMounted(load)
     >
       <strong class="i-named">{{ confirmBody }}</strong> {{ bulk.body }}
     </ConfirmModal>
+
+    <!-- Room under a list for something that is not part of it. Tech support
+         uses it: velto's screen is a list of access grants, and the
+         diagnostics bundle this console adds belongs below that list rather
+         than on a screen of its own. -->
+    <slot name="tail" />
   </div>
 </template>

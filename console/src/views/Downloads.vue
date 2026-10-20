@@ -60,11 +60,26 @@ const gatewayRows = computed(() => {
   return out
 })
 
+/**
+ * Three builds per gateway, not two.
+ *
+ * Velto's links are /downloads/gateway-agents/<id>/{windows,linux,osx}, and
+ * the backup's are /downloads/backup-gateway-agents/<id>/<os> — a separate
+ * path, because the backup's build carries the backup's identity. The osx
+ * one is easy to miss on velto: its Apple icon fails to load and renders as
+ * a red cross, which reads as "unavailable" rather than "macOS".
+ */
+const GATEWAY_OS = [
+  { key: 'windows', label: 'Windows', icon: 'fa-windows' },
+  { key: 'linux', label: 'Linux', icon: 'fa-linux' },
+  { key: 'osx', label: 'macOS', icon: 'fa-apple' }
+]
+
 const columns = [
   { key: 'name', label: 'Gateway Name', bold: true },
-  { key: 'type', label: 'Type',
-    /* A backup nobody has installed is the thing worth seeing. */
-    pill: (v) => v === 'backup' ? 'att' : null },
+  /* Plain. Primary and backup are two kinds of gateway, not a good state
+     and a bad one, and marking one of them put a pill on every row. */
+  { key: 'type', label: 'Type', dim: true },
   { key: 'location', label: 'Location' }
 ]
 
@@ -137,11 +152,11 @@ onMounted(load)
         :loading="loading" :selectable="false" :per-page="25"
       >
         <template #actions="{ row }">
-          <button class="i-btn i-sm me-1" @click="download(`${row.name} installer (Linux)`)">
-            <i class="fa-brands fa-linux me-1" aria-hidden="true" />Linux
-          </button>
-          <button class="i-btn i-sm" @click="download(`${row.name} installer (Windows)`)">
-            <i class="fa-brands fa-windows me-1" aria-hidden="true" />Windows
+          <button
+            v-for="os in GATEWAY_OS" :key="os.key"
+            class="i-btn i-sm me-1" @click="download(`${row.name} installer (${os.label})`)"
+          >
+            <i class="fa-brands me-1" :class="os.icon" aria-hidden="true" />{{ os.label }}
           </button>
         </template>
         <template #empty>

@@ -93,6 +93,7 @@ const RESHAPED = [
   /* IDAM. The marker column is one the record cannot have been written
      without, so a tenant seeded before these existed tops up rather than
      being left with five empty lists. */
+  ['techSupportAccess', 'expiresAt', () => seed.seedTechSupportAccess()],
   ['scimExports', 'tenantUrl', () => seed.seedScimExports()],
   ['scimSyncLogs', 'operation', () => seed.seedScimSyncLogs(seed.seedScimExports())],
   ['oauthServices', 'clientId', () => seed.seedOauthServices()],
@@ -162,6 +163,7 @@ async function reseed () {
   await db.putMany('accessLog', seed.seedAccessLog())
   await db.putMany('exportProfiles', seed.seedExportProfiles())
   await db.putMany('anomalies', seed.seedAnomalies(users))
+  await db.putMany('techSupportAccess', seed.seedTechSupportAccess())
   const scimProfiles = seed.seedScimExports()
   await db.putMany('scimExports', scimProfiles)
   await db.putMany('scimSyncLogs', seed.seedScimSyncLogs(scimProfiles))

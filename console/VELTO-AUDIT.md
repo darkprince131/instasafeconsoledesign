@@ -1790,6 +1790,54 @@ provider. Both are honest about it on screen.
 thing there: they describe the IdP this demo runs at `/idp`. They are now a
 strip under each IDAM page header, click-to-copy, still live.
 
+## 53. Gateway Agents serves three builds, not two
+
+Velto's links are `/downloads/gateway-agents/<id>/{windows,linux,osx}`, and
+the backup's are `/downloads/backup-gateway-agents/<id>/<os>` — a separate
+path, because the backup's build carries the backup's own identity.
+
+The macOS one is easy to miss on velto: its Apple icon fails to load and
+renders as a red cross, which reads as "unavailable" rather than "macOS".
+Three buttons here, each with a working brand mark.
+
+Type is plain now. Marking `backup` put a coloured pill on every row —
+primary and backup are two kinds of gateway, not a good state and a bad one.
+
+## 54. Tech Support was missing the screen velto has
+
+Velto's `/tech-support` is **Tech Support Access**: a list of time-boxed
+grants that let an InstaSafe engineer into the tenant.
+
+| | Velto |
+|---|---|
+| Columns | `# · Email · Expiring at · Status` |
+| Add | Email*, Expiry time* (date-and-time picker) |
+| Row click | **View Tech Support Access** — Email, Expiry time, **Edit** |
+| Buttons | Add, CSV |
+
+Status is not a stored field: it is read off the expiry. Velto's own tenant
+holds one row, `biju@instasafe.com`, Expired — which is the realistic state,
+since a grant is made for one investigation and then runs out.
+
+This console had none of it. The route rendered only a diagnostics bundle,
+which velto has no equivalent for. **Both now**: the grant list is velto's,
+field for field, and the diagnostics sit under it — the list template gained
+a `tail` slot for exactly this.
+
+Two differences, both deliberate:
+
+- **Active carries the mark, not Expired.** An expired grant is the resting
+  state and velto marks neither; the exception worth seeing is that somebody
+  outside the company can read this tenant *right now*.
+- **Email is locked on edit.** Velto lets the address be changed, which
+  silently reassigns an existing grant and its audit trail to somebody else.
+  Changing who has access should be a new grant.
+
+Expiry needed a round trip the template did not have: a `datetime-local`
+control speaks `YYYY-MM-DDTHH:mm` in the viewer's clock while the record holds
+a UTC instant, and handing one straight to the other renders the field blank —
+which reads as "no expiry" on a record that has one.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

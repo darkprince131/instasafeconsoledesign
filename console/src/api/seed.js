@@ -806,6 +806,28 @@ export function seedExportProfiles () {
  * mix of SP types, because Azure and Google behave differently on the form
  * and a demo with only Custom never shows that.
  */
+/**
+ * Tech support access grants.
+ *
+ * Velto's own tenant holds a single expired one, which is the realistic
+ * state: a grant is made for one investigation and then runs out. Three
+ * here - one still live, so the Active mark has something to be on.
+ */
+export function seedTechSupportAccess () {
+  const day = 86400000
+  return [
+    { id: 'tsa_001', email: 'biju@instasafe.com',
+      expiresAt: new Date(Date.now() - 204 * day).toISOString(),
+      grantedBy: 'debajyoti@instasafe.com', grantedAt: ago(211) },
+    { id: 'tsa_002', email: 'support.l2@instasafe.com',
+      expiresAt: new Date(Date.now() - 12 * day).toISOString(),
+      grantedBy: 'debajyoti@instasafe.com', grantedAt: ago(19) },
+    { id: 'tsa_003', email: 'ravi.menon@instasafe.com',
+      expiresAt: new Date(Date.now() + 2 * day).toISOString(),
+      grantedBy: 'debajyoti@instasafe.com', grantedAt: ago(1) }
+  ]
+}
+
 export function seedScimExports () {
   const SRC = [
     ['testexport', 'for testin', true],

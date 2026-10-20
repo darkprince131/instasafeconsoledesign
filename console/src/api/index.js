@@ -169,6 +169,9 @@ export const api = {
   /* IDAM: this tenant acting as the provider. Five lists, and one of them —
      SCIM export — carries a log of its own runs. */
   /** GET /scim-export */
+  /** GET /tech-support - time-boxed support access grants */
+  techSupportAccess: resource('techSupportAccess'),
+
   scimExports: resource('scimExports'),
   /** GET /scim-export/{id}/logs */
   scimSyncLogs: resource('scimSyncLogs'),

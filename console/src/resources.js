@@ -1584,6 +1584,52 @@ export const RESOURCES = {
     ]
   },
 
+  /**
+   * Tech Support Access — letting an InstaSafe engineer in, with an expiry.
+   *
+   * Velto's columns are Email, Expiring at and Status, and Status is not a
+   * field: it is read off the expiry. A grant that has run out stays in the
+   * list, which is right — it is the record that somebody *had* access, and
+   * removing it would remove the audit.
+   *
+   * Row click opens a View panel with Edit inside it, as velto does, because
+   * extending somebody's access into your tenant is not a thing to do by
+   * accident on a form you opened to read.
+   */
+  '/tech-support': {
+    title: 'Tech Support Access',
+    singular: 'tech support grant',
+    subtitle: 'Time-boxed access for an InstaSafe engineer. Every grant expires on its own.',
+    resource: 'techSupportAccess',
+    searchFields: ['email'],
+    primaryAction: 'Grant access',
+    emptyTitle: 'Nobody from support has access',
+    emptyBody: 'A grant lets one engineer into this tenant until the time you set, and no longer.',
+    readFirst: true,
+    readSubtitle: 'Who has access, and until when.',
+    sort: 'expiresAt',
+    dir: 'desc',
+    columns: [
+      { key: 'email', label: 'Email', bold: true },
+      { key: 'expiresAt', label: 'Expiring at', mono: true, cell: fmtStamp },
+      /* Live is the exception worth seeing here, not expired: somebody
+         outside the company can currently read this tenant. Velto marks
+         neither. */
+      { key: 'status', label: 'Status',
+        cell: (v, row) => new Date(row.expiresAt) > new Date() ? 'Active' : 'Expired',
+        pill: (v, row) => new Date(row.expiresAt) > new Date() ? 'att' : null }
+    ],
+    form: [
+      { key: 'email', name: 'email', type: 'email', label: 'Email', required: true,
+        placeholder: 'Enter email',
+        lockedOnEdit: 'A grant is made to one address. To give access to somebody else, make them their own grant — then the log says who it was.',
+        hint: 'The engineer signs in with this address. It is the address the access is logged against.' },
+      { key: 'expiresAt', name: 'expiry_time', type: 'datetime-local',
+        label: 'Expiry time', required: true,
+        hint: 'Access ends here with no further action. Shorter is better; extending it later is one click.' }
+    ]
+  },
+
   '/limit-exceeders': {
     title: 'Blocked users',
     subtitle: 'Source addresses locked out by the rate limiter after repeated failed sign-ins. Each lockout expires on its own; unblocking only lifts it early.',
