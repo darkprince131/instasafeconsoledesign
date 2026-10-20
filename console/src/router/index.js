@@ -93,7 +93,13 @@ const routes = [
     component: () => import('../views/portal/PortalShell.vue'),
     meta: { bare: true },
     children: [
-      { path: '', name: 'portal', component: () => import('../views/portal/PortalHome.vue') }
+      /* Velto's three nav destinations, plus the two behind the avatar.
+         The portal is a product of its own and these are its whole map. */
+      { path: '', name: 'portal', component: () => import('../views/portal/PortalDashboard.vue') },
+      { path: 'downloads', name: 'portal-downloads', component: () => import('../views/portal/PortalDownloads.vue') },
+      { path: 'applications', name: 'portal-apps', component: () => import('../views/portal/PortalApplications.vue') },
+      { path: 'profile', name: 'portal-profile', component: () => import('../views/portal/PortalProfile.vue') },
+      { path: 'mfa', name: 'portal-mfa', component: () => import('../views/portal/PortalMfa.vue') }
     ]
   },
   {

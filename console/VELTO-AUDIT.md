@@ -1840,6 +1840,87 @@ control speaks `YYYY-MM-DDTHH:mm` in the viewer's clock while the record holds
 a UTC instant, and handing one straight to the other renders the field blank —
 which reads as "no expiry" on a record that has one.
 
+## 55. The member portal was one screen; velto has five
+
+An earlier note in `PortalShell.vue` said velto's member area is "one screen
+that asks a single question: is the agent installed". That was written without
+looking at it, and it was wrong. Velto's `/member` is a product of its own.
+
+| Velto | Route | Was here |
+|---|---|---|
+| Dashboard | `/member/dashboard` | an agent check, and nothing else |
+| Downloads | `/member/agent-download` | — |
+| Applications | `/member/applications` | — |
+| Profile | `/member/profile` | — |
+| MFA | `/member/mfa-profile` | — |
+
+**The dashboard** carries a welcome card with four policy chips, the agent's
+state, the current and previous session, registered devices as cards, web and
+network applications split apart, the five most recent accesses, and a network
+test with its last result beside it.
+
+Three changes, each a fix rather than a flourish:
+
+- **The policy chips say whether they are on.** Velto renders MFA, Device
+  Binding, Shift Schedule and Geo Binding as four identical grey pills
+  whatever their state — `bg-secondary bg-opacity-10` on all four — so they
+  read as decoration. Here an enforced control says so, an unenforced one says
+  that too, and the MFA chip is a link to the page that fixes it.
+- **The agent card leads and can be acted on.** "Agent not connected" decides
+  whether anything else on the page will work; velto gives it a third of a row
+  and no way forward. The probe is real — a loopback request that genuinely
+  fails.
+- **Device cards show what this console stores.** Velto labels them
+  Manufacturer, Model and Hostname; this console identifies a device by
+  serial, MAC and UUID together, which is what an administrator would search
+  on, so those are shown instead of three dashes.
+
+**Profile** is velto's four lines and two modals, field for field: Update
+Profile (First Name\*, Last Name, Photo with drag-and-drop) and Change
+Password (Current, New, Confirm). What is added is the password rules,
+checked as you type — velto shows three boxes, no stated rule, and finds out
+after a rejected submission which one you broke.
+
+**MFA** is velto's six methods in velto's order. Velto gives each a line of
+grey text and a button, and says nothing about what any of them is, which to
+pick, or what to do when the phone is in a river — which is the question
+people arrive with. Each one here opens in place with what it is, what it
+costs, and how to recover; one is marked recommended, because an employee
+asked to choose between six security mechanisms chooses none.
+
+| Velto | Here | Real? |
+|---|---|---|
+| Google Authenticator | Authenticator app | **Yes** — RFC 6238 over Web Crypto |
+| FIDO Keys | Security key | **Yes** — real `navigator.credentials.create` |
+| Instasafe Authenticator | Push notification | store links only; no push service |
+| Digital Certificate | Device certificate | needs the signed agent |
+| Backup Codes | Backup codes | **Yes** — real CSPRNG, ten single-use codes |
+| InstaSafe OS MFA | Computer sign-in | hooks the OS login |
+
+The four that cannot be real say so on the screen rather than miming success.
+
+**Seed change.** The portal signs in as the first seeded non-admin account,
+and devices and access-log rows were handed out at random across 1,820 people,
+so that one account — the only one anybody opens — had neither. It is now
+pinned active and unenrolled, with three devices and an access history, which
+is the shape velto's own demo user has.
+
+### The application session UI is Apache Guacamole, not InstaSafe's
+
+Opening an application from the member portal navigates to `/fp/<id>`, which
+loads `window.Guacamole`, a stylesheet called `guaccss.css` and six stacked
+canvases. That is **Apache Guacamole**, the open-source clientless remote
+desktop gateway.
+
+So RDP, SSH, VNC and WFS sessions are not an InstaSafe-designed interface and
+cannot be restyled as one: the session surface is drawn into a canvas by
+Guacamole's own client. The only InstaSafe-authored parts are the page title
+and `guaccss.css`, a thin skin over Guacamole's chrome.
+
+What this means for the redesign is in the reply accompanying this entry; the
+short version is that the toolbar, connection states, error and reconnect
+screens are themeable, and the session pixels are not.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

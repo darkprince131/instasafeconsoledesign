@@ -39,8 +39,13 @@ onMounted(async () => {
        "enrolled" users carry the flag without a secret anybody holds, so
        signing in as one lands on a code prompt that can never be satisfied.
        An unenrolled account puts the demo on the path worth showing. */
+    /* Sorted by id, so this is the first seeded account rather than
+       whichever name happens to sort first alphabetically. That account is
+       the one the seed gives devices and an access history to, and a member
+       dashboard with neither is a poor first impression. */
     const res = await api.users.list({
-      page: 1, perPage: 10, filters: { status: 'active', mfaEnrolled: false }
+      page: 1, perPage: 10, sort: 'id', dir: 'asc',
+      filters: { status: 'active', mfaEnrolled: false }
     })
     suggestion.value = (res.data || []).find(u => !u.isAdmin)?.username || ''
   } catch { suggestion.value = '' }

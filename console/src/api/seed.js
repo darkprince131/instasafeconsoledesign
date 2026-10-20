@@ -64,8 +64,15 @@ export function seedUsers (count = 1820) {
     let n = 1
     while (taken.has(username)) username = base + ++n
     taken.add(username)
-    const enrolled = chance(0.94)               // most people have MFA
-    const status = chance(0.975) ? 'active' : (chance(0.5) ? 'suspended' : 'pending')
+    /* The first non-admin account is the one the member portal signs in as,
+       and the sign-in screen offers it by name. It is pinned active and
+       unenrolled so that the enrolment path — the thing the portal exists to
+       show — is the one a visitor lands on. The seed also gives this account
+       its devices and its access history, for the same reason. */
+    const demoMember = i === 1
+    const enrolled = demoMember ? false : chance(0.94)   // most people have MFA
+    const status = demoMember ? 'active'
+      : (chance(0.975) ? 'active' : (chance(0.5) ? 'suspended' : 'pending'))
     out.push({
       id: `usr_${pad(i, 5)}`,
       firstName: first,
@@ -186,10 +193,16 @@ export function linkUsersToGroups (users, groups) {
 export function seedDevices (users, count = 2140) {
   const out = []
   for (let i = 1; i <= count; i++) {
-    const u = users[1 + Math.floor(r() * (users.length - 1))]
+    /* The portal signs in as the first non-admin account, and a member
+       dashboard showing nobody's devices teaches nothing. Velto's own demo
+       user has three; so does this one. Random assignment over 1,820 people
+       left the single account anybody actually opens with none. */
+    const demo = i <= 3
+    const u = demo ? users[1] : users[1 + Math.floor(r() * (users.length - 1))]
     const [city, cc, lat, lon] = pick(CITIES)
     // 775 pending is the real measured number from production
-    const status = i <= 775 ? 'pending' : (chance(0.985) ? 'approved' : 'rejected')
+    const status = demo ? 'approved'
+      : (i <= 775 ? 'pending' : (chance(0.985) ? 'approved' : 'rejected'))
     const os = pick(OS)
     out.push({
       id: `dev_${pad(i, 5)}`,
@@ -665,12 +678,15 @@ export function seedAppAccessLog (users, count = 372) {
   const COUNTRIES = ['India', 'India', 'India', 'Singapore', 'United Kingdom', 'United States']
   const out = []
   for (let i = 0; i < count; i++) {
-    const u = users[Math.floor(r() * users.length)]
-    const blocked = chance(0.72)
+    /* Same reason as the devices: the account the member portal opens with
+       needs a history, or its "recently opened" list is empty on a tenant
+       with 372 rows in it. */
+    const u = i < 8 ? users[1] : users[Math.floor(r() * users.length)]
+    const blocked = i < 8 ? chance(0.2) : chance(0.72)
     out.push({
       id: `aal_${pad(i + 1, 5)}`,
       at: ago(r() * 2),
-      username: chance(0.35) ? 'InstaSafeHelper' : u.username,
+      username: (i >= 8 && chance(0.35)) ? 'InstaSafeHelper' : u.username,
       publicIp: `13.200.153.189:${40000 + Math.floor(r() * 20000)}`,
       country: pick(COUNTRIES),
       destination: pick(DEST),
