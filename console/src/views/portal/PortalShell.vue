@@ -2,6 +2,7 @@
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { portalUser, portalSignOut } from '../../lib/portal-session.js'
+import AccountMenu from '../../components/shell/AccountMenu.vue'
 import DemoStates from '../../components/portal/DemoStates.vue'
 import { demo } from '../../lib/demo-state.js'
 
@@ -31,7 +32,6 @@ import { demo } from '../../lib/demo-state.js'
 const router = useRouter()
 const route = useRoute()
 const user = portalUser
-const menuOpen = ref(false)
 const navOpen = ref(false)
 
 /* Velto's three, in velto's order. */
@@ -44,18 +44,32 @@ const NAV = [
 /* Velto keeps these two behind the avatar rather than in the sidebar. They
    are on the rail as well, because a security setting nobody finds is a
    security setting nobody uses. */
-const ACCOUNT = [
+/**
+ * Velto's avatar menu, item for item: Profile, MFA, Sign out.
+ *
+ * These were also in the rail, on the argument that a security setting
+ * nobody finds is a security setting nobody uses. Two places for one thing is
+ * worse than one place people already look — and enrolment has a better
+ * prompt than a nav entry anyway: the Multi-factor card on the dashboard
+ * says "Not enrolled" in words and links straight here.
+ */
+const ACCOUNT_ITEMS = computed(() => [
   { to: '/portal/profile', label: 'Profile', icon: 'fa-user' },
-  { to: '/portal/mfa', label: 'Multi-factor', icon: 'fa-shield-halved' }
-]
+  { to: '/portal/mfa', label: 'Multi-factor authentication', icon: 'fa-shield-halved',
+    mark: user.value?.mfaEnrolled ? null : '1' },
+  { divider: true },
+  { to: '/dashboard', label: 'Administrator console', icon: 'fa-gauge' },
+  { divider: true },
+  { action: 'signout', label: 'Sign out', icon: 'fa-right-from-bracket', tone: 'bad' }
+])
 
-const initials = computed(() => {
-  const u = user.value || {}
-  return ((u.firstName || u.username || '?').slice(0, 1) + (u.lastName || '').slice(0, 1)).toUpperCase()
-})
+function onAccount (action) { if (action === 'signout') signOut() }
+
 
 const crumb = computed(() => {
-  const all = [...NAV, ...ACCOUNT]
+  const all = [...NAV,
+      { to: '/portal/profile', label: 'Profile' },
+      { to: '/portal/mfa', label: 'Multi-factor' }]
   const hit = all.find(n => n.exact ? route.path === n.to : route.path.startsWith(n.to))
   return ['My access', hit?.label || 'Dashboard']
 })
@@ -68,8 +82,6 @@ function toggleTheme () {
   document.documentElement.setAttribute('data-i-theme', theme.value)
   try { localStorage.setItem('i365.theme', theme.value) } catch {}
 }
-
-function go (to) { menuOpen.value = false; navOpen.value = false; router.push(to) }
 
 function signOut () {
   portalSignOut()
@@ -106,33 +118,8 @@ onMounted(() => {
           <span class="i-lab">{{ n.label }}</span>
         </RouterLink>
 
-        <div class="i-navsec">Account</div>
-        <RouterLink
-          v-for="n in ACCOUNT" :key="n.to" class="i-navitem" :to="n.to"
-          :aria-current="isOn(n) ? 'page' : null" @click="navOpen = false"
-        >
-          <i class="fa-solid" :class="n.icon" aria-hidden="true" />
-          <span class="i-lab">{{ n.label }}</span>
-          <span v-if="n.to === '/portal/mfa' && !user?.mfaEnrolled" class="i-count">1</span>
-        </RouterLink>
       </div>
 
-      <div class="p-acctwrap">
-      <button class="i-railfoot" @click="menuOpen = !menuOpen">
-        <span class="i-av">{{ initials }}</span>
-        <span class="i-uname">{{ user?.firstName || user?.username }}</span>
-        <i class="fa-solid fa-ellipsis ms-auto" style="font-size:12px;opacity:.6" aria-hidden="true" />
-      </button>
-      <div v-if="menuOpen" class="p-railmenu">
-        <p class="p-menuh">{{ user?.email || user?.username }}</p>
-        <button class="p-menui" @click="go('/portal/profile')">
-          <i class="fa-solid fa-user" aria-hidden="true" /> Profile
-        </button>
-        <button class="p-menui" @click="signOut">
-          <i class="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
-        </button>
-      </div>
-      </div>
     </nav>
 
     <main class="i-main">
@@ -158,14 +145,15 @@ onMounted(() => {
           >
             <i class="fa-solid" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'" aria-hidden="true" />
           </button>
-          <RouterLink class="i-tbtn" to="/dashboard" title="Administrator console">
-            <i class="fa-solid fa-gauge" aria-hidden="true" />
-            <span class="d-none d-xl-inline">Admin console</span>
-          </RouterLink>
-          <button class="i-tbtn" @click="signOut">
-            <i class="fa-solid fa-right-from-bracket" aria-hidden="true" />
-            <span class="d-none d-xl-inline">Sign out</span>
-          </button>
+
+          <!-- Velto's three, in velto's place. -->
+          <AccountMenu
+            :name="[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username"
+            :secondary="user?.email || user?.username"
+            :photo="user?.photo || ''"
+            context="Employee portal"
+            :items="ACCOUNT_ITEMS" @select="onAccount"
+          />
         </div>
       </header>
 

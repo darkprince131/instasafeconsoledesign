@@ -516,20 +516,8 @@ a.p-appt:hover{ border-color:#5B4FD1; }
 }
 
 /* The account menu hangs off the rail footer instead of a header avatar. */
-/* The account menu hangs off the rail footer. It gets its own positioning
-   context rather than making the rail one: portal.css loads after i365.css,
-   so `.i-rail{position:relative}` here quietly beat the rail's own
-   `position:fixed` at mobile widths, and the rail then took a grid row of
-   its own and pushed the whole page down by its height. */
-.p-acctwrap{ position:relative; }
-.p-railmenu{
-  position:absolute; left:10px; right:10px; bottom:calc(100% + 6px); z-index:20;
-  background:var(--i-surface,#fff);
-  border:1px solid var(--i-line,#e6e6ec); border-radius:8px;
-  box-shadow:0 10px 30px rgba(16,16,22,.18);
-  padding:6px;
-}
-
+/* The rail footer menu that used to live here is gone: the account menu is
+   one shared component in the topbar now, in both consoles. */
 /* The tab bar this replaced. Kept out of the way rather than deleted,
    because the sign-in page still uses the portal's own canvas. */
 .p-nav,.p-navi{ display:none !important; }

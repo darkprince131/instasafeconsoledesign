@@ -2075,6 +2075,61 @@ has learnt the wrong thing.
 A seeded account has no password, so the portal sends it to activation on
 first sign-in rather than refusing one it never issued.
 
+## 58. One account menu, top right, in both consoles
+
+Veno puts Profile, MFA and Sign out behind the avatar at the top right. This
+console had grown four different answers to the same question:
+
+| Where | What it was |
+|---|---|
+| Admin rail footer | "DA Demo Admin" with a gear — looked like an account control, opened **Company details** |
+| Admin console | **no way to sign out at all** |
+| Portal rail footer | an account popup with Profile and Sign out |
+| Portal rail | an "Account" section repeating Profile and Multi-factor |
+| Portal topbar | a third Sign out |
+
+Three affordances for one thing in the portal, and one misleading one in the
+admin console. `AccountMenu.vue` is now the single answer, used by both.
+
+**Top right wins**, and not because it is fashionable:
+
+1. It is where velto and veno put it, so nobody already using the product
+   learns a second habit.
+2. It is where people look. This control is used rarely, so it cannot afford
+   to be hunted for, and the convention is near-universal.
+3. It groups identity with what acts on identity. Sign out beside a theme
+   toggle is an accident waiting to happen; sign out under your own name is
+   not.
+
+The rail footer is gone from both. Two account affordances was the problem
+being fixed, so putting one back somewhere quieter would recreate it.
+
+| Portal | Admin |
+|---|---|
+| Profile | Company details |
+| Multi-factor authentication *(count while unenrolled)* | Sub admins & roles |
+| Administrator console | My access (employee view) |
+| Sign out | Reset demo · Sign out |
+
+**Reset demo moved into the menu.** It was a bare icon beside the theme
+toggle — one destructive control among four cosmetic ones, a row where every
+other button is safe to press twice.
+
+**The portal rail lost its Account section.** It was there on the argument
+that a security setting nobody finds is a security setting nobody uses. That
+argument survives; the second copy does not. Enrolment has a better prompt
+than a nav row anyway — the Multi-factor card on the dashboard says "Not
+enrolled" in words and links straight to it.
+
+### Two token bugs found on the way
+
+`--i-line` and `--i-surface` do not exist. The stylesheet defines `--i-rule`
+and `--i-canvas`. Three rules written in earlier sessions used the wrong
+names, so the account menu rendered with a transparent background and the
+read-panel and endpoint-strip borders silently drew nothing. An undefined
+custom property does not warn — it simply produces no value, which is why
+they survived review.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

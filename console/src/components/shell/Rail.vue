@@ -106,13 +106,9 @@ function badge (key) {
       </template>
     </div>
 
-    <!-- This used to link to the admin's own MFA enrolment, which put an
-         end-user task in the administrator's navigation. It is the account
-         row now; enrolment is in the portal. -->
-    <RouterLink to="/settings/company-details" class="i-railfoot">
-      <span class="i-av">DA</span>
-      <span class="i-uname">Demo Admin</span>
-      <i class="fa-solid fa-gear ms-auto" style="font-size:12px;opacity:.6" aria-hidden="true" />
-    </RouterLink>
+    <!-- The account row that used to sit here looked like an account
+         control and opened Company details, and there was no way to sign out
+         of this console at all. Both are the account menu's job now, top
+         right, where velto puts it and where people look. -->
   </nav>
 </template>

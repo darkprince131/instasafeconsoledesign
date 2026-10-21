@@ -1,13 +1,39 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../api'
 import CommandSearch from './CommandSearch.vue'
+import AccountMenu from './AccountMenu.vue'
 
 defineProps({ unread: { type: Number, default: 0 } })
 const emit = defineEmits(['toggle-nav', 'open-inbox', 'open-tours'])
 
+/**
+ * What belongs under the administrator's own name.
+ *
+ * Company details, because that is what the old rail footer opened and
+ * somebody will go looking for it there. The member portal, because an
+ * administrator is also an employee and the two consoles should know about
+ * each other. Reset demo, which was a bare icon beside the theme toggle —
+ * one destructive control sitting among four cosmetic ones.
+ */
+const ACCOUNT_ITEMS = [
+  { to: '/settings/company-details', label: 'Company details', icon: 'fa-building' },
+  { to: '/sub-admin/all', label: 'Sub admins & roles', icon: 'fa-user-shield' },
+  { divider: true },
+  { to: '/portal', label: 'My access (employee view)', icon: 'fa-user' },
+  { divider: true },
+  { action: 'reset', label: 'Reset demo', icon: 'fa-rotate-left' },
+  { action: 'signout', label: 'Sign out', icon: 'fa-right-from-bracket', tone: 'bad' }
+]
+
+function onAccount (action) {
+  if (action === 'reset') resetDemo()
+  if (action === 'signout') router.push('/signin')
+}
+
 const route = useRoute()
+const router = useRouter()
 const theme = ref(document.documentElement.getAttribute('data-i-theme') || 'light')
 const darkRail = ref(false)
 const resetting = ref(false)
@@ -105,10 +131,11 @@ onUnmounted(() => clearInterval(timer))
         <i class="fa-solid" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'" aria-hidden="true" />
       </button>
 
-      <button class="i-tbtn i-icon" @click="resetDemo" :disabled="resetting"
-              title="Reset demo - wipes changes and reseeds" aria-label="Reset demo">
-        <i class="fa-solid fa-rotate-left" aria-hidden="true" />
-      </button>
+      <AccountMenu
+        name="Demo Admin" secondary="admin" initials="DA"
+        context="Administrator console"
+        :items="ACCOUNT_ITEMS" @select="onAccount"
+      />
     </div>
   </header>
 </template>
