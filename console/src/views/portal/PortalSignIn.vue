@@ -61,6 +61,16 @@ async function submitCredentials () {
   try {
     const res = await api.auth.login({ username: username.value.trim(), password: password.value })
     if (!res?.ok) {
+      /* An account that has never had a password is not a failed sign-in, it
+         is an unclaimed account. Refusing a password nobody was ever issued
+         is the kind of dead end that generates a support ticket, so hand the
+         person to activation instead. The account travels in history state
+         rather than the URL: a username in a URL ends up in logs and
+         bookmarks. */
+      if (res?.needsActivation) {
+        router.push({ path: '/portal/activate', state: { activateUser: res.user } })
+        return
+      }
       error.value = res?.error || 'That username and password do not match.'
       return
     }
@@ -182,8 +192,13 @@ function enter (user) {
       <button class="p-btn" :disabled="busy">{{ busy ? 'Checking…' : 'Sign in' }}</button>
 
       <p class="p-hint">
-        This is a demo tenant. Any password is accepted<template v-if="suggestion">,
-        and <code>{{ suggestion }}</code> is a real account in it</template>.
+        <template v-if="suggestion">
+          <code>{{ suggestion }}</code> is a real account in this demo tenant.
+          No password has been set on it yet — sign in with anything and you
+          will be taken to set one, which is what an employee sees on their
+          first day.
+        </template>
+        <template v-else>This is a demo tenant.</template>
       </p>
     </form>
 

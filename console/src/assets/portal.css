@@ -528,3 +528,76 @@ a.p-appt:hover{ border-color:#5B4FD1; }
 /* The tab bar this replaced. Kept out of the way rather than deleted,
    because the sign-in page still uses the portal's own canvas. */
 .p-nav,.p-navi{ display:none !important; }
+
+
+/* ===================================================================
+   Activation - claiming an account somebody else created for you.
+   =================================================================== */
+
+.p-act{ max-width:520px; text-align:left; }
+.p-act .p-gh{ text-align:left; }
+.p-act .p-gs{ text-align:left; max-width:none; }
+.p-actav{ width:46px; height:46px; font-size:19px; margin-bottom:14px; }
+
+/* Three steps, named, so a form that might be the first of five is not. */
+.p-stepper{
+  display:flex; gap:8px; list-style:none; margin:0 0 26px; padding:0;
+  font-size:11.5px; color:var(--p-dim,#9a9aa6); counter-reset:s;
+}
+.p-stepper li{
+  flex:1; padding-top:9px; border-top:2px solid var(--p-line,#e6e6ec);
+  counter-increment:s;
+}
+.p-stepper li::before{ content:counter(s) ". "; }
+.p-stepper li.is-on{ color:#5B4FD1; border-top-color:#5B4FD1; font-weight:500; }
+.p-stepper li.is-done{ color:var(--p-dim,#6b6b76); border-top-color:#5B4FD1; }
+.p-stepper li.is-done::before{ content:"\2713 "; }
+
+.p-actwho{
+  display:grid; grid-template-columns:auto 1fr; gap:5px 14px;
+  margin:0 0 22px; padding:12px 14px; border-radius:8px;
+  background:rgba(0,0,0,.025); font-size:13px;
+}
+.p-actwho dt{ color:var(--p-dim,#6b6b76); }
+.p-actwho dd{ margin:0; }
+
+/* The password box, with the reveal inside it rather than beside it. */
+.p-pwwrap{ position:relative; }
+.p-pwwrap input{ width:100%; padding-right:40px; }
+.p-eye{
+  position:absolute; right:4px; top:50%; transform:translateY(-50%);
+  background:none; border:0; padding:7px 9px; cursor:pointer;
+  color:var(--p-dim,#9a9aa6); font-size:13px;
+}
+.p-eye:hover{ color:var(--p-ink,#1a1a1f); }
+
+/* Five segments for five rules, so the meter cannot disagree with the list
+   under it the way a guessed entropy score does. */
+.p-meter{ display:flex; gap:4px; margin:9px 0 5px; }
+.p-meter span{
+  flex:1; height:4px; border-radius:2px; background:var(--p-line,#e6e6ec);
+  transition:background .15s ease;
+}
+.p-meter span.is-on{ background:#d9634f; }
+.p-meter[data-level="3"] span.is-on{ background:#d89a3f; }
+.p-meter[data-level="4"] span.is-on{ background:#6fae5c; }
+.p-meter[data-level="5"] span.is-on{ background:#2e9e6b; }
+.p-meterl{ margin:0 0 10px; font-size:11.5px; color:var(--p-dim,#9a9aa6); }
+
+.p-wide-btn{ width:100%; justify-content:center; margin-top:4px; }
+.p-actqr{ margin:18px 0 22px; }
+.p-actqr .p-steps{ margin-top:0; }
+
+.p-actnext{
+  margin-top:26px; padding-top:18px; border-top:1px solid var(--p-line,#e6e6ec);
+  text-align:left;
+}
+.p-actnext h2{ font-size:13px; font-weight:500; margin:0 0 8px; }
+.p-actnext ul{ margin:0; padding-left:18px; font-size:13px; color:var(--p-dim,#6b6b76); line-height:1.7; }
+.p-actnext strong{ color:var(--p-ink,#1a1a1f); font-weight:500; }
+
+.p-mark.is-wait{ background:rgba(0,0,0,.05); color:var(--p-dim,#6b6b76); }
+
+/* A step that was skipped is not a step that was done. */
+.p-stepper li.is-skipped{ color:var(--p-dim,#9a9aa6); border-top-style:dashed; }
+.p-stepper li.is-skipped::before{ content:counter(s) ". "; }

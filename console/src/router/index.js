@@ -102,6 +102,14 @@ const routes = [
       { path: 'mfa', name: 'portal-mfa', component: () => import('../views/portal/PortalMfa.vue') }
     ]
   },
+  /* Activation is bare like sign-in: somebody arriving on an invite link has
+     no session yet, so there is no shell to put them in. */
+  {
+    path: '/portal/activate',
+    name: 'portal-activate',
+    component: () => import('../views/portal/PortalActivate.vue'),
+    meta: { bare: true, portalBare: true, title: 'Set up your account' }
+  },
   {
     path: '/portal/signin',
     name: 'portal-signin',

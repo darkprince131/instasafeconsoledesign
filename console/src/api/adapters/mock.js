@@ -16,6 +16,7 @@ import { db, id } from '../../lib/db.js'
 import { verifyTOTP, generateSecret, otpauthURI } from '../../lib/totp.js'
 import { evaluateAccess, evaluatePosture } from '../../lib/policy.js'
 import * as seed from '../seed.js'
+import { hashPassword, verifyPassword, passwordOk, inviteToken } from '../../lib/password.js'
 
 const SEED_FLAG = 'i365.seeded.v1'
 const LATENCY = [40, 140]   // ms — enough for spinners to be honest, not annoying
@@ -240,6 +241,20 @@ async function toInbox (kind, subject, body, meta = {}) {
 // ------------------------------------------------------------ handlers
 const handlers = {
   // ---- auth ----------------------------------------------------------
+  /**
+   * Sign in, with the password actually checked.
+   *
+   * This used to accept any non-empty string, on the grounds that password
+   * verification is the backend's job. It is — but "not simulated" turned out
+   * to mean the one security control everybody understands was the one thing
+   * in the console that was theatre, while the TOTP beside it was real.
+   *
+   * Now the stored value is a PBKDF2 hash and the password is verified
+   * against it. A seeded account has no hash, because nobody has ever set
+   * one; that is not a failure, it is an account waiting to be activated, and
+   * the answer says so rather than rejecting a password the person was never
+   * given.
+   */
   async 'auth.login' ({ username, password }) {
     const users = await db.all('users')
     const user = users.find(u => u.username === username || u.email === username)
@@ -251,9 +266,19 @@ const handlers = {
       await record('auth.login.failed', `${username} is suspended`, { severity: 'warning' })
       return { ok: false, error: 'This account is suspended.' }
     }
-    // Demo: any non-empty password is accepted for seeded users. Real
-    // password verification is the backend's job and is not simulated here.
     if (!password) return { ok: false, error: 'Enter a password.' }
+
+    /* Never had a password: offer to set one rather than refuse. The client
+       turns this into the activation step, which is the same screen an
+       invited user lands on. */
+    if (!user.passwordHash) {
+      return { ok: false, needsActivation: true, user, error: '' }
+    }
+
+    if (!(await verifyPassword(password, user.passwordHash))) {
+      await record('auth.login.failed', `Wrong password for ${username}`, { severity: 'warning' })
+      return { ok: false, error: 'Unknown user or wrong password.' }
+    }
 
     await record('auth.login.success', `${user.firstName} ${user.lastName} signed in`, { actor: user.username })
     return {
@@ -262,6 +287,94 @@ const handlers = {
       mfaRequired: user.mfaEnrolled,
       sessionToken: id('tok')
     }
+  },
+
+  /**
+   * Mint an invitation.
+   *
+   * What an administrator does after creating somebody: the account exists
+   * but has no password, so a one-time link is sent for the person to set
+   * one. The token is random and 192 bits; in production it is stored hashed
+   * with an expiry and burned on use, like a password reset.
+   *
+   * The mail lands in the Demo Inbox, because there is no mail server and a
+   * link nobody can reach is not an invitation.
+   */
+  async 'auth.invite' ({ userId, origin = '' }) {
+    const user = await db.get('users', userId)
+    if (!user) return { ok: false, error: 'No such user.' }
+
+    const token = inviteToken()
+    const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString()
+    await db.put('users', { ...user, inviteToken: token, inviteExpiresAt: expiresAt, inviteSentAt: new Date().toISOString() })
+
+    const link = `${origin}/portal/activate?token=${token}`
+    await toInbox('email',
+      `Set up your InstaSafe account`,
+      [
+        `Hello ${user.firstName || user.username},`,
+        '',
+        'An InstaSafe account has been created for you. Choose a password to',
+        'activate it — the link works once and expires in seven days.',
+        '',
+        link,
+        '',
+        `Username: ${user.username}`,
+        'If you were not expecting this, tell your IT administrator.'
+      ].join('\n'),
+      { to: user.email || user.username, link, userId: user.id })
+
+    await record('user.invited', `Invitation sent to ${user.username}`, { actor: user.username })
+    return { ok: true, token, link, expiresAt }
+  },
+
+  /** Look an invite up without consuming it, so the page can greet by name. */
+  async 'auth.checkInvite' ({ token }) {
+    const users = await db.all('users')
+    const user = users.find(u => u.inviteToken && u.inviteToken === token)
+    if (!user) return { ok: false, error: 'This link is not valid. It may already have been used.' }
+    if (user.inviteExpiresAt && new Date(user.inviteExpiresAt) < new Date()) {
+      return { ok: false, error: 'This link has expired. Ask your administrator for another.' }
+    }
+    return { ok: true, user }
+  },
+
+  /**
+   * Set a password and activate.
+   *
+   * Used by both paths — the invite link, and an existing account signing in
+   * for the first time — because they are the same act. The rules are checked
+   * here as well as on the form: a rule enforced only in the browser is not
+   * enforced.
+   */
+  async 'auth.setPassword' ({ userId, token, password }) {
+    const users = await db.all('users')
+    const user = token
+      ? users.find(u => u.inviteToken && u.inviteToken === token)
+      : users.find(u => u.id === userId)
+
+    if (!user) return { ok: false, error: 'This link is not valid. It may already have been used.' }
+    if (token && user.inviteExpiresAt && new Date(user.inviteExpiresAt) < new Date()) {
+      return { ok: false, error: 'This link has expired. Ask your administrator for another.' }
+    }
+    if (!passwordOk(password, { username: user.username })) {
+      return { ok: false, error: 'That password does not meet every rule.' }
+    }
+
+    const next = {
+      ...user,
+      passwordHash: await hashPassword(password),
+      passwordUpdatedAt: new Date().toISOString(),
+      /* The invite is burned whether it was used or not: a one-time link that
+         still works afterwards is not one-time. */
+      inviteToken: '',
+      inviteExpiresAt: '',
+      status: user.status === 'pending' ? 'active' : user.status,
+      activatedAt: user.activatedAt || new Date().toISOString()
+    }
+    await db.put('users', next)
+    await record('user.activated', `${next.username} set a password`, { actor: next.username })
+    return { ok: true, user: next, mfaRequired: !!next.mfaRequired && !next.mfaEnrolled }
   },
 
   async 'auth.verifyMfa' ({ userId, code }) {

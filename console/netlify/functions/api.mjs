@@ -345,6 +345,14 @@ async function ensureSchema () {
     ['devices', 'serial_number', 'text'],
     ['devices', 'uuid', 'text'],
     ['users', 'mfa_required', 'boolean not null default false'],
+    /* Activation. A seeded account has no password until somebody sets one;
+       the invite token is one-time and is cleared when it is used. */
+    ['users', 'password_hash', 'text'],
+    ['users', 'password_updated_at', 'text'],
+    ['users', 'invite_token', 'text'],
+    ['users', 'invite_expires_at', 'text'],
+    ['users', 'invite_sent_at', 'text'],
+    ['users', 'activated_at', 'text'],
     /* Each authentication protocol has its own field set. They share a table
        because they share a lifecycle, but an Active Directory profile and an
        OAuth2 profile have almost nothing in common, so the columns are the

@@ -59,6 +59,12 @@ export const api = {
     logout: () => adapter.call('auth.logout'),
     /** GET /auth/me */
     me: () => adapter.call('auth.me'),
+    /** POST /auth/invite — mints a one-time activation link */
+    invite: (payload) => adapter.call('auth.invite', payload),
+    /** GET /auth/invite/{token} — does not consume it */
+    checkInvite: (payload) => adapter.call('auth.checkInvite', payload),
+    /** POST /auth/set-password — activation, and first-time sign-in */
+    setPassword: (payload) => adapter.call('auth.setPassword', payload),
     /** POST /auth/mfa/enrol — returns secret + otpauth URI */
     startMfaEnrolment: (payload) => adapter.call('auth.startMfaEnrolment', payload),
     /** POST /auth/mfa/confirm */

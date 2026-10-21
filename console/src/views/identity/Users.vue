@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, inject, onMounted } from 'vue'
 import api from '../../api'
+import { hashPassword, passwordOk } from '../../lib/password.js'
 import PageHeader from '../../components/ui/PageHeader.vue'
 import DataTable from '../../components/ui/DataTable.vue'
 import ListTools from '../../components/ui/ListTools.vue'
@@ -133,11 +134,20 @@ const pwSaving = ref(false)
 function openPassword () { pwNew.value = ''; pwConfirm.value = ''; pwOpen.value = true }
 
 async function savePassword () {
-  if (pwNew.value.length < 8) { toast('Use at least 8 characters', 'bad'); return }
   if (pwNew.value !== pwConfirm.value) { toast('The two passwords do not match', 'bad'); return }
+  /* The same rule set the portal enforces, so an administrator cannot set a
+     password the person would not have been allowed to choose. */
+  if (!passwordOk(pwNew.value, { username: form.value.username })) {
+    toast('At least 12 characters, mixed case, a digit, a symbol, and not the username', 'bad')
+    return
+  }
   pwSaving.value = true
   try {
-    await api.users.update(editingId.value, { passwordSetAt: new Date().toISOString() })
+    await api.users.update(editingId.value, {
+      passwordHash: await hashPassword(pwNew.value),
+      passwordSetAt: new Date().toISOString(),
+      passwordUpdatedAt: new Date().toISOString()
+    })
     await api.events.record({
       type: 'user.password.changed',
       message: `Password changed for ${form.value.username}`,
@@ -306,12 +316,22 @@ async function save () {
       await api.users.update(editingId.value, rest)
       toast(form.value.firstName + ' ' + form.value.lastName + ' updated')
     } else {
-      /* The typed password is not kept on the record — only that one was
-         set. There is nothing here to authenticate against, and a browser
-         database is no place for it. */
+      /* The typed password used to be dropped on the floor, with a comment
+         explaining that there was nothing to authenticate against. There is
+         now: it is hashed with PBKDF2 and stored as a hash, so the account
+         this creates can be signed into from the member portal immediately.
+         The password itself is still never written down — a browser database
+         is no place for it, and neither is a server. */
       const { password, confirmPassword, ...rest } = form.value
-      await api.users.create({ ...rest, passwordSetAt: new Date().toISOString(), lastSeenAt: null })
-      toast(form.value.firstName + ' ' + form.value.lastName + ' added')
+      await api.users.create({
+        ...rest,
+        passwordHash: await hashPassword(password),
+        passwordSetAt: new Date().toISOString(),
+        passwordUpdatedAt: new Date().toISOString(),
+        activatedAt: new Date().toISOString(),
+        lastSeenAt: null
+      })
+      toast(`${form.value.firstName} ${form.value.lastName} added — they can sign in to the portal now`)
     }
     sheetOpen.value = false
     refreshStats()
@@ -323,6 +343,25 @@ async function save () {
   } finally {
     saving.value = false
   }
+}
+
+/**
+ * Send an invitation instead of handing a password over.
+ *
+ * Telling somebody their password — in a chat, in a ticket, out loud across
+ * a desk — is how the password stops being theirs. An invitation lets them
+ * set one nobody else has ever seen. The link is one-time and lasts a week,
+ * and it lands in the Demo Inbox because there is no mail server here.
+ */
+const inviting = ref(false)
+async function sendInvite () {
+  if (!editingId.value) return
+  inviting.value = true
+  try {
+    const res = await api.auth.invite({ userId: editingId.value, origin: location.origin })
+    if (!res?.ok) { toast(res?.error || 'Could not send it', 'bad'); return }
+    toast('Invitation sent — open the Demo Inbox to see it')
+  } finally { inviting.value = false }
 }
 
 async function removeSelected () {
@@ -541,11 +580,23 @@ onMounted(load)
           <div v-else class="i-field">
             <label>Password</label>
             <div>
-              <button class="i-btn i-sm" @click="openPassword">
+              <button class="i-btn i-sm me-1" @click="openPassword">
                 <i class="fa-solid fa-key me-1" aria-hidden="true" />Change Password
               </button>
+              <!-- The better of the two, which is why it is offered beside
+                   the one velto has: a password an administrator chooses is a
+                   password somebody has to be told. -->
+              <button class="i-btn i-sm" :disabled="inviting" @click="sendInvite">
+                <i class="fa-solid fa-envelope me-1" aria-hidden="true" />
+                {{ inviting ? 'Sending…' : 'Send invitation' }}
+              </button>
             </div>
-            <p class="i-hint">The current password is not readable from here, so it is replaced rather than shown.</p>
+            <p class="i-hint">
+              The current password is not readable from here, so it is replaced
+              rather than shown. An invitation is better than setting one for
+              them: it is a one-time link, good for seven days, that lets them
+              choose a password nobody else has ever seen.
+            </p>
           </div>
         </div>
       </template>

@@ -1921,6 +1921,75 @@ What this means for the redesign is in the reply accompanying this entry; the
 short version is that the toolbar, connection states, error and reconnect
 screens are themeable, and the session pixels are not.
 
+## 56. Sign-up, and the one security control that was theatre
+
+The admin console creates users and the portal signs them in, and until now
+nothing joined the two: `auth.login` accepted any non-empty string, under a
+comment saying password verification is the backend's job. It is — but "not
+simulated" meant the one security control every visitor understands was the
+only thing in the console that was fake, while the TOTP next to it was real.
+
+**There is no public sign-up, and there should not be.** A tenant is a
+company; anybody who could register their own account could grant themselves
+access to that company's network. Accounts are made by an administrator. What
+an employee does is *claim* one, and that is the flow built here.
+
+### What is real now
+
+`src/lib/password.js` — PBKDF2-HMAC-SHA256, 210,000 iterations (OWASP's 2023
+floor), 16-byte per-password salt, 32-byte key, stored self-describing:
+
+```
+pbkdf2$sha256$210000$<salt-b64>$<hash-b64>
+```
+
+Verified in the browser: the right password is accepted, a wrong one refused,
+an empty one asked for, and the stored record contains no plaintext. Like
+`totp.js`, this file is production-correct and would ship unchanged — only
+*where* it runs is the demo compromise.
+
+### Two doors, one act
+
+| Door | Who uses it |
+|---|---|
+| `/portal/activate?token=…` | somebody an administrator invited |
+| sign-in with an account that has no password | the 1,820 seeded users, and anybody created before invitations existed |
+
+The second matters more than it sounds: refusing a password nobody was ever
+issued is a dead end that generates a support ticket. The sign-in screen now
+hands those people to activation instead, carrying the account in history
+state rather than the URL — a username in a URL ends up in logs and
+bookmarks.
+
+Three steps, numbered on screen, because a form that might be the first of
+five is a form people abandon. Enrolment is folded in where the administrator
+required it: asking somebody to come back later for the security step is how
+the security step does not happen. Where it was *not* required, the step is
+marked skipped rather than ticked, and the finish screen says plainly that a
+password is currently the only thing protecting the account.
+
+The password rules live in one function that both the form and the server
+path call, so the list on screen cannot drift from what is enforced — which
+is the usual way those two disagree. One of them is velto's omission: a
+password containing the username is the first thing an attacker tries.
+
+### The admin side
+
+- **Creating a user** hashes the typed password, so the account can sign in to
+  the portal immediately. It used to be discarded.
+- **Change Password** applies the same rules the employee would face, so an
+  administrator cannot set a password the person would not have been allowed
+  to choose.
+- **Send invitation** is offered beside it, and is the better of the two: a
+  password an administrator picks is a password somebody has to be *told*, in
+  a chat or a ticket or out loud across a desk. The invite is a 192-bit
+  one-time token, good for seven days, burned on use — verified: reusing a
+  spent token is refused. The mail lands in the Demo Inbox, because a link
+  nobody can reach is not an invitation.
+
+Six columns added to the users table through the existing `add column if not
+exists` migration, so the HTTP path persists them too.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
