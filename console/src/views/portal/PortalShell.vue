@@ -4,47 +4,70 @@ import { ref, computed, onMounted } from 'vue'
 import { portalUser, portalSignOut } from '../../lib/portal-session.js'
 
 /**
- * The end-user portal.
+ * The end-user portal shell.
  *
- * An earlier note here said velto's member area is "one screen that asks a
- * single question: is the agent installed". That was wrong, and it was wrong
- * because the area had not been looked at. Velto's `/member` is a product of
- * its own: a dashboard carrying sessions, devices, applications, an access
- * history and a live network test; a downloads page; an applications
- * launcher; a profile; and six ways to set up multi-factor authentication.
+ * Two earlier mistakes, both now corrected.
  *
- * So it keeps velto's three nav entries and velto's two account entries, and
- * the agent check — which was the only thing here and is genuinely useful —
- * becomes one card on the dashboard rather than the whole portal.
+ * The first was the comment that used to sit here: it claimed velto's member
+ * area is "one screen that asks a single question". It is five screens.
  *
- * It still does not look like the admin console, and should not. One column,
- * generous type, no tables of 2,000 rows. The person here is an employee who
- * wants to get to work, not an administrator.
+ * The second was the layout. This was built as a top tab bar over a centred
+ * 980px column, on the reasoning that a portal with three destinations is a
+ * different product from a console with sixty-six and should not look like
+ * one. That is true of the *content* and wrong about the *frame*: velto's
+ * member area has a left sidebar, the admin console has a left sidebar, and
+ * a person who uses both should not have to relearn where navigation lives.
+ * A centred column also left two thirds of a desktop window empty.
+ *
+ * So the frame is the admin console's, class for class — `i-app`, `i-rail`,
+ * `i-main`, `i-topbar` — and it inherits that chrome, including the dark-rail
+ * and dark-theme toggles, for free. What stays different is what belongs on
+ * the pages: no tables of 2,000 rows, no bulk actions, bigger type, plain
+ * language.
  */
 
 const router = useRouter()
 const route = useRoute()
 const user = portalUser
 const menuOpen = ref(false)
+const navOpen = ref(false)
 
+/* Velto's three, in velto's order. */
 const NAV = [
   { to: '/portal', label: 'Dashboard', icon: 'fa-gauge-high', exact: true },
   { to: '/portal/downloads', label: 'Downloads', icon: 'fa-download' },
   { to: '/portal/applications', label: 'Applications', icon: 'fa-grip' }
 ]
 
+/* Velto keeps these two behind the avatar rather than in the sidebar. They
+   are on the rail as well, because a security setting nobody finds is a
+   security setting nobody uses. */
+const ACCOUNT = [
+  { to: '/portal/profile', label: 'Profile', icon: 'fa-user' },
+  { to: '/portal/mfa', label: 'Multi-factor', icon: 'fa-shield-halved' }
+]
+
 const initials = computed(() => {
   const u = user.value || {}
-  const first = (u.firstName || u.username || '?').slice(0, 1)
-  const last = (u.lastName || '').slice(0, 1)
-  return (first + last).toUpperCase()
+  return ((u.firstName || u.username || '?').slice(0, 1) + (u.lastName || '').slice(0, 1)).toUpperCase()
 })
 
-function isOn (item) {
-  return item.exact ? route.path === item.to : route.path.startsWith(item.to)
+const crumb = computed(() => {
+  const all = [...NAV, ...ACCOUNT]
+  const hit = all.find(n => n.exact ? route.path === n.to : route.path.startsWith(n.to))
+  return ['My access', hit?.label || 'Dashboard']
+})
+
+function isOn (n) { return n.exact ? route.path === n.to : route.path.startsWith(n.to) }
+
+const theme = ref(localStorage.getItem('i365.theme') || 'light')
+function toggleTheme () {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  document.documentElement.setAttribute('data-i-theme', theme.value)
+  try { localStorage.setItem('i365.theme', theme.value) } catch {}
 }
 
-function go (to) { menuOpen.value = false; router.push(to) }
+function go (to) { menuOpen.value = false; navOpen.value = false; router.push(to) }
 
 function signOut () {
   portalSignOut()
@@ -53,61 +76,98 @@ function signOut () {
 
 onMounted(() => {
   if (!portalUser.value) router.replace('/portal/signin')
+  document.documentElement.setAttribute('data-i-theme', theme.value)
 })
 </script>
 
 <template>
-  <div class="p-app">
-    <header class="p-top">
-      <span class="p-brand">
-        <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
-          <circle cx="16" cy="16" r="15" fill="#5B4FD1" />
-          <circle cx="16" cy="16" r="6.5" fill="#fff" opacity=".92" />
-        </svg>
-        InstaSafe
-      </span>
+  <div class="i-app" :class="{ 'i-navopen': navOpen }">
+    <!-- The admin console's rail, carrying the portal's own map. -->
+    <nav class="i-rail" aria-label="Main navigation">
+      <div class="i-brand">
+        <span class="i-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#5b4fd1" />
+            <path d="M16 7l7 3.5v6c0 4.4-2.9 7.6-7 8.5-4.1-.9-7-4.1-7-8.5v-6L16 7z"
+                  fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" /></svg>
+        </span>
+        <span class="i-wm">InstaSafe</span>
+        <span class="i-tenant">my access</span>
+      </div>
 
-      <!-- Velto's three, as tabs rather than a rail: three destinations do
-           not need a sidebar, and a sidebar here would make the portal look
-           like the console it is deliberately not. -->
-      <nav v-if="user" class="p-nav" aria-label="Portal">
+      <div class="i-navwrap">
+        <div class="i-navsec">Overview</div>
         <RouterLink
-          v-for="n in NAV" :key="n.to" :to="n.to"
-          class="p-navi" :class="{ 'is-on': isOn(n) }"
+          v-for="n in NAV" :key="n.to" class="i-navitem" :to="n.to"
+          :aria-current="isOn(n) ? 'page' : null" @click="navOpen = false"
         >
           <i class="fa-solid" :class="n.icon" aria-hidden="true" />
-          <span>{{ n.label }}</span>
+          <span class="i-lab">{{ n.label }}</span>
         </RouterLink>
-      </nav>
 
-      <div v-if="user" class="p-acct">
-        <button class="p-acctb" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen">
-          <span class="p-av">{{ initials }}</span>
-          <span class="d-none d-sm-inline">{{ user.firstName || user.username }}</span>
-          <i class="fa-solid fa-chevron-down" style="font-size:9px" aria-hidden="true" />
+        <div class="i-navsec">Account</div>
+        <RouterLink
+          v-for="n in ACCOUNT" :key="n.to" class="i-navitem" :to="n.to"
+          :aria-current="isOn(n) ? 'page' : null" @click="navOpen = false"
+        >
+          <i class="fa-solid" :class="n.icon" aria-hidden="true" />
+          <span class="i-lab">{{ n.label }}</span>
+          <span v-if="n.to === '/portal/mfa' && !user?.mfaEnrolled" class="i-count">1</span>
+        </RouterLink>
+      </div>
+
+      <button class="i-railfoot" @click="menuOpen = !menuOpen">
+        <span class="i-av">{{ initials }}</span>
+        <span class="i-uname">{{ user?.firstName || user?.username }}</span>
+        <i class="fa-solid fa-ellipsis ms-auto" style="font-size:12px;opacity:.6" aria-hidden="true" />
+      </button>
+      <div v-if="menuOpen" class="p-railmenu">
+        <p class="p-menuh">{{ user?.email || user?.username }}</p>
+        <button class="p-menui" @click="go('/portal/profile')">
+          <i class="fa-solid fa-user" aria-hidden="true" /> Profile
         </button>
-        <div v-if="menuOpen" class="p-menu">
-          <p class="p-menuh">{{ user.email || user.username }}</p>
-          <button class="p-menui" @click="go('/portal/profile')">
-            <i class="fa-solid fa-user" aria-hidden="true" /> Profile
+        <button class="p-menui" @click="signOut">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
+        </button>
+      </div>
+    </nav>
+
+    <main class="i-main">
+      <header class="i-topbar">
+        <button class="i-tbtn i-icon d-md-none" aria-label="Open navigation" @click="navOpen = !navOpen">
+          <i class="fa-solid fa-bars" aria-hidden="true" />
+        </button>
+
+        <nav class="i-crumb d-none d-lg-flex" aria-label="Breadcrumb">
+          <template v-for="(c, i) in crumb" :key="c">
+            <span v-if="i" aria-hidden="true">&rsaquo;</span>
+            <strong v-if="i === crumb.length - 1">{{ c }}</strong>
+            <span v-else>{{ c }}</span>
+          </template>
+        </nav>
+
+        <span style="flex:1" />
+
+        <div class="i-tgroup">
+          <button
+            class="i-tbtn i-icon" :title="theme === 'dark' ? 'Light theme' : 'Dark theme'"
+            :aria-label="theme === 'dark' ? 'Light theme' : 'Dark theme'" @click="toggleTheme"
+          >
+            <i class="fa-solid" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'" aria-hidden="true" />
           </button>
-          <button class="p-menui" @click="go('/portal/mfa')">
-            <i class="fa-solid fa-shield-halved" aria-hidden="true" /> Multi-factor authentication
-          </button>
-          <button class="p-menui" @click="signOut">
-            <i class="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
+          <RouterLink class="i-tbtn" to="/dashboard" title="Administrator console">
+            <i class="fa-solid fa-gauge" aria-hidden="true" />
+            <span class="d-none d-xl-inline">Admin console</span>
+          </RouterLink>
+          <button class="i-tbtn" @click="signOut">
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true" />
+            <span class="d-none d-xl-inline">Sign out</span>
           </button>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <main class="p-main">
       <RouterView />
     </main>
 
-    <footer class="p-foot">
-      <span>InstaSafe i365</span>
-      <RouterLink to="/dashboard">Administrator console</RouterLink>
-    </footer>
+    <div v-if="navOpen" class="i-scrim d-md-none" @click="navOpen = false" />
   </div>
 </template>

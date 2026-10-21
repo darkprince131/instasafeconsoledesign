@@ -481,3 +481,50 @@ a.p-appt:hover{ border-color:#5B4FD1; }
   background:rgba(0,0,0,.025); border-radius:9px; font-size:13.5px; letter-spacing:.04em;
 }
 @media (max-width:460px){ .p-codes{ grid-template-columns:1fr; } }
+
+
+/* ===================================================================
+   The portal now runs inside the admin console's shell.
+   A centred 980px column left two thirds of a desktop window empty, and
+   put navigation somewhere it is in neither velto's member area nor this
+   console. Both of those are fixed by using the same frame; these rules
+   make the portal's own page wrappers behave like .i-page inside it.
+   =================================================================== */
+
+.p-wide,
+.p-narrow{
+  width:auto; max-width:none;
+  padding:26px var(--i-gut,34px) 72px;
+  flex:1; min-width:0; margin:0;
+}
+
+/* The pages that are a single column of prose - profile, MFA - still want a
+   measure rather than a 1,900px line. The gutter stays the console's; only
+   the text column is held. */
+.p-narrow > *{ max-width:760px; }
+
+/* Content that is naturally a grid keeps the full width it is given. */
+.p-wide > *{ max-width:none; }
+
+/* The portal's cards sit on the console canvas now, so they take the
+   console's own line and radius rather than their own. */
+.p-card{
+  background:var(--i-surface,#fff);
+  border:1px solid var(--i-line,#e6e6ec);
+  border-radius:8px; padding:18px;
+  margin:0 0 14px;
+}
+
+/* The account menu hangs off the rail footer instead of a header avatar. */
+.p-railmenu{
+  position:absolute; left:10px; right:10px; bottom:58px; z-index:20;
+  background:var(--i-surface,#fff);
+  border:1px solid var(--i-line,#e6e6ec); border-radius:8px;
+  box-shadow:0 10px 30px rgba(16,16,22,.18);
+  padding:6px;
+}
+.i-rail{ position:relative; }
+
+/* The tab bar this replaced. Kept out of the way rather than deleted,
+   because the sign-in page still uses the portal's own canvas. */
+.p-nav,.p-navi{ display:none !important; }
