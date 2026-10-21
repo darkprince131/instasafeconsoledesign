@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, inject } from 'vue'
 import api from '../../api'
 import { portalUser } from '../../lib/portal-session.js'
+import { demo, filterApplications } from '../../lib/demo-state.js'
 
 /**
  * The launcher.
@@ -35,7 +36,8 @@ const KINDS = {
   net: { label: 'NET', how: 'Reached through the agent on this machine.', browser: false }
 }
 
-const rows = ref([])
+const rawRows = ref([])
+const rows = computed(() => filterApplications(rawRows.value))
 const loading = ref(true)
 const q = ref('')
 const type = ref('')
@@ -62,11 +64,12 @@ function kind (a) {
 async function load () {
   loading.value = true
   try {
-    rows.value = (await api.applications.list({ perPage: 0 })).data
+    rawRows.value = (await api.applications.list({ perPage: 0 })).data
   } finally { loading.value = false }
 
   /* Same loopback probe the dashboard runs; the answer changes what a tile
      is allowed to promise. */
+  if (demo.agent !== 'auto') { agentUp.value = demo.agent === 'running'; return }
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), 1500)
   try {
@@ -88,6 +91,7 @@ async function open (a) {
   toast(`${a.name} — opened. In production this is a gateway session.`)
 }
 
+watch(() => demo.agent, () => { agentUp.value = demo.agent === 'running' })
 onMounted(load)
 </script>
 

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import api from '../api'
 
 /**
@@ -91,10 +91,20 @@ function onCode (e) {
             </form>
 
             <div class="i-demo-note mt-4">
-              <strong style="color:var(--i-ink)">Demo.</strong>
-              Signed in as <code class="i-tech">admin</code> with any password — password
-              hashing belongs to the backend and faking it would prove nothing.
-              The MFA step after this is genuinely verified.
+              <strong style="color:var(--i-ink)">Administrator console.</strong>
+              Sign in as <code class="i-tech">admin</code> with the password
+              <code class="i-tech">demo</code>, which is filled in above. It is a
+              weak password and it is printed on the screen; pretending
+              otherwise would be worse than saying so. A wrong one really is
+              refused — passwords are PBKDF2 hashes now, and the MFA step
+              after this is genuinely verified.
+            </div>
+
+            <div class="i-demo-note mt-2">
+              <strong style="color:var(--i-ink)">Looking for the employee view?</strong>
+              That is a different product with its own sign-in:
+              <RouterLink to="/portal/signin">the member portal</RouterLink>.
+              Every account this console creates can sign in there.
             </div>
           </template>
 

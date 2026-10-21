@@ -174,6 +174,21 @@ async function reseed () {
   await db.putMany('radiusServices', seed.seedRadiusServices())
   await db.putMany('sessions', seed.seedSessions(users, apps))
 
+  /* The demo administrator signs in at /signin with a password the screen
+     states. Login verifies a hash now, so one has to exist — before this the
+     advertised credentials stopped working the moment passwords became real.
+     It is deliberately a weak password: it is printed on the sign-in screen,
+     and pretending otherwise would be worse than saying so. */
+  const adminRow = await db.get('users', 'usr_00000')
+  if (adminRow && !adminRow.passwordHash) {
+    await db.put('users', {
+      ...adminRow,
+      passwordHash: await hashPassword('demo'),
+      passwordUpdatedAt: new Date().toISOString(),
+      activatedAt: new Date().toISOString()
+    })
+  }
+
   localStorage.setItem(SEED_FLAG, new Date().toISOString())
 }
 

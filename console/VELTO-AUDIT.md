@@ -1990,6 +1990,91 @@ password containing the username is the first thing an attacker tries.
 Six columns added to the users table through the existing `add column if not
 exists` migration, so the HTTP path persists them too.
 
+## 57. Demo states, and sign-in as three questions
+
+### The states a seeded tenant never reaches
+
+The screens worth reviewing are the ones a healthy seeded tenant cannot show:
+nobody has any applications yet, the agent is down, an administrator has
+switched session recording on, a new starter has no devices. Until now the
+only way to see one was to empty a table and reseed afterwards.
+
+`src/lib/demo-state.js` holds them as switches and a floating widget on the
+portal writes to it. Nothing is faked downstream: a screen set to "none" runs
+the same empty branch a real empty tenant would, which is the point — an
+empty state that is drawn specially for the demo is not the empty state.
+
+| Switch | States |
+|---|---|
+| Applications | All · Browser only · None |
+| Registered devices | Some · None |
+| Access history | Some · None |
+| InstaSafe agent | Really probe · Running · Not running |
+| Multi-factor required | on/off |
+| Session recording | on/off |
+| Shift schedule | on/off |
+| Geo binding | on/off |
+| Accept any code | on/off |
+
+It is demo scaffolding and says so on its face, stored per browser so one
+reviewer's switches never reach anybody else.
+
+**Session recording earns a line of its own.** Velto never tells an employee
+their sessions are recorded. If a company is going to watch, saying so is the
+minimum it owes them, and it costs one bar at the top of the portal.
+
+### Sign-in: one question at a time
+
+Velto asks for a username and a password on one screen. This asks for the
+address first, then the password — which is what every product an employee
+already uses does, and it lets the second screen greet them by name so they
+can see they typed the right address before committing a password to it.
+
+The first step deliberately **does not** say whether the account exists.
+Velto answers "no such user" there, which hands anybody with a list of
+addresses a way to find out which ones are real.
+
+The third step is the one velto does not ask well. An account can carry six
+different second factors and velto picks one. Here the person chooses,
+because the right answer depends on what they are holding: the phone is in a
+drawer, the laptop has a fingerprint reader, they are on a train with no
+signal.
+
+| Method | Status |
+|---|---|
+| Authenticator app | **real** — RFC 6238, verified |
+| Security key | **real** — `navigator.credentials.get` |
+| Push notification | simulated; shows the shape of the wait |
+| Backup code | simulated; nothing holds the list to check against |
+| Device certificate / Computer sign-in | simulated; needs the signed agent |
+
+The "Accept any code" switch turns the honest verification off for walking
+somebody through the flow without a phone — and while it is on, the screen
+says so, because a reviewer who believes a wrong code was accepted on purpose
+has learnt the wrong thing.
+
+### Two regressions, both mine
+
+- **The admin sign-in broke** the moment passwords became real: `admin` has
+  no hash, so the advertised credentials stopped working. The seed now sets
+  one for `demo`. Its note said "any password" and said password hashing
+  "belongs to the backend"; both were true when written and neither is now.
+- **A blank band above every page at mobile width**, including the admin
+  console: `.p-railmenu` brought `.i-rail{position:relative}` with it, and
+  portal.css loads after i365.css, so it quietly beat the rail's own
+  `position:fixed`. The rail then took a grid row of its own and pushed the
+  page down by its full height. The menu has its own positioning context now.
+
+### Signing in, for anybody reading this later
+
+| | Where | Who |
+|---|---|---|
+| Administrator console | `/signin` | `admin` / `demo` |
+| Member portal | `/portal/signin` | any account the console has created |
+
+A seeded account has no password, so the portal sends it to activation on
+first sign-in rather than refusing one it never issued.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,

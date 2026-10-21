@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '../../api'
 import { portalUser } from '../../lib/portal-session.js'
+import { demo, filterApplications, filterDevices, filterHistory } from '../../lib/demo-state.js'
 
 /**
  * The member dashboard — velto's, in this console's clothes.
@@ -42,6 +43,14 @@ const agentCheckedAt = ref(null)
  * that is a genuine answer rather than a canned one.
  */
 async function probe () {
+  /* Forced by the demo widget, or genuinely asked. Both states are worth
+     reviewing and only one of them is reachable on a machine without the
+     agent, which is every machine this demo runs on. */
+  if (demo.agent !== 'auto') {
+    agent.value = demo.agent
+    agentCheckedAt.value = new Date()
+    return
+  }
   agent.value = 'checking'
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), 1800)
@@ -57,9 +66,15 @@ async function probe () {
 }
 
 /* ------------------------------------------------------------- the data */
-const devices = ref([])
-const apps = ref([])
-const history = ref([])
+/* Raw as loaded; what the screen shows is derived, so flipping a demo
+   switch changes the page without a round trip to the database. Filtering
+   inside load() meant a switch only took effect on the next navigation. */
+const rawDevices = ref([])
+const rawApps = ref([])
+const rawHistory = ref([])
+const devices = computed(() => filterDevices(rawDevices.value))
+const apps = computed(() => filterApplications(rawApps.value))
+const history = computed(() => filterHistory(rawHistory.value))
 const sessions = ref([])
 const loading = ref(true)
 
@@ -74,9 +89,12 @@ async function load () {
       api.appAccessLog.list({ perPage: 5, sort: 'at', dir: 'desc', filters: { username: me.value } }),
       api.sessions.list({ perPage: 5, sort: 'startedAt', dir: 'desc', filters: { username: me.value } })
     ])
-    devices.value = d.data
-    apps.value = a.data
-    history.value = h.data
+    /* The demo switches are applied here rather than in the template, so
+       every count, every empty state and every "needs the agent" note below
+       agrees about what is present. */
+    rawDevices.value = d.data
+    rawApps.value = a.data
+    rawHistory.value = h.data
     sessions.value = s.data
   } finally { loading.value = false }
 }
@@ -116,15 +134,15 @@ const policies = computed(() => {
         ? 'You can only connect from a device registered to you.'
         : 'Nothing is registered yet, so nothing can connect.' },
     { key: 'shift', label: 'Shift schedule', icon: 'fa-clock',
-      on: !!u.timeSchedule,
-      onText: u.timeSchedule || 'Set', offText: 'Any time',
-      help: u.timeSchedule
+      on: demo.shiftSchedule || !!u.timeSchedule,
+      onText: u.timeSchedule || 'Mon–Fri, 08:00–19:00', offText: 'Any time',
+      help: (demo.shiftSchedule || u.timeSchedule)
         ? 'Access is refused outside these hours.'
         : 'No hours restriction applies to your account.' },
     { key: 'geo', label: 'Geo binding', icon: 'fa-location-dot',
-      on: !!u.geoFence,
-      onText: u.geoFence || 'Set', offText: 'Any location',
-      help: u.geoFence
+      on: demo.geoBinding || !!u.geoFence,
+      onText: u.geoFence || 'India', offText: 'Any location',
+      help: (demo.geoBinding || u.geoFence)
         ? 'Access is refused from outside this area.'
         : 'No location restriction applies to your account.' }
   ]
@@ -156,6 +174,7 @@ const thisBrowser = computed(() => {
   return ''
 })
 
+watch(() => demo.agent, probe)
 onMounted(() => { probe(); load() })
 </script>
 

@@ -516,14 +516,19 @@ a.p-appt:hover{ border-color:#5B4FD1; }
 }
 
 /* The account menu hangs off the rail footer instead of a header avatar. */
+/* The account menu hangs off the rail footer. It gets its own positioning
+   context rather than making the rail one: portal.css loads after i365.css,
+   so `.i-rail{position:relative}` here quietly beat the rail's own
+   `position:fixed` at mobile widths, and the rail then took a grid row of
+   its own and pushed the whole page down by its height. */
+.p-acctwrap{ position:relative; }
 .p-railmenu{
-  position:absolute; left:10px; right:10px; bottom:58px; z-index:20;
+  position:absolute; left:10px; right:10px; bottom:calc(100% + 6px); z-index:20;
   background:var(--i-surface,#fff);
   border:1px solid var(--i-line,#e6e6ec); border-radius:8px;
   box-shadow:0 10px 30px rgba(16,16,22,.18);
   padding:6px;
 }
-.i-rail{ position:relative; }
 
 /* The tab bar this replaced. Kept out of the way rather than deleted,
    because the sign-in page still uses the portal's own canvas. */
@@ -601,3 +606,144 @@ a.p-appt:hover{ border-color:#5B4FD1; }
 /* A step that was skipped is not a step that was done. */
 .p-stepper li.is-skipped{ color:var(--p-dim,#9a9aa6); border-top-style:dashed; }
 .p-stepper li.is-skipped::before{ content:counter(s) ". "; }
+
+
+/* ===================================================================
+   Demo states - scaffolding, and it looks like scaffolding on purpose.
+   =================================================================== */
+
+.d-states{ position:fixed; right:18px; bottom:18px; z-index:70; }
+.d-fab{
+  display:inline-flex; align-items:center; gap:8px; position:relative;
+  background:var(--i-ink,#1a1a1f); color:#fff; border:0;
+  border-radius:22px; padding:10px 16px; font-size:12.5px; cursor:pointer;
+  box-shadow:0 6px 20px rgba(16,16,22,.22);
+}
+.d-fab:hover{ filter:brightness(1.12); }
+.d-fab.is-open{ border-radius:22px; }
+.d-fabl{ font-weight:450; letter-spacing:.01em; }
+.d-dot{
+  width:7px; height:7px; border-radius:50%; background:#f0a33c;
+  position:absolute; top:7px; right:9px;
+}
+
+.d-panel{
+  position:absolute; right:0; bottom:50px; width:340px;
+  max-height:min(76vh, 680px); overflow:auto;
+  background:var(--i-surface,#fff); color:var(--i-ink,#1a1a1f);
+  border:1px solid var(--i-line,#e6e6ec); border-radius:12px;
+  box-shadow:0 18px 50px rgba(16,16,22,.24);
+  padding:16px;
+}
+@media (max-width:460px){
+  .d-states{ right:12px; bottom:12px; left:12px; }
+  .d-panel{ width:auto; left:0; right:0; }
+  .d-fabl{ display:none; }
+}
+
+.d-ph{ display:flex; gap:10px; align-items:flex-start; margin-bottom:6px; }
+.d-ph h2{ font-size:15px; font-weight:500; margin:0 0 4px; }
+.d-ph p{ margin:0; font-size:11.5px; color:var(--i-dim,#6b6b76); line-height:1.5; }
+.d-reset{
+  flex:none; background:none; border:1px solid var(--i-line,#e6e6ec);
+  border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer;
+  color:var(--i-dim,#6b6b76);
+}
+.d-reset:hover{ color:var(--i-ink,#1a1a1f); }
+
+.d-grp{ margin-top:16px; }
+.d-grp h3{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--i-dim,#9a9aa6); font-weight:500; margin:0 0 9px;
+}
+.d-row{ margin-bottom:13px; }
+.d-row > label{ display:block; font-size:12.5px; margin-bottom:5px; }
+.d-why{ margin:5px 0 0; font-size:11px; color:var(--i-dim,#9a9aa6); line-height:1.45; }
+
+.d-seg{ display:flex; gap:3px; background:rgba(0,0,0,.04); border-radius:7px; padding:3px; }
+.d-segb{
+  flex:1; background:none; border:0; border-radius:5px; padding:5px 6px;
+  font-size:11.5px; color:var(--i-dim,#6b6b76); cursor:pointer;
+}
+.d-segb:hover{ color:var(--i-ink,#1a1a1f); }
+.d-segb.is-on{ background:var(--i-surface,#fff); color:#5B4FD1; font-weight:500; box-shadow:0 1px 3px rgba(16,16,22,.12); }
+
+.d-swrow{ margin-bottom:11px; }
+.d-sw{ display:flex; align-items:center; gap:9px; cursor:pointer; font-size:12.5px; }
+.d-sw input{ position:absolute; opacity:0; width:0; height:0; }
+.d-track{
+  width:32px; height:18px; border-radius:10px; background:var(--i-line,#d9d9e2);
+  position:relative; flex:none; transition:background .15s ease;
+}
+.d-track::after{
+  content:""; position:absolute; top:2px; left:2px; width:14px; height:14px;
+  border-radius:50%; background:#fff; transition:transform .15s ease;
+  box-shadow:0 1px 2px rgba(16,16,22,.25);
+}
+.d-sw input:checked + .d-track{ background:#5B4FD1; }
+.d-sw input:checked + .d-track::after{ transform:translateX(14px); }
+.d-sw input:focus-visible + .d-track{ outline:2px solid #5B4FD1; outline-offset:2px; }
+.d-swl{ display:flex; align-items:center; gap:6px; }
+.d-warn{ color:#d89a3f; font-size:11px; }
+
+.d-foot{
+  margin:16px 0 0; padding-top:12px; border-top:1px solid var(--i-line,#e6e6ec);
+  font-size:10.5px; color:var(--i-dim,#9a9aa6); line-height:1.5;
+}
+
+/* A company that records sessions should say so. One line, at the top. */
+.p-recbar{
+  display:flex; align-items:center; gap:9px; margin:0;
+  padding:9px var(--i-gut,34px); font-size:12.5px;
+  background:rgba(217,99,79,.08); color:var(--i-ink,#1a1a1f);
+  border-bottom:1px solid var(--i-line,#e6e6ec);
+}
+.p-recbar i{ color:#d9634f; font-size:9px; }
+
+/* ===================================================================
+   Signing in: one question at a time.
+   =================================================================== */
+
+.p-back{
+  background:none; border:0; padding:0; margin:0 0 18px; cursor:pointer;
+  font-size:12.5px; color:var(--p-dim,#6b6b76);
+  display:inline-flex; align-items:center; gap:7px;
+}
+.p-back:hover{ color:var(--p-ink,#1a1a1f); }
+
+.p-methods{ list-style:none; margin:4px 0 0; padding:0; }
+.p-methods li{ margin-bottom:8px; }
+.p-method{
+  display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  background:var(--p-card,#fff); border:1px solid var(--p-line,#e6e6ec);
+  border-radius:10px; padding:13px 14px; cursor:pointer; color:inherit;
+}
+.p-method:hover{ border-color:#5B4FD1; }
+.p-micon{
+  width:38px; height:38px; border-radius:9px; flex:none; display:grid;
+  place-items:center; background:rgba(91,79,209,.1); color:#5B4FD1; font-size:15px;
+}
+.p-micon.is-lg{ width:52px; height:52px; font-size:20px; margin-bottom:14px; }
+.p-mbody{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.p-mbody strong{ font-size:13.5px; font-weight:500; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.p-mbody small{ font-size:12px; color:var(--p-dim,#6b6b76); }
+.p-mnote{ font-size:11px !important; color:var(--p-dim,#9a9aa6) !important; }
+.p-mchev{ font-size:11px; color:var(--p-dim,#9a9aa6); flex:none; }
+
+.p-push{
+  display:flex; align-items:center; gap:12px; margin:18px 0;
+  padding:16px; border-radius:10px; background:rgba(0,0,0,.025);
+}
+.p-push i{ font-size:19px; color:var(--p-dim,#9a9aa6); }
+.p-push.is-approved i{ color:#2e9e6b; }
+.p-push p{ margin:0; font-size:13px; }
+
+/* When the simulator is on, the screen says so. A reviewer who thinks a
+   wrong code was accepted on purpose has learnt the wrong thing. */
+.p-simwarn{
+  display:flex; gap:10px; margin:18px 0 0; padding:11px 13px;
+  border-radius:8px; background:rgba(216,154,63,.1);
+  font-size:11.5px; line-height:1.5; color:var(--p-dim,#6b6b76);
+}
+.p-simwarn i{ color:#d89a3f; font-size:12px; padding-top:2px; }
+.p-simwarn strong{ color:var(--p-ink,#1a1a1f); font-weight:500; }

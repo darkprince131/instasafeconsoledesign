@@ -2,6 +2,8 @@
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { portalUser, portalSignOut } from '../../lib/portal-session.js'
+import DemoStates from '../../components/portal/DemoStates.vue'
+import { demo } from '../../lib/demo-state.js'
 
 /**
  * The end-user portal shell.
@@ -115,6 +117,7 @@ onMounted(() => {
         </RouterLink>
       </div>
 
+      <div class="p-acctwrap">
       <button class="i-railfoot" @click="menuOpen = !menuOpen">
         <span class="i-av">{{ initials }}</span>
         <span class="i-uname">{{ user?.firstName || user?.username }}</span>
@@ -128,6 +131,7 @@ onMounted(() => {
         <button class="p-menui" @click="signOut">
           <i class="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
         </button>
+      </div>
       </div>
     </nav>
 
@@ -165,9 +169,20 @@ onMounted(() => {
         </div>
       </header>
 
+      <!-- Velto never tells an employee their sessions are recorded. If a
+           company is going to watch, saying so is the minimum, and it costs
+           one line. -->
+      <p v-if="demo.sessionRecording" class="p-recbar">
+        <i class="fa-solid fa-circle-dot" aria-hidden="true" />
+        Your sessions to company applications are being recorded.
+      </p>
+
       <RouterView />
     </main>
 
     <div v-if="navOpen" class="i-scrim d-md-none" @click="navOpen = false" />
+
+    <!-- Demo scaffolding: the states a seeded tenant never reaches. -->
+    <DemoStates />
   </div>
 </template>
