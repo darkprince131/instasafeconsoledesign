@@ -86,6 +86,13 @@ function setEntry (v) {
   if (entry.value.length === DIGITS && status.value === 'idle') submit()
 }
 
+/* The backup field takes letters and a dash, so it is one box rather than
+   six, and it is submitted rather than auto-advancing. */
+function onBackup (e) {
+  entry.value = e.target.value.toUpperCase().slice(0, 9)
+  status.value = 'idle'
+}
+
 function onBox (i, e) {
   const d = e.target.value.replace(/\D/g, '')
   const arr = entry.value.padEnd(DIGITS, ' ').split('')
@@ -118,6 +125,14 @@ async function submit () {
     return settle(ok, 'That code was not accepted. Codes last 30 seconds — if yours just rolled over, use the new one.')
   }
   if (props.method === 'totp') return settle(v === liveCode.value, 'Not the code showing above.')
+  /* A backup code is not six digits and never was. It fell through to the
+     SMS branch, which compares against a code that was never generated — so
+     the method could not be completed at all, whatever you typed. */
+  if (props.method === 'backup') {
+    const clean = entry.value.trim().toUpperCase()
+    const shaped = /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(clean)
+    return settle(shaped, 'Backup codes are eight characters, like 6KPV-2XAR.')
+  }
   /* SMS and email: the code was generated here and shown in the panel, so
      checking it is honest about what it is — a typing exercise, not proof. */
   return settle(v === sentCode.value, 'That is not the code we sent.')
@@ -209,6 +224,7 @@ function tryKey (k) {
 /* ---------------------------------------------------------------- start */
 onMounted(() => {
   if (props.method === 'sms' || props.method === 'email') send()
+  else if (props.method === 'backup') { stage.value = 'backup'; nextTick(() => document.getElementById('bkc')?.focus()) }
   else if (props.method === 'push') firePush()
   else if (props.method === 'bio' || props.method === 'key') stage.value = 'scanning'
   else { stage.value = 'otp'; nextTick(() => focusBox(0)) }
@@ -265,6 +281,26 @@ onUnmounted(() => { clearInterval(ticker); clearInterval(holding) })
       </div>
 
       <p v-if="error" class="p-err">{{ error }}</p>
+      <button class="p-btn p-ghost m-alt" @click="emit('other')">Try another method</button>
+    </div>
+
+    <!-- ------------------------------------------------- backup code -->
+    <div v-else-if="stage === 'backup'" class="m-center">
+      <p class="m-lead">Enter one of the ten codes you saved. Each works once.</p>
+      <form class="m-bkform" @submit.prevent="submit">
+        <input
+          id="bkc" class="m-bk i-tech" :class="{ 'is-bad': status === 'error' }"
+          :value="entry" placeholder="XXXX-XXXX" autocomplete="one-time-code"
+          aria-label="Backup code" @input="onBackup"
+        >
+        <button class="p-btn p-wide-btn" type="submit">Verify</button>
+      </form>
+      <p v-if="error" class="p-err">{{ error }}</p>
+      <p class="m-hint">
+        Simulated: the codes this console generates are real random, but
+        nothing here holds the list to check yours against. Any correctly
+        shaped code is accepted.
+      </p>
       <button class="p-btn p-ghost m-alt" @click="emit('other')">Try another method</button>
     </div>
 

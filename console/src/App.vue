@@ -31,6 +31,13 @@ provide('startTour', (id) => id ? tourRef.value?.start(id) : tourRef.value?.open
 
 const bare = computed(() => route.meta?.bare === true)
 
+const theme = ref(document.documentElement.getAttribute('data-i-theme') || 'light')
+function toggleTheme () {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  document.documentElement.setAttribute('data-i-theme', theme.value)
+  try { localStorage.setItem('i365.theme', theme.value) } catch {}
+}
+
 onMounted(refreshStats)
 </script>
 
@@ -39,6 +46,12 @@ onMounted(refreshStats)
   <!-- Portal routes bring their own shell; the sign-in page is bare but still
        needs the portal's canvas behind it. -->
   <div v-if="bare && route.meta?.portalBare" class="p-app">
+    <!-- Sign-in and activation have no topbar to hang this on, and they are
+         the first thing a visitor sees. A white page for somebody who runs
+         their machine dark is a bad first impression. -->
+    <button class="p-themeb" :aria-label="theme === 'dark' ? 'Light theme' : 'Dark theme'" @click="toggleTheme">
+      <i class="fa-solid" :class="theme === 'dark' ? 'fa-sun' : 'fa-moon'" aria-hidden="true" />
+    </button>
     <main class="p-main"><RouterView /></main>
   </div>
   <RouterView v-else-if="bare" />

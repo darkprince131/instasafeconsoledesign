@@ -79,10 +79,13 @@ defineProps({ method: { type: String, default: '' } })
     <!-- ----------------------------------------------------- e-mail -->
     <svg v-else-if="method === 'email'" viewBox="0 0 220 150" class="a-svg" role="img"
          aria-label="A code arriving in a mailbox">
-      <rect x="62" y="40" width="96" height="66" rx="8" class="a-body" />
-      <path d="M62 48 L110 82 L158 48" class="a-flap" />
-      <rect x="86" y="66" width="48" height="26" rx="4" class="a-screen a-pop" />
-      <text x="110" y="84" class="a-codesm">418302</text>
+      <!-- The flap used to run straight through the code, which made the
+           one thing the drawing is about unreadable. The envelope is open
+           now and the code sits above its mouth rather than behind it. -->
+      <rect x="62" y="56" width="96" height="50" rx="8" class="a-body" />
+      <path d="M62 56 L110 86 L158 56" class="a-flap" />
+      <rect x="80" y="22" width="60" height="26" rx="5" class="a-screen a-pop" />
+      <text x="110" y="40" class="a-codesm">418302</text>
       <path d="M14 73 H56" class="a-wire" />
       <circle r="4" class="a-pulse"><animateMotion dur="2s" repeatCount="indefinite" path="M14 73 H56" /></circle>
       <text x="110" y="126" class="a-tag">as safe as the mailbox</text>

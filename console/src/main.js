@@ -11,6 +11,16 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 import './assets/i365.css'
 import './assets/app.css'
 import './assets/portal.css'
+
+/* The theme is chosen in the console and remembered, but the sign-in and
+   activation screens render before any of that mounts — so the attribute is
+   restored here, at boot, for every route including the bare ones. Without
+   it a visitor who had picked dark got a white sign-in page and a dark
+   console one click later. */
+try {
+  const saved = localStorage.getItem('i365.theme')
+  if (saved) document.documentElement.setAttribute('data-i-theme', saved)
+} catch {}
 import { restorePortalSession } from './lib/portal-session.js'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
