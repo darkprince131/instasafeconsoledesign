@@ -124,10 +124,19 @@ namespace InstaSafeAgent
                 var core = s == State.Disconnected ? Color.FromArgb(0x6E, 0x72, 0x80) : Purple;
                 float alpha = live ? 1f : (s == State.Disconnected ? 0.85f : 0.75f);
 
-                // The badge eats the bottom-right quadrant, so the mark sits up
-                // and left of centre rather than being covered by it.
+                // A white plate under the mark. The notification area sits on
+                // the taskbar, which is near-black by default and can be any
+                // wallpaper colour when it is translucent; an orange ring on
+                // that is a smudge. On a disc the mark always has its own
+                // background, which is what every well-behaved tray icon does.
                 float side = px * 0.86f;
-                Mark(g, new RectangleF(0, 0, side, side), ring, core, alpha);
+                using (var plate = new SolidBrush(Color.FromArgb((int)(255 * alpha), Color.White)))
+                    g.FillEllipse(plate, 0, 0, side, side);
+                using (var edge = new Pen(Color.FromArgb((int)(70 * alpha), 0, 0, 0), System.Math.Max(0.8f, px * 0.025f)))
+                    g.DrawEllipse(edge, 0.5f, 0.5f, side - 1, side - 1);
+
+                float pad = side * 0.14f;
+                Mark(g, new RectangleF(pad, pad, side - pad * 2, side - pad * 2), ring, core, alpha);
 
                 if (s == State.Disconnected) return Icon.FromHandle(bmp.GetHicon());
 

@@ -45,12 +45,24 @@ Sources:
 
 ## The decisions, and why
 
-**Four steps, not six.** Welcome · Workspace · Install · Done. The research
-says 3–7 and the fewest that work. There is no components step because there
-are no components to choose, and no separate licence screen because a screen
-whose only job is to be dismissed teaches people to dismiss screens. The
-licence is a link on Welcome, which is where it is readable rather than
-ceremonial.
+**The real product's steps, in the real product's order.** The shipped
+installer is NSIS with the stock pages — Licence Agreement, Installing,
+Installation Complete — and then the agent itself asks for the workspace
+address and a sign-in, outside the wizard, with no progress shown at all. So
+the wizard is:
+
+    Welcome · Licence · Installing · Workspace · Done
+
+Five, inside the 3–7 the research supports. An earlier pass dropped the
+licence step on the argument that a screen whose only job is to be dismissed
+teaches people to dismiss screens. That argument is sound and it was still
+the wrong call: the product has a licence page, people have been clicking
+through it for years, and removing it makes this a different installer rather
+than a better one. It stays, and the fix is to make it readable — real type,
+a real scroll, and a blurb pointing at section 2, which is the part that
+actually affects the machine.
+
+There is no components step, because there are no components to choose.
 
 **A left rail carrying the steps.** InstallAnywhere's pattern and the
 UI Design Daily concept both put progress beside the content rather than
@@ -68,8 +80,14 @@ the console's own progression, so the two feel related without the installer
 pretending to be the console.
 
 **Progress has a state, not just a bar.** Each step in the rail is pending,
-current or done, and the install step names what it is doing in words. The
-shipped one prints `tapinstall cumulative status: 0`.
+current or done, and the install step names what it is doing in words —
+"Adding the network adapter", not `tapinstall cumulative status: 0`.
+
+**The install log is kept, and demoted.** The shipped installer's whole screen
+is a list box of `Extract: libpkcs11-helper-1.dll... 100%`. That log is
+genuinely useful — to the one person in a thousand whose install fails — and
+useless to everyone else, so it sits behind *Show details* under the plain
+line. The lines in it are the real ones, read off a real run.
 
 **Validation lives on the workspace step.** The address is checked when it is
 entered, and a wrong one says what to do: *"That workspace did not answer.
@@ -119,3 +137,47 @@ Four, differing in **silhouette** so they read without colour:
 A badge rather than recolouring the whole mark, because recolouring a logo to
 mean "error" is how a brand ends up with a red version of itself in people's
 heads.
+
+**The mark sits on a white disc.** The notification area is on the taskbar,
+which is near-black by default and takes the wallpaper's colour when it is
+translucent. An orange ring on that is a smudge. On a disc the mark carries
+its own background, which is what every tray icon that survives a dark
+taskbar does.
+
+## The tray menu
+
+Dark, because it hangs over the taskbar and a white menu there is a slab of
+light at the bottom of the screen every time you right-click. 10px on the
+menu, 6px on the hovered row, 32px rows, and the hover carries the violet
+that means "interactive" everywhere else in this product — which on a dark
+surface reads as blue.
+
+`ToolStripProfessionalRenderer` cannot round a row or a drop-down, so
+`DarkMenu` subclasses `ToolStripRenderer` outright rather than feeding a
+colour table to a renderer that will square the corners anyway.
+
+The four states used to be four sibling rows in the top level, which made the
+menu look like a debug switchboard. They are one row now — **Connection**,
+showing the current state, with the four as a submenu, and the current one
+greyed because changing to the state you are already in is not an action.
+
+## The sign-in
+
+The shipped agent opens an embedded WebView2 on a page that looks nothing
+like the console: different logo treatment, different field style, an orange
+button where the console uses violet. Two sign-ins for one product is two
+products as far as anybody using it is concerned.
+
+This one mirrors `console/src/views/SignIn.vue` step for step — lockup, large
+light title, both credentials at once, full-width primary, then the six-digit
+second factor in one wide monospace box rather than six little ones (paste
+breaks on six, backspace is ambiguous, and a screen reader announces six
+unlabelled fields).
+
+It also keeps going after the password. Signing in and connecting are two
+different things, and the agent is the only place you can watch the second one
+happen, so it shows its three steps — checking the device, opening the tunnel,
+assigning an address — instead of vanishing and leaving a tray icon to change
+colour on its own. The window is a different height at each stage, because one
+box tall enough for the longest stage leaves a third of it empty on the other
+two, which reads as a form that has lost something.
