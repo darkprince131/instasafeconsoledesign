@@ -152,36 +152,39 @@ namespace InstaSafeAgent
 
     // ---------------------------------------------------------- the sign-in
     /// <summary>
-    /// The same sign-in as the web console, in a window.
+    /// Sign-in happens in the browser, not in here.
     ///
-    /// The shipped agent opens an embedded WebView2 showing a page that looks
-    /// nothing like the console: a different logo treatment, a different field
-    /// style, an orange button where the console uses violet. Two sign-ins for
-    /// one product is two products as far as anybody using it is concerned.
-    /// This mirrors console/src/views/SignIn.vue step for step — lockup,
-    /// large light title, both credentials at once, full-width primary, then
-    /// the six-digit second factor — so the person who signed in on the web
-    /// recognises this one.
+    /// The first version of this window reimplemented the console's sign-in
+    /// in WinForms: two fields, a six-digit box, the lot. It was a second
+    /// implementation of a screen the product already has — one that would
+    /// drift the moment the real one changed, and that offered one second
+    /// factor where the portal offers six.
     ///
-    /// It also keeps going after the password. Signing in and connecting are
-    /// two different things, and the agent is the only place you can watch the
-    /// second one happen, so it shows its three steps rather than vanishing
-    /// and leaving a tray icon to change colour on its own.
+    /// So it does what a well-behaved desktop client does: hands the person
+    /// to a browser, where the real sign-in lives, and waits. That is also
+    /// how SSO has to work — an embedded webview cannot see the session
+    /// cookie an IdP already set, so an embedded sign-in asks people to
+    /// authenticate again when they are already signed in.
+    ///
+    /// What stays in the agent is the part only the agent can show: the
+    /// connection coming up after the sign-in is done.
     /// </summary>
     class SignIn : Sheet
     {
-        const int WW = 420, HH = 560, PAD = 44;
+        const int WW = 420, HH = 420, PAD = 44;
         int CW { get { return WW - PAD * 2; } }
 
-        Field user, pass;
-        OtpBox otp;
-        Btn go, alt;
-        Label h, sub, note, otpHint;
+        Label h, sub, where;
+        Btn go, done;
         Panel steps = new Panel();
         Timer run = new Timer();
-        int stage = 0;          // 0 credentials · 1 second factor · 2 connecting
-        int at = -1;            // which connect step is running
+        int stage = 0;          // 0 hand off · 1 connecting
+        int at = -1;
         Agent app;
+
+        /// Where the sign-in actually is. The workspace step collects this;
+        /// the prototype keeps the default the installer offers.
+        public string Workspace = "veno.instasafe.com";
 
         static readonly string[] CONNECT = {
             "Checking this device",
@@ -195,51 +198,61 @@ namespace InstaSafeAgent
             Bar.Visible = false;
 
             h = new Label { Font = new Font("Segoe UI", 18.5f), ForeColor = T.Ink,
-                            AutoSize = false, Size = new Size(CW, 34), Location = new Point(PAD, 104) };
-            sub = new Label { Font = T.Small, ForeColor = T.Mute,
-                              AutoSize = false, Size = new Size(CW, 20), Location = new Point(PAD, 140) };
+                            AutoSize = false, Size = new Size(CW, 40), Location = new Point(PAD, 104) };
+            sub = new Label { Font = T.Body, ForeColor = T.Dim,
+                              AutoSize = false, Size = new Size(CW, 62), Location = new Point(PAD, 146) };
 
-            user = new Field("Username or email", false, CW) { Location = new Point(PAD, 176) };
-            user.Box.Text = "alen.joseph@veno.com";
-            pass = new Field("Password", true, CW) { Location = new Point(PAD, 258) };
+            where = new Label { Font = T.Mono, ForeColor = T.Violet,
+                                AutoSize = false, Size = new Size(CW, 22), Location = new Point(PAD, 212) };
 
-            otp = new OtpBox(CW) { Location = new Point(PAD, 186), Visible = false };
-            otp.Complete += Submit;
-            otpHint = new Label {
-                Text = "Any six digits are accepted here. In the console the same step is "
-                     + "real: it checks a TOTP code against the enrolled secret.",
-                Font = T.Small, ForeColor = T.Mute, AutoSize = false,
-                TextAlign = ContentAlignment.TopCenter,
-                Size = new Size(CW, 52), Location = new Point(PAD, 284), Visible = false };
-
-            steps.Location = new Point(PAD, 176);
+            steps.Location = new Point(PAD, 150);
             steps.Size = new Size(CW, 150);
             steps.BackColor = Color.Transparent;
             steps.Visible = false;
             steps.Paint += PaintSteps;
 
-            go = new Btn("Sign in", CW, 40) { Fill = T.Violet, Ink = Color.White, Location = new Point(PAD, 364) };
-            go.Click += (x, e) => Submit();
+            go = new Btn("Open my browser", CW, 40)
+                 { Fill = T.Violet, Ink = Color.White, Location = new Point(PAD, 258) };
+            go.Click += (x, e) => Open();
 
-            alt = new Btn("Use a backup code instead", CW, 30)
-                  { Fill = Color.Transparent, Ink = T.Violet, Location = new Point(PAD, 410), Visible = false };
-            alt.Click += (x, e) => otp.ShowError("Backup codes are entered in the console, under Profile > Security.");
+            done = new Btn("I have signed in", CW, 34)
+                   { Fill = Color.Transparent, Edge = T.Rule, Ink = T.Dim, Location = new Point(PAD, 306) };
+            done.Click += (x, e) => Begin();
 
-            note = new Label {
-                Text = "By continuing you accept the Terms of Use and Privacy Policy.",
-                Font = T.Small, ForeColor = T.Mute, AutoSize = false,
-                Size = new Size(CW, 40), Location = new Point(PAD, 452) };
-
-            var close = new Btn("✕", 32, 28) { Fill = Color.Transparent, Ink = T.Mute, Location = new Point(WW - 46, 14) };
+            var close = new Btn("✕", 32, 28) { Fill = Color.Transparent, Ink = T.Mute,
+                                                    Location = new Point(WW - 46, 14) };
             close.Click += (x, e) => { Hide(); Reset(); };
 
-            Controls.AddRange(new Control[] { h, sub, user, pass, otp, otpHint, steps, go, alt, note, close });
+            Controls.AddRange(new Control[] { h, sub, where, steps, go, done, close });
             Paint += (x, e) => Brand.Lockup(e.Graphics, new PointF(PAD, 44), 30, Brand.Orange, Brand.Purple, T.Ink);
             MouseDown += (x, e) => { Native.ReleaseCapture(); Native.SendMessage(Handle, 0xA1, 0x2, 0); };
 
             run.Interval = 900;
             run.Tick += Step;
             Reset();
+        }
+
+        /// <summary>
+        /// Opens the workspace's sign-in page in the default browser.
+        ///
+        /// Falls back to the local console when the workspace is the demo
+        /// one, so the prototype has somewhere real to go on a machine with
+        /// `npm run dev` running.
+        /// </summary>
+        void Open()
+        {
+            var url = "http://localhost:5300/portal/signin";
+            if (!Workspace.StartsWith("veno.")) url = "https://" + Workspace + "/portal/signin";
+            try { System.Diagnostics.Process.Start(url); }
+            catch { /* no browser, or no handler: the URL is on screen anyway */ }
+            done.Focus();
+        }
+
+        void Begin()
+        {
+            stage = 1; at = -1; Lay();
+            app.EnterConnecting();
+            run.Start();
         }
 
         // ------------------------------------------------------- connecting
@@ -249,11 +262,11 @@ namespace InstaSafeAgent
             float y = 4;
             for (int i = 0; i < CONNECT.Length; i++)
             {
-                bool done = i < at, now = i == at;
-                var c = done ? T.Ok : now ? T.Violet : Color.FromArgb(0xD6, 0xD6, 0xDE);
+                bool fin = i < at, now = i == at;
+                var c = fin ? T.Ok : now ? T.Violet : Color.FromArgb(0xD6, 0xD6, 0xDE);
 
                 using (var b = new SolidBrush(c)) g.FillEllipse(b, 0, y + 4, 16, 16);
-                if (done)
+                if (fin)
                     using (var pen = new Pen(Color.White, 1.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
                         g.DrawLines(pen, new[] { new PointF(4.6f, y + 12), new PointF(7f, y + 14.6f),
                                                  new PointF(11.4f, y + 9.2f) });
@@ -266,7 +279,7 @@ namespace InstaSafeAgent
 
                 TextRenderer.DrawText(g, CONNECT[i], now ? T.Strong : T.Body,
                     new Rectangle(T.S4 + T.S3, (int)y + 2, steps.Width - 40, 20),
-                    now ? T.Ink : (done ? T.Dim : T.Mute), TextFormatFlags.Left);
+                    now ? T.Ink : (fin ? T.Dim : T.Mute), TextFormatFlags.Left);
                 y += 44;
             }
         }
@@ -284,83 +297,43 @@ namespace InstaSafeAgent
             steps.Invalidate();
         }
 
-        // ------------------------------------------------------------ flow
-        void Submit()
-        {
-            if (stage == 0)
-            {
-                var v = user.Box.Text.Trim();
-                if (v.Length == 0) { user.ShowError("Enter your username or email address."); return; }
-                if (pass.Box.Text.Length == 0) { pass.ShowError("Enter your password."); return; }
-                if (pass.Box.Text.Length < 4)
-                {
-                    pass.ShowError("That password was not accepted. Two attempts left before the account locks.");
-                    return;
-                }
-                user.Clear(); pass.Clear();
-                stage = 1; Lay();
-                otp.Box.Focus();
-                return;
-            }
-
-            if (stage == 1)
-            {
-                if (otp.Box.Text.Length < 6) { otp.ShowError("The code is six digits."); return; }
-                stage = 2; at = -1; Lay();
-                app.EnterConnecting();
-                run.Start();
-            }
-        }
-
         void Lay()
         {
-            bool cred = stage == 0, two = stage == 1, conn = stage == 2;
+            bool hand = stage == 0;
 
-            user.Visible = pass.Visible = cred;
-            otp.Visible = otpHint.Visible = alt.Visible = two;
-            steps.Visible = conn;
-            go.Visible = !conn;
-            note.Visible = cred;
+            go.Visible = done.Visible = where.Visible = sub.Visible = hand;
+            steps.Visible = !hand;
 
-            if (cred)
+            if (hand)
             {
-                h.Text = "Sign in"; sub.Text = "veno.instasafe.com";
-                go.Text = "Sign in"; go.Top = 364;
-            }
-            else if (two)
-            {
-                h.Text = "Two-factor"; sub.Text = "Enter the six-digit code from your authenticator.";
-                go.Text = "Verify"; go.Top = 352;
+                h.Text = "Sign in";
+                sub.Text = "Your browser will open your workspace's sign-in page, "
+                         + "with every second factor your organisation allows.";
+                where.Text = Workspace;
             }
             else
             {
-                h.Text = "Connecting…"; sub.Text = user.Box.Text.Trim();
+                h.Text = "Connecting…";
             }
 
-            // Each stage asks for a different amount, so the window is a
-            // different size. One box tall enough for the longest stage leaves
-            // a third of it empty on the other two, which reads as a form that
-            // has lost something.
-            Fit(cred ? 516 : two ? 468 : 356);
+            Fit(hand ? 400 : 326);
             Invalidate(true);
         }
 
         /// Resizes about the window's own centre, so it does not appear to
         /// crawl up the screen as the stages shorten.
-        void Fit(int h)
+        void Fit(int hh)
         {
-            if (Height == h) return;
+            if (Height == hh) return;
             int mid = Top + Height / 2;
-            Height = h;
-            Top = Math.Max(0, mid - h / 2);
+            Height = hh;
+            Top = Math.Max(0, mid - hh / 2);
         }
 
         public void Reset()
         {
             run.Stop();
             stage = 0; at = -1;
-            pass.Box.Text = ""; otp.Reset();
-            user.Clear(); pass.Clear();
             Lay();
         }
     }
@@ -457,7 +430,15 @@ namespace InstaSafeAgent
 
         void ShowInstaller()
         {
-            var w = new Installer(() => { signin.Reset(); signin.Show(); signin.Activate(); });
+            Installer w = null;
+            w = new Installer(() =>
+            {
+                // Whatever was typed on the Workspace step is where the
+                // sign-in lives, so it travels with the hand-off instead of
+                // being asked for twice.
+                signin.Workspace = w.Workspace;
+                signin.Reset(); signin.Show(); signin.Activate();
+            });
             w.Show();
         }
 

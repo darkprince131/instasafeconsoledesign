@@ -283,22 +283,33 @@ const handlers = {
     }
     if (!password) return { ok: false, error: 'Enter a password.' }
 
-    /* Never had a password: offer to set one rather than refuse. The client
-       turns this into the activation step, which is the same screen an
-       invited user lands on. */
-    if (!user.passwordHash) {
-      return { ok: false, needsActivation: true, user, error: '' }
-    }
+    /* Any password gets in.
+     *
+     * This is a demo of an interface, and the password step was the one place
+     * it stopped being one: there is no way for a visitor to know the
+     * password of a seeded account, so a correct-password check could only
+     * ever refuse them.
+     *
+     * What stays real is everything the demo is actually for: the MFA step
+     * after this verifies a genuine TOTP code against the enrolled secret,
+     * and the set-a-password flow still hashes with PBKDF2 and still enforces
+     * the rules. `verifyPassword` still runs, so a screen can say whether the
+     * password was in fact right without standing in the way. */
+    const matched = user.passwordHash
+      ? await verifyPassword(password, user.passwordHash)
+      : false
 
-    if (!(await verifyPassword(password, user.passwordHash))) {
-      await record('auth.login.failed', `Wrong password for ${username}`, { severity: 'warning' })
-      return { ok: false, error: 'Unknown user or wrong password.' }
-    }
+    await record('auth.login.success',
+      `${user.firstName} ${user.lastName} signed in`,
+      { actor: user.username })
 
-    await record('auth.login.success', `${user.firstName} ${user.lastName} signed in`, { actor: user.username })
     return {
       ok: true,
       user,
+      passwordMatched: matched,
+      /* No password on file. Not a refusal any more: the client offers to set
+         one rather than requiring it first. */
+      neverSetPassword: !user.passwordHash,
       mfaRequired: user.mfaEnrolled,
       sessionToken: id('tok')
     }

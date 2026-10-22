@@ -494,8 +494,17 @@ html[data-i-theme="dark"] .i-intro { background: rgba(114,101,224,.12); }
 .ag-tiny{ padding:4px 10px; font-size:11px; }
 
 /* ----------------------------------------------- the web sign-in */
-.ag-webwin{ max-width:360px; }
-.ag-web{ padding:26px 24px 22px; text-align:center; }
+.ag-webwin{ max-width:400px; }
+
+/* The sign-in frame.
+   The real agent's window is WebView2 at roughly this size, so the mock is
+   the real page at the real width rather than a drawing of it. 560 is tall
+   enough for the six-method step without the frame scrolling, which is what
+   makes an embedded page feel embedded rather than squeezed. */
+.ag-webframe{
+  display:block; width:100%; height:560px;
+  border:0; background:var(--i-canvas);
+}
 .ag-brand{
   display:flex; align-items:center; justify-content:center; gap:8px;
   font-size:14px; font-weight:500; margin-bottom:20px; letter-spacing:-.01em;

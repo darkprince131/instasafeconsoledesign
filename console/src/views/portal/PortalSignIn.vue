@@ -42,10 +42,14 @@ const busy = ref(false)
 const user = ref(null)
 const suggestion = ref('')
 const needsSetup = ref(false)
+/* Set when the address is not in this tenant, so the first step can say so
+   rather than letting the password step fail with nothing to do about it. */
+const unknown = ref('')
 
 /* ------------------------------------------------------------- who are you */
 async function submitWho () {
   error.value = ''
+  unknown.value = ''
   const v = email.value.trim()
   if (!v) { error.value = 'Enter your email address or username.'; return }
   busy.value = true
@@ -58,7 +62,12 @@ async function submitWho () {
     const hit = (res.data || []).find(u =>
       u.username?.toLowerCase() === v.toLowerCase() ||
       u.email?.toLowerCase() === v.toLowerCase())
-    user.value = hit || { username: v, firstName: '', email: v, unknown: true }
+    /* An address that is not in this tenant used to walk on to a password
+       box and fail there with no way forward. Say so here, where it can be
+       corrected, and offer the account that does exist. */
+    if (!hit) { unknown.value = v; return }
+    unknown.value = ''
+    user.value = hit
 
     /* An account nobody has ever set a password on should not be handed a
        password box. The note said "continue and you will be taken to set
@@ -73,6 +82,14 @@ async function submitWho () {
   } finally { busy.value = false }
 }
 
+/** Fills in the account the demo actually has, so an unknown address is a
+ *  wrong turn rather than a wall. */
+function useSuggested () {
+  email.value = suggestion.value
+  unknown.value = ''
+  submitWho()
+}
+
 /* ---------------------------------------------------------------- password */
 async function submitPassword () {
   error.value = ''
@@ -82,12 +99,7 @@ async function submitPassword () {
     const res = await api.auth.login({ username: user.value.username, password: password.value })
 
     if (!res?.ok) {
-      if (res?.needsActivation) {
-        pendingActivation.value = res.user
-        router.push('/portal/activate')
-        return
-      }
-      error.value = res?.error || 'That email and password do not match.'
+      error.value = res?.error || 'Sign-in failed.'
       return
     }
 
@@ -238,11 +250,23 @@ onUnmounted(() => clearInterval(ticker))
         <button class="p-btn p-wide-btn" :disabled="busy">Continue</button>
       </form>
 
+      <!-- An address this tenant has never heard of. Velto answers this with
+           "no such user", which tells anybody with a list of addresses which
+           ones are real; this demo has one tenant and no such list, and
+           walking on to a password box that can only fail is worse. -->
+      <p v-if="unknown" class="p-err mt-3">
+        <code class="i-tech">{{ unknown }}</code> is not an account in this
+        tenant.
+        <button v-if="suggestion" class="p-linkish" @click="useSuggested">
+          Use {{ suggestion }} instead
+        </button>
+      </p>
+
       <p v-if="suggestion" class="p-gnote">
         In this demo, <code class="i-tech">{{ suggestion }}</code> is a real
-        account with no password set yet — continue and you will be taken to
-        set one, which is what an employee sees on their first day. Any
-        account created in the administrator console works here too.
+        account. Any password gets in — there is no way for you to know this
+        one's, so checking it could only ever lock you out. Any account created
+        in the administrator console works here too.
       </p>
 
       <p class="p-gnote">
@@ -267,18 +291,13 @@ onUnmounted(() => clearInterval(ticker))
       <h1 class="p-gh">{{ user?.firstName ? `Hello, ${user.firstName}` : 'Enter your password' }}</h1>
       <p class="p-gs i-tech">{{ user?.email || user?.username }}</p>
 
-      <!-- Never had a password: there is nothing to type, so do not ask. -->
-      <template v-if="needsSetup">
-        <p class="p-gs">
-          This account has not been set up yet. Choose a password and it is
-          yours — this is exactly what a new employee sees on their first day.
-        </p>
-        <button class="p-btn p-wide-btn" @click="goActivate">
-          <i class="fa-solid fa-arrow-right" aria-hidden="true" /> Set up my account
-        </button>
-      </template>
+      <p v-if="needsSetup" class="p-gs">
+        Nobody has set a password on this account yet. Type anything to carry
+        on, or set one properly — that is the screen a new employee gets on
+        their first day.
+      </p>
 
-      <form v-else @submit.prevent="submitPassword">
+      <form @submit.prevent="submitPassword">
         <div class="p-field">
           <label for="pp">Password</label>
           <input id="pp" v-model="password" type="password" autocomplete="current-password">
@@ -289,9 +308,15 @@ onUnmounted(() => clearInterval(ticker))
         </button>
       </form>
 
-      <p v-if="!needsSetup" class="p-gnote">
-        The password is checked against a PBKDF2 hash — a wrong one is really
-        refused.
+      <button class="p-ghost-btn" @click="goActivate">
+        Set a password instead
+      </button>
+
+      <p class="p-gnote">
+        Any password gets in. There is no way for you to know a seeded
+        account's password, so checking it could only ever lock you out. The
+        second factor after this is verified for real, and setting a password
+        really does hash it.
       </p>
     </template>
 

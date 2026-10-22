@@ -116,60 +116,24 @@ Output folder: C:\Program Files\InstaSafe</pre>
         <span class="ag-tbbtns"><i>—</i><i>▢</i><i class="x">✕</i></span>
       </header>
 
-      <div class="ag-web">
-        <!-- The knockout lockup, which is what a dark card needs. The shipped
-             screen uses the light-background raster, which is why its
-             strapline all but disappears. -->
-        <div class="ag-brand">
-          <Mark :size="28" tone="mono" />
-          <span>InstaSafe</span>
-        </div>
-
-        <template v-if="step === 'signin'">
-          <h2 class="ag-wh">Sign in</h2>
-          <p class="ag-wsub">veno.instasafe.com</p>
-          <label class="ag-wlabel" for="u">Email address</label>
-          <input id="u" class="ag-winput" value="alen.joseph@veno.com" readonly>
-          <button class="ag-btn ag-primary ag-wide">Continue</button>
-          <p class="ag-wfoot">
-            By continuing you accept the
-            <a href="#" @click.prevent>Terms of Use</a> and
-            <a href="#" @click.prevent>Privacy Policy</a>.
-          </p>
-        </template>
-
-        <template v-else-if="step === 'mfa'">
-          <h2 class="ag-wh">Prove it is you</h2>
-          <p class="ag-wsub">Choose whichever you have to hand.</p>
-          <ul class="ag-methods">
-            <li><i class="fa-solid fa-mobile-screen" aria-hidden="true" /><span><strong>TOTP</strong><small>A rotating code</small></span><i class="fa-solid fa-chevron-right c" aria-hidden="true" /></li>
-            <li class="is-on"><i class="fa-solid fa-bell" aria-hidden="true" /><span><strong>Authenticator</strong><small>Approve on your phone</small></span><i class="fa-solid fa-chevron-right c" aria-hidden="true" /></li>
-            <li><i class="fa-solid fa-key" aria-hidden="true" /><span><strong>Hardware key</strong><small>Cannot be phished</small></span><i class="fa-solid fa-chevron-right c" aria-hidden="true" /></li>
-          </ul>
-          <p class="ag-wfoot"><a href="#" @click.prevent>Other methods</a></p>
-        </template>
-
-        <!-- Space for the error is reserved, so nothing jumps. -->
-        <template v-else>
-          <h2 class="ag-wh">Sign in</h2>
-          <p class="ag-wsub">veno.instasafe.com</p>
-          <div class="ag-err">
-            <i class="fa-solid fa-circle-exclamation" aria-hidden="true" />
-            <span>
-              <strong>That password was not accepted.</strong>
-              Two attempts left before the account locks for 15 minutes.
-              <a href="#" @click.prevent>Forgotten it?</a>
-            </span>
-          </div>
-          <label class="ag-wlabel" for="p2">Password</label>
-          <input id="p2" class="ag-winput is-bad" type="password" value="xxxxxxxxxx" readonly>
-          <button class="ag-btn ag-primary ag-wide">Sign in</button>
-        </template>
-      </div>
+      <!-- The real portal sign-in, in an iframe.
+           What used to be here was a hand-drawn copy of it: three method rows
+           where the portal has six, a dead Continue button, a fake error. It
+           drifted the moment the portal changed, and it was a second sign-in
+           design for a product that should have one. The agent's sign-in is
+           WebView2 pointing at a web page, so the honest mock is the web page
+           at agent width. Sign in in it and it behaves exactly as it does in
+           a tab, because it is the same code. -->
+      <iframe
+        class="ag-webframe"
+        :src="step === 'mfa' ? '/portal/signin?demo-mfa=1' : '/portal/signin'"
+        title="Sign in to veno"
+        loading="lazy"
+      />
 
       <p class="ag-caption">
         Sign-in window — <strong>already HTML</strong>, rendered by WebView2.
-        These are the portal’s components at agent width.
+        This frame is the live portal sign-in, not a drawing of it.
       </p>
     </div>
 

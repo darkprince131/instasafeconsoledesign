@@ -23,22 +23,36 @@ const busy = ref(false)
 const userId = ref('')
 const otpSent = ref(false)
 
+/* `busy` is cleared in a `finally`, not after the await.
+ *
+ * It was cleared after, so anything that threw left the button saying
+ * "Checking…" for ever with no error and no way back. That is exactly what
+ * the hosted site did: `auth.login` had no HTTP implementation, the adapter
+ * threw `No HTTP implementation for "auth.login"`, and the sign-in hung.
+ * The missing route is implemented now, but a route that throws must still
+ * surface as a message rather than a spinner that never stops. */
 async function submit () {
   error.value = ''; busy.value = true
-  const res = await api.auth.login({ username: username.value, password: password.value })
-  busy.value = false
-  if (!res.ok) { error.value = res.error; return }
-  userId.value = res.user.id
-  if (res.mfaRequired) { step.value = 'mfa'; return }
-  router.push('/dashboard')
+  try {
+    const res = await api.auth.login({ username: username.value, password: password.value })
+    if (!res?.ok) { error.value = res?.error || 'Sign-in failed.'; return }
+    userId.value = res.user.id
+    if (res.mfaRequired) { step.value = 'mfa'; return }
+    router.push('/dashboard')
+  } catch (e) {
+    error.value = e?.message || 'Sign-in failed. Try again.'
+  } finally { busy.value = false }
 }
 
 async function verify () {
   error.value = ''; busy.value = true
-  const res = await api.auth.verifyMfa({ userId: userId.value, code: code.value })
-  busy.value = false
-  if (!res.ok) { error.value = res.error; code.value = ''; return }
-  router.push('/dashboard')
+  try {
+    const res = await api.auth.verifyMfa({ userId: userId.value, code: code.value })
+    if (!res?.ok) { error.value = res?.error || 'That code is not valid.'; code.value = ''; return }
+    router.push('/dashboard')
+  } catch (e) {
+    error.value = e?.message || 'Could not check that code.'; code.value = ''
+  } finally { busy.value = false }
 }
 
 /** The fallback for anyone without an authenticator: a real code, delivered
@@ -90,11 +104,11 @@ function onCode (e) {
             <div class="i-demo-note mt-4">
               <strong style="color:var(--i-ink)">Administrator console.</strong>
               Sign in as <code class="i-tech">admin</code> with the password
-              <code class="i-tech">demo</code>, which is filled in above. It is a
-              weak password and it is printed on the screen; pretending
-              otherwise would be worse than saying so. A wrong one really is
-              refused — passwords are PBKDF2 hashes now, and the MFA step
-              after this is genuinely verified.
+              <code class="i-tech">demo</code>, which is filled in above —
+              though any password gets in. There is no way for a visitor to
+              know a seeded account's password, so checking it could only ever
+              lock them out. Setting a password still hashes it with PBKDF2,
+              and the MFA step after this is genuinely verified.
             </div>
 
             <div class="i-demo-note mt-2">

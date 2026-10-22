@@ -19,6 +19,7 @@
 
 import * as seed from '../seed.js'
 import { verifyTOTP, generateSecret, otpauthURI } from '../../lib/totp.js'
+import { hashPassword, passwordOk, inviteToken } from '../../lib/password.js'
 import { evaluateAccess, evaluatePosture, browserFingerprint } from '../../lib/policy.js'
 
 export function httpAdapter ({ baseURL = '/api' } = {}) {
@@ -247,6 +248,169 @@ export function httpAdapter ({ baseURL = '/api' } = {}) {
          this moves server-side: the secret must never reach the browser.
          src/lib/totp.js itself is production-correct and ships unchanged —
          only where it runs changes. */
+      /* Sign-in.
+       *
+       * This had no HTTP implementation at all, so on the hosted site every
+       * portal sign-in threw `No HTTP implementation for "auth.login"` and
+       * the visitor never got past the password box. The mock adapter had one,
+       * so local development looked fine: the exact shape of bug the README
+       * warns about twice.
+       *
+       * Like the mock, it accepts any password. A visitor cannot know a seeded
+       * account's password, so checking it could only ever refuse them. The
+       * MFA step after this is still verified for real. */
+      if (name === 'auth.login') {
+        const { username, password } = payload
+        if (!password) return { ok: false, error: 'Enter a password.' }
+
+        const { data } = await request('/users', { params: { perPage: 20, search: username } })
+        const v = String(username || '').toLowerCase()
+        const user = (data || []).find(u =>
+          String(u.username || '').toLowerCase() === v ||
+          String(u.email || '').toLowerCase() === v)
+
+        if (!user) return { ok: false, error: 'No account here with that address.' }
+        if (user.status === 'suspended') return { ok: false, error: 'This account is suspended.' }
+
+        await this.call('events.record', {
+          type: 'auth.login.success',
+          message: `${user.firstName} ${user.lastName} signed in`
+        })
+        return {
+          ok: true,
+          user,
+          passwordMatched: false,
+          neverSetPassword: !user.passwordHash,
+          mfaRequired: user.mfaEnrolled,
+          sessionToken: 'tok_' + Date.now().toString(36)
+        }
+      }
+
+      /* The rest of the auth surface.
+       *
+       * None of these had an HTTP implementation, so on the hosted site every
+       * one of them threw `No HTTP implementation for "…"` — which, in a
+       * handler with no try/finally, is a button that says "Checking…" for
+       * ever. They existed in the mock adapter, so local development looked
+       * fine: the exact failure mode the README warns about twice. */
+
+      if (name === 'auth.setPassword') {
+        const { userId, token, password } = payload
+        let user = null
+
+        if (token) {
+          const { data } = await request('/users', { params: { perPage: 50, search: token } })
+          user = (data || []).find(u => u.inviteToken && u.inviteToken === token)
+        } else if (userId) {
+          user = await request(`/users/${userId}`).catch(() => null)
+        }
+        if (!user) return { ok: false, error: 'This link is not valid. It may already have been used.' }
+        if (token && user.inviteExpiresAt && new Date(user.inviteExpiresAt) < new Date()) {
+          return { ok: false, error: 'This link has expired. Ask your administrator for another.' }
+        }
+        /* Checked here as well as on the form. A rule enforced only in the
+           browser is not enforced. */
+        if (!passwordOk(password, { username: user.username })) {
+          return { ok: false, error: 'That password does not meet every rule.' }
+        }
+
+        const patch = {
+          passwordHash: await hashPassword(password),
+          passwordUpdatedAt: new Date().toISOString(),
+          /* A one-time link that still works afterwards is not one-time. */
+          inviteToken: '',
+          inviteExpiresAt: '',
+          status: user.status === 'pending' ? 'active' : user.status,
+          activatedAt: user.activatedAt || new Date().toISOString()
+        }
+        await request(`/users/${user.id}`, { method: 'PUT', body: patch })
+        await this.call('events.record', {
+          type: 'user.activated', message: `${user.username} set a password`
+        })
+        return {
+          ok: true,
+          user: { ...user, ...patch },
+          mfaRequired: !!user.mfaRequired && !user.mfaEnrolled
+        }
+      }
+
+      if (name === 'auth.checkInvite') {
+        const { token } = payload
+        const { data } = await request('/users', { params: { perPage: 50, search: token } })
+        const user = (data || []).find(u => u.inviteToken && u.inviteToken === token)
+        if (!user) return { ok: false, error: 'This link is not valid. It may already have been used.' }
+        if (user.inviteExpiresAt && new Date(user.inviteExpiresAt) < new Date()) {
+          return { ok: false, error: 'This link has expired. Ask your administrator for another.' }
+        }
+        return { ok: true, user }
+      }
+
+      if (name === 'auth.invite') {
+        const user = await request(`/users/${payload.userId}`)
+        if (!user) return { ok: false, error: 'No such user.' }
+        const token = inviteToken()
+        const expires = new Date(Date.now() + 72 * 3600 * 1000).toISOString()
+        await request(`/users/${user.id}`, {
+          method: 'PUT', body: { inviteToken: token, inviteExpiresAt: expires }
+        })
+        const link = `${payload.origin || ''}/portal/activate?token=${token}`
+        await this.call('inbox.post', {
+          kind: 'email',
+          subject: 'Set up your InstaSafe account',
+          body: `Hello ${user.firstName}, set your password here: ${link}`,
+          meta: { to: user.email, link }
+        })
+        return { ok: true, link, token, expiresAt: expires }
+      }
+
+      /* A real six-digit code, delivered to the Demo Inbox instead of to a
+         phone. It lives in sessionStorage because it is a one-use secret for
+         this tab, not tenant data: storing it on the server would mean
+         handing it back to the browser that is supposed to be proving it
+         already has it. */
+      if (name === 'auth.sendOtp') {
+        const { userId, channel = 'sms' } = payload
+        const user = await request(`/users/${userId}`)
+        const code = String(Math.floor(100000 + Math.random() * 900000))
+        try { sessionStorage.setItem(`otp:${userId}`, JSON.stringify({ code, at: Date.now() })) } catch {}
+        const to = channel === 'sms' ? `+${user.countryCode} ${user.mobile}` : user.email
+        await this.call('inbox.post', {
+          kind: channel,
+          subject: channel === 'sms' ? 'Verification code' : 'Your InstaSafe verification code',
+          body: `${code} is your InstaSafe verification code. It expires in 5 minutes.`,
+          meta: { to, code }
+        })
+        return { ok: true, sentTo: to, hint: 'Open the Demo Inbox to read it.' }
+      }
+
+      if (name === 'auth.verifyOtp') {
+        let raw = null
+        try { raw = sessionStorage.getItem(`otp:${payload.userId}`) } catch {}
+        if (!raw) return { ok: false, error: 'No code was sent. Request one first.' }
+        const { code: expected, at } = JSON.parse(raw)
+        if (Date.now() - at > 5 * 60 * 1000) return { ok: false, error: 'That code has expired.' }
+        if (String(payload.code) !== expected) return { ok: false, error: 'That code is not valid.' }
+        try { sessionStorage.removeItem(`otp:${payload.userId}`) } catch {}
+        return { ok: true }
+      }
+
+      if (name === 'auth.logout') return { ok: true }
+
+      if (name === 'inbox.post') {
+        return request('/inbox', {
+          method: 'POST',
+          body: {
+            id: 'msg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            kind: payload.kind,
+            subject: payload.subject,
+            body: payload.body,
+            meta: payload.meta || {},
+            read: false,
+            at: new Date().toISOString()
+          }
+        })
+      }
+
       if (name === 'auth.startMfaEnrolment') {
         const user = await request(`/users/${payload.userId}`)
         const secret = generateSecret()

@@ -134,6 +134,9 @@ namespace InstaSafeAgent
             "PRODUCT, which is provided \"as is\" without any express or implied " +
             "warranty of any kind.\n";
 
+        /// What was typed on the Workspace step, for whoever needs it next.
+        public string Workspace { get { return ws.Box.Text.Trim(); } }
+
         public Installer(Action finished) : base("", W, H, false)
         {
             onFinished = finished;
@@ -421,7 +424,7 @@ namespace InstaSafeAgent
             while (logAt < want) log.Append(LOG[logAt++]);
 
             progressHost.Invalidate();
-            if (pct >= 100) { march.Stop(); Go(4); }
+            if (pct >= 100) { march.Stop(); Go(3); }   // Workspace, not Done
         }
     }
 }
