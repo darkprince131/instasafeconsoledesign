@@ -6,6 +6,7 @@ import { portalSignIn } from '../../lib/portal-session.js'
 import { verifyTOTP, secondsRemaining } from '../../lib/totp.js'
 import { qrSvg } from '../../lib/qr.js'
 import { demo } from '../../lib/demo-state.js'
+import MfaSimulator from '../../components/portal/MfaSimulator.vue'
 
 /**
  * Signing in to the member portal.
@@ -94,25 +95,34 @@ async function submitPassword () {
 }
 
 /* ------------------------------------------------------- the second factor */
+/**
+ * The six the simulator can actually walk somebody through.
+ *
+ * These are the marketing site's six, not the portal's enrolment list, and
+ * the difference is deliberate: that list is what an administrator can turn
+ * on, this is what a person picks up at the moment of signing in. SMS and
+ * email are here because they are what most people have met before, and a
+ * demo that omits the familiar one teaches nobody anything.
+ */
 const METHODS = [
-  { key: 'totp', label: 'Authenticator app', icon: 'fa-mobile-screen',
-    sub: 'A six-digit code from your phone', real: true,
+  { key: 'totp', label: 'Authenticator app', icon: 'fa-mobile-screen', real: true,
+    sub: 'A rotating six-digit code',
     note: 'Works with no signal and no data.' },
-  { key: 'push', label: 'Push notification', icon: 'fa-bell',
+  { key: 'push', label: 'Push approval', icon: 'fa-bell',
     sub: 'Approve a prompt on your phone',
-    note: 'Fastest, but needs a data connection.' },
-  { key: 'fido', label: 'Security key', icon: 'fa-key', real: true,
-    sub: 'A hardware key, Touch ID or Windows Hello',
-    note: 'The only one that cannot be phished.' },
-  { key: 'cert', label: 'Device certificate', icon: 'fa-certificate',
-    sub: 'This machine proves itself',
-    note: 'Nothing to type. Needs the agent installed.' },
-  { key: 'backup', label: 'Backup code', icon: 'fa-list-ol',
-    sub: 'One of the ten you saved',
-    note: 'For when the phone is lost, broken or flat.' },
-  { key: 'os', label: 'Computer sign-in', icon: 'fa-desktop',
-    sub: 'The factor your machine login uses',
-    note: 'Set up by your administrator with the agent.' }
+    note: 'You see what you are approving — and can refuse it.' },
+  { key: 'key', label: 'Hardware key', icon: 'fa-key',
+    sub: 'Tap a security key',
+    note: 'The only method that cannot be phished.' },
+  { key: 'bio', label: 'Biometric', icon: 'fa-fingerprint',
+    sub: 'Fingerprint on this machine',
+    note: 'Nothing to type and nothing to lose.' },
+  { key: 'sms', label: 'OTP by SMS', icon: 'fa-comment-dots',
+    sub: 'A code to your phone',
+    note: 'Familiar, and the weakest of the six — SIMs get swapped.' },
+  { key: 'email', label: 'OTP by email', icon: 'fa-envelope',
+    sub: 'A code to your inbox',
+    note: 'Only as strong as the mailbox it lands in.' }
 ]
 
 const method = ref(null)
@@ -126,69 +136,15 @@ let ticker
 const qr = computed(() => uri.value ? qrSvg(uri.value, 4) : '')
 const chosen = computed(() => METHODS.find(m => m.key === method.value) || null)
 
-async function pick (m) {
+function pick (m) {
   method.value = m.key
-  code.value = ''
   error.value = ''
   step.value = 'method'
-
-  clearInterval(ticker)
-  ticker = setInterval(() => { left.value = secondsRemaining() }, 1000)
-
-  if (m.key === 'push') await sendPush()
-  if (m.key === 'fido') await useKey()
 }
 
 /** A push nobody can send still has a shape, and the shape is the point. */
-async function sendPush () {
-  pushState.value = 'waiting'
-  await api.inbox.list({ perPage: 1 }).catch(() => {})
-  setTimeout(() => {
-    if (pushState.value === 'waiting') pushState.value = 'approved'
-  }, 2600)
-}
 
-async function useKey () {
-  error.value = ''
-  if (!window.PublicKeyCredential) {
-    error.value = 'This browser has no WebAuthn support, so there is no key to ask.'
-    return
-  }
-  try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32))
-    const cred = await navigator.credentials.get({
-      publicKey: { challenge, timeout: 60000, userVerification: 'preferred' }
-    })
-    if (cred) enter(user.value)
-  } catch (e) {
-    error.value = e?.name === 'NotAllowedError'
-      ? 'Cancelled, or the key was not touched in time.'
-      : 'No registered key answered. Register one from the portal first, or choose another method.'
-  }
-}
 
-async function submitCode () {
-  error.value = ''
-  const entered = code.value.replace(/\s/g, '')
-  if (!entered) { error.value = 'Enter the code.'; return }
-  busy.value = true
-  try {
-    /* The authenticator is the one that can be checked honestly, so it is,
-       unless the reviewer has asked for the simulator. Everything else has
-       no verifier in a browser and the screen says as much. */
-    if (method.value === 'totp' && !demo.mfaSimulator) {
-      const stored = user.value?.mfaSecret
-      const ok = stored
-        ? await verifyTOTP(stored, entered)
-        : await api.auth.verifyMfa({ userId: user.value.id, code: entered }).then(r => r?.ok)
-      if (!ok) {
-        error.value = 'That code was not accepted. Codes last 30 seconds — if yours just rolled over, use the new one.'
-        return
-      }
-    }
-    enter(user.value)
-  } finally { busy.value = false }
-}
 
 function enter (u) {
   clearInterval(ticker)
@@ -319,102 +275,21 @@ onUnmounted(() => clearInterval(ticker))
       <span class="p-micon is-lg"><i class="fa-solid" :class="chosen?.icon" aria-hidden="true" /></span>
       <h1 class="p-gh">{{ chosen?.label }}</h1>
 
-      <!-- ---------------------------------------------- authenticator -->
-      <template v-if="method === 'totp'">
-        <p class="p-gs">Open your authenticator app and read the code for InstaSafe.</p>
-        <form @submit.prevent="submitCode">
-          <div class="p-field">
-            <label for="mc">Six digits</label>
-            <input
-              id="mc" v-model="code" class="p-code" inputmode="numeric"
-              maxlength="7" placeholder="000000" autocomplete="one-time-code" autofocus
-            >
-            <p class="p-hint">Changes in {{ left }}s.</p>
-            <p v-if="error" class="p-err">{{ error }}</p>
-          </div>
-          <button class="p-btn p-wide-btn" :disabled="busy">
-            {{ busy ? 'Checking…' : 'Verify' }}
-          </button>
-        </form>
-      </template>
+      <MfaSimulator
+        :method="method" :user="user"
+        @verified="enter(user)" @other="back"
+      />
 
-      <!-- ------------------------------------------------------- push -->
-      <template v-else-if="method === 'push'">
-        <p class="p-gs">We have sent a prompt to the InstaSafe app on your phone.</p>
-        <div class="p-push" :class="'is-' + pushState">
-          <i
-            class="fa-solid"
-            :class="pushState === 'approved' ? 'fa-circle-check' : 'fa-circle-notch fa-spin'"
-            aria-hidden="true"
-          />
-          <p>{{ pushState === 'approved' ? 'Approved on your phone' : 'Waiting for you to approve it…' }}</p>
-        </div>
-        <button class="p-btn p-wide-btn" :disabled="pushState !== 'approved'" @click="enter(user)">
-          Continue
-        </button>
-        <p class="p-gnote">
-          Simulated. A real push needs InstaSafe's notification service, which
-          a browser cannot stand in for — so this shows the shape of the wait
-          rather than pretending a phone answered.
-        </p>
-      </template>
-
-      <!-- -------------------------------------------------- security key -->
-      <template v-else-if="method === 'fido'">
-        <p class="p-gs">
-          Touch your key, or use the fingerprint reader on this machine.
-        </p>
-        <p v-if="error" class="p-err">{{ error }}</p>
-        <button class="p-btn p-wide-btn" @click="useKey">Try again</button>
-        <p class="p-gnote">
-          Real WebAuthn: your browser is genuinely asked for a registered
-          credential. If none exists on this machine, it fails — which is the
-          honest answer, not a bug.
-        </p>
-      </template>
-
-      <!-- ------------------------------------------------- backup code -->
-      <template v-else-if="method === 'backup'">
-        <p class="p-gs">Enter one of the codes you saved. Each works once.</p>
-        <form @submit.prevent="submitCode">
-          <div class="p-field">
-            <label for="bc">Backup code</label>
-            <input id="bc" v-model="code" class="p-code" placeholder="XXXX-XXXX" autofocus>
-            <p v-if="error" class="p-err">{{ error }}</p>
-          </div>
-          <button class="p-btn p-wide-btn" :disabled="busy">Verify</button>
-        </form>
-        <p class="p-gnote">
-          Simulated. The codes this console generates are real random, but
-          nothing here has the list to check yours against.
-        </p>
-      </template>
-
-      <!-- ------------------------------------------ certificate / OS MFA -->
-      <template v-else>
-        <p class="p-gs">
-          <template v-if="method === 'cert'">
-            The agent presents this machine's certificate. Nothing to type.
-          </template>
-          <template v-else>
-            Your computer login already carries the second factor.
-          </template>
-        </p>
-        <button class="p-btn p-wide-btn" @click="enter(user)">Continue</button>
-        <p class="p-gnote">
-          Simulated. This one needs the signed agent and the company CA, which
-          are not part of a browser demo.
-        </p>
-      </template>
-
-      <p v-if="demo.mfaSimulator && (method === 'totp' || method === 'backup')" class="p-simwarn">
+      <p v-if="demo.mfaSimulator && (method === 'totp')" class="p-simwarn">
         <i class="fa-solid fa-triangle-exclamation" aria-hidden="true" />
         <span>
-          <strong>Any code is being accepted.</strong>
-          The demo-states widget has “Accept any code” switched on. Turn it off
-          and the authenticator is verified for real.
+          <strong>Teaching mode.</strong>
+          The code is shown above so you can try this without a phone. Turn
+          “Accept any code” off in the demo-states widget and the authenticator
+          is verified against your real enrolled secret instead.
         </span>
       </p>
     </template>
+
   </div>
 </template>
