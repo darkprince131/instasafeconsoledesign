@@ -118,6 +118,11 @@ export function seedUsers (count = 1820) {
     department: 'IT',
     authProfile: 'Local',
     mfaEnrolled: false, mfaSecret: null,
+    /* Every other user row carries this, and the bulk inserter takes the
+       union of keys across a chunk — so one row omitting it bound a null
+       against a NOT NULL column and lost the whole insert. The admin row has
+       done this twice now, once with `isAdmin` and once here. */
+    mfaRequired: false,
     status: 'active',
     groups: ['grp_0001'],
     countryCode: '91', mobile: '9800000000',

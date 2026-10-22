@@ -826,8 +826,33 @@ async function seedTenant (tenant, body) {
       : rowsIn
 
     const cols = await sql.query(
-      `select column_name from information_schema.columns where table_name = $1`, [table])
+      `select column_name, is_nullable, data_type
+         from information_schema.columns where table_name = $1`, [table])
     const valid = new Set(cols.map(c => c.column_name))
+
+    /* What to bind when a row simply does not have the field.
+     *
+     * `undefined` used to become null, which is right for a nullable column
+     * and fatal for a NOT NULL one: the whole chunk fails and the tenant is
+     * left with no users at all. That is what "stuck on Checking…" turned out
+     * to be — `null value in column "mfa_required" violates not-null`.
+     *
+     * A row that omits a field is not asserting null, it is saying nothing,
+     * so a NOT NULL column gets the empty value for its type — which is what
+     * its own column default would have given it had the column been left out
+     * of the statement entirely. We cannot leave it out per row, because one
+     * INSERT covers two hundred of them. */
+    const fallback = {}
+    for (const c of cols) {
+      if (c.is_nullable === 'YES') continue
+      const t = c.data_type
+      fallback[c.column_name] =
+        t === 'boolean' ? false
+        : t === 'ARRAY' ? '{}'
+        : (t.includes('int') || t.includes('numeric') || t.includes('double')) ? 0
+        : t === 'jsonb' || t === 'json' ? '{}'
+        : ''
+    }
 
     /* The column set is the union across every row, not the keys of the
        first one. Taking it from row 0 means any field that row happens to
@@ -852,7 +877,7 @@ async function seedTenant (tenant, body) {
         const ph = keys.map(k => {
           let v = camel[k]
           if (v && typeof v === 'object' && !Array.isArray(v)) v = JSON.stringify(v)
-          if (v === undefined) v = null
+          if (v === undefined) v = (k in fallback) ? fallback[k] : null
           args.push(v)
           return `$${args.length}`
         })
