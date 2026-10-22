@@ -5,6 +5,7 @@ import { portalUser, portalSignOut } from '../../lib/portal-session.js'
 import AccountMenu from '../../components/shell/AccountMenu.vue'
 import DemoStates from '../../components/portal/DemoStates.vue'
 import Mark from '../../components/ui/Mark.vue'
+import Buddy from '../../components/guide/Buddy.vue'
 import { demo } from '../../lib/demo-state.js'
 
 /**
@@ -177,5 +178,9 @@ onMounted(() => {
 
     <!-- Demo scaffolding: the states a seeded tenant never reaches. -->
     <DemoStates />
+
+    <!-- The same guide as the console, reading the portal's half of the
+         script. One character across both seats, because it is one product. -->
+    <Buddy scope="portal" />
   </div>
 </template>

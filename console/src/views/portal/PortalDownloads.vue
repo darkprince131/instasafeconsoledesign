@@ -14,9 +14,11 @@ import api from '../../api'
 const toast = inject('toast', () => {})
 
 const PLATFORMS = [
+  /* A real file, not a logged intention. See the note in the admin
+     console's Downloads screen. */
   { key: 'windows', label: 'Windows', icon: 'fa-brands fa-windows',
-    file: 'InstaSafeAgent.msi',
-    note: 'Windows 10 and 11, 64-bit. Installs as a service and starts with the machine.' },
+    file: 'InstaSafe-Agent-Prototype.exe', href: '/downloads/InstaSafe-Agent-Prototype.exe',
+    note: 'Windows 10 and 11, 64-bit. The working prototype — installer, tray and all.' },
   { key: 'linux', label: 'Linux', icon: 'fa-brands fa-linux',
     file: 'instasafe-agent.deb',
     note: 'Debian and RPM builds, with a systemd unit.' },
@@ -73,7 +75,13 @@ async function get (p) {
         <p class="p-sub">{{ mine.note }}</p>
         <p v-if="mine.file" class="i-tech p-dlfile">{{ mine.file }}</p>
       </div>
-      <button class="p-btn" @click="get(mine)">
+      <!-- A real file is an <a download>; a logged intention is a button.
+           They do different things and should not look like the same control
+           with a different label. -->
+      <a v-if="mine.href" class="p-btn" :href="mine.href" download @click="get(mine)">
+        <i class="fa-solid fa-download" aria-hidden="true" /> Download
+      </a>
+      <button v-else class="p-btn" @click="get(mine)">
         <i class="fa-solid" :class="mine.store ? 'fa-arrow-up-right-from-square' : 'fa-download'" aria-hidden="true" />
         {{ mine.store || 'Download' }}
       </button>
@@ -88,7 +96,10 @@ async function get (p) {
           <p class="p-sub">{{ p.note }}</p>
           <p v-if="p.file" class="i-tech p-dlfile">{{ p.file }}</p>
         </div>
-        <button class="p-btn p-ghost" @click="get(p)">
+        <a v-if="p.href" class="p-btn p-ghost" :href="p.href" download @click="get(p)">
+          <i class="fa-solid fa-download" aria-hidden="true" /> Download
+        </a>
+        <button v-else class="p-btn p-ghost" @click="get(p)">
           <i class="fa-solid" :class="p.store ? 'fa-arrow-up-right-from-square' : 'fa-download'" aria-hidden="true" />
           {{ p.store || 'Download' }}
         </button>
@@ -96,9 +107,18 @@ async function get (p) {
     </div>
 
     <p v-if="said" class="p-note mt-3">
-      In production this serves the signed agent for {{ said }}, with iOS and
-      Android going to their stores. This demo ships no binary, so the request
-      is written to the event log instead of handing you a broken file.
+      <template v-if="said === 'Windows'">
+        That is a real executable — the agent prototype, about four hundred
+        kilobytes, unsigned. Windows will warn you about an unknown publisher,
+        which is correct: it has no code-signing certificate. Run it and you
+        get the installer, the tray icon and the connection states.
+      </template>
+      <template v-else>
+        In production this serves the signed agent for {{ said }}, with iOS
+        and Android going to their stores. Only the Windows build exists so
+        far, so this request is written to the event log instead of handing
+        you a broken file.
+      </template>
     </p>
 
     <section class="p-card mt-4">

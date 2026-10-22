@@ -6,6 +6,7 @@ import Topbar from './components/shell/Topbar.vue'
 import DemoInbox from './components/shell/DemoInbox.vue'
 import Toasts from './components/ui/Toasts.vue'
 import Tour from './components/shell/Tour.vue'
+import Buddy from './components/guide/Buddy.vue'
 import api from './api'
 
 const route = useRoute()
@@ -81,5 +82,12 @@ onMounted(refreshStats)
 
   <DemoInbox v-model:open="inboxOpen" @read="refreshStats" />
   <Tour ref="tourRef" />
+
+  <!-- Pip knows which screen you are on; where a guided flow exists for it,
+       Pip starts that rather than narrating a worse version of it.
+       Not on `bare` routes: those are the portal and the two sign-ins, which
+       are outside this shell and mount their own, and two Pips talking over
+       each other is worse than none. -->
+  <Buddy v-if="!bare" scope="console" @tour="id => tourRef?.start(id)" />
   <Toasts ref="toastRef" />
 </template>

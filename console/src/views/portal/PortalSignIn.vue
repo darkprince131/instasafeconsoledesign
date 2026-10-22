@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import api from '../../api'
 import { portalSignIn, pendingActivation } from '../../lib/portal-session.js'
+import Buddy from '../../components/guide/Buddy.vue'
 import { verifyTOTP, secondsRemaining } from '../../lib/totp.js'
 import { qrSvg } from '../../lib/qr.js'
 import { demo } from '../../lib/demo-state.js'
@@ -406,4 +407,7 @@ onUnmounted(() => clearInterval(ticker))
     </template>
 
   </div>
+
+  <!-- The sign-in is outside the portal shell, so Pip is mounted here too. -->
+  <Buddy scope="portal" />
 </template>

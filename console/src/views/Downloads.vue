@@ -28,8 +28,13 @@ const isGateways = computed(() => route.path === '/downloads/gateway-agents')
    stores are links out: a mobile agent is installed from the store, and
    pretending to serve a file for it would be a lie. */
 const PLATFORMS = [
+  /* The Windows build is a real file. The prototype agent is small enough
+     to serve from the site, so this one button does what the screen claims
+     every button does — the rest still only write to the event log, and the
+     copy below says which is which rather than letting all five look alike. */
   { key: 'windows', label: 'Windows', icon: 'fa-brands fa-windows',
-    file: 'InstaSafeAgent.msi', note: 'Windows 10 and 11, 64-bit. Installs as a service.' },
+    file: 'InstaSafe-Agent-Prototype.exe', href: '/downloads/InstaSafe-Agent-Prototype.exe',
+    note: 'Windows 10 and 11, 64-bit. The working prototype — installer, tray and all.' },
   { key: 'macos', label: 'macOS', icon: 'fa-brands fa-apple',
     file: 'InstaSafe.dmg', note: 'Signed and notarised. Ventura or later.' },
   { key: 'linux', label: 'Linux', icon: 'fa-brands fa-linux',
@@ -127,7 +132,18 @@ onMounted(load)
             <p class="i-dlnote">{{ p.note }}</p>
             <p v-if="p.file" class="i-tech i-dlfile">{{ p.file }}</p>
           </div>
+          <!-- A real file is an <a download>, not a button that pretends.
+               A button that writes a log line and a link that hands over a
+               binary are different actions and should not look identical. -->
+          <a
+            v-if="p.href" class="i-btn i-primary" :href="p.href" download
+            @click="download(p.file)"
+          >
+            <i class="fa-solid fa-download" aria-hidden="true" />
+            Download
+          </a>
           <button
+            v-else
             class="i-btn" :class="{ 'i-primary': !p.store }"
             @click="download(p.store ? `${p.label} agent (${p.store})` : p.file)"
           >
@@ -138,10 +154,13 @@ onMounted(load)
       </div>
 
       <p class="i-demo-note mt-3" style="max-width:760px">
-        The two mobile agents are links to a store rather than files, which is
-        how the product ships them. Nothing here serves a binary: a request is
-        written to the event log instead, so the audit trail is real even
-        though the file is not.
+        <strong style="color:var(--i-ink)">The Windows build is real.</strong>
+        It is the agent prototype — a four-hundred-kilobyte executable that
+        runs the installer, the tray and the connection states. Everything
+        else here writes a line to the event log instead of serving a file,
+        so the audit trail is real even where the binary is not. The two
+        mobile agents are links to a store, which is how the product ships
+        them.
       </p>
     </template>
 
