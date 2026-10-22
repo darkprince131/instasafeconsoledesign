@@ -174,7 +174,9 @@ const pose = computed(() => (current.value?.state) || 'idle')
 
 /* ------------------------------------------------------------------ tab */
 .pip-tab {
-  position: fixed; right: 18px; bottom: 18px; z-index: 60;
+  /* 46 rather than 18: the deploy carries Netlify's own badge in that corner
+     and it sat on Pip's shoulder. */
+  position: fixed; right: 18px; bottom: 46px; z-index: 60;
   display: flex; align-items: center; gap: 8px;
   padding: 6px 14px 6px 6px;
   background: var(--pb-card);
@@ -187,7 +189,7 @@ const pose = computed(() => (current.value?.state) || 'idle')
 
 /* ----------------------------------------------------------------- dock */
 .pip-dock {
-  position: fixed; right: 18px; bottom: 18px; z-index: 60;
+  position: fixed; right: 18px; bottom: 46px; z-index: 60;
   width: min(380px, calc(100vw - 36px));
   display: grid; grid-template-columns: 92px 1fr; gap: 12px;
   align-items: end;
