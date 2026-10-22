@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import api from '../api'
+import Mark from '../components/ui/Mark.vue'
 
 /**
  * Sign-in, including the real MFA step.
@@ -61,11 +62,7 @@ function onCode (e) {
       <div class="signin-wrap">
         <div class="signin-card">
           <div class="d-flex align-items-center gap-2 mb-4">
-            <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
-              <rect width="32" height="32" rx="7" fill="#5b4fd1" />
-              <path d="M16 7l7 3.5v6c0 4.4-2.9 7.6-7 8.5-4.1-.9-7-4.1-7-8.5v-6L16 7z"
-                    fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" />
-            </svg>
+            <Mark :size="30" />
             <strong style="font-size:16px;letter-spacing:-.016em">InstaSafe</strong>
           </div>
 

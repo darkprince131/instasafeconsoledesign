@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import Mark from '../ui/Mark.vue'
 
 /**
  * A Windows desktop, with the agent's surfaces drawn on it.
@@ -28,10 +29,7 @@ const isTray = computed(() => ['connecting', 'connected', 'dropped'].includes(pr
     <div v-if="isSetup" class="ag-win ag-setup">
       <header class="ag-titlebar">
         <span class="ag-tbmark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="14" height="14">
-            <circle cx="16" cy="16" r="15" fill="#5B4FD1" />
-            <circle cx="16" cy="16" r="6" fill="#fff" opacity=".9" />
-          </svg>
+          <Mark :size="16" />
         </span>
         <span class="ag-tbtitle">Set up InstaSafe</span>
         <span class="ag-tbbtns"><i>—</i><i>▢</i><i class="x">✕</i></span>
@@ -112,10 +110,7 @@ Output folder: C:\Program Files\InstaSafe</pre>
     <div v-else-if="isWeb" class="ag-win ag-webwin">
       <header class="ag-titlebar">
         <span class="ag-tbmark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="14" height="14">
-            <circle cx="16" cy="16" r="15" fill="#5B4FD1" />
-            <circle cx="16" cy="16" r="6" fill="#fff" opacity=".9" />
-          </svg>
+          <Mark :size="16" />
         </span>
         <span class="ag-tbtitle">Sign in to veno</span>
         <span class="ag-tbbtns"><i>—</i><i>▢</i><i class="x">✕</i></span>
@@ -126,11 +121,7 @@ Output folder: C:\Program Files\InstaSafe</pre>
              screen uses the light-background raster, which is why its
              strapline all but disappears. -->
         <div class="ag-brand">
-          <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
-            <circle cx="16" cy="16" r="15" fill="#fff" opacity=".1" />
-            <circle cx="16" cy="16" r="14" fill="none" stroke="#fff" stroke-width="1.4" opacity=".55" />
-            <circle cx="16" cy="16" r="6" fill="#fff" />
-          </svg>
+          <Mark :size="28" tone="mono" />
           <span>InstaSafe</span>
         </div>
 

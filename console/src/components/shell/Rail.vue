@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { NAV } from '../../router/nav.js'
+import Mark from '../ui/Mark.vue'
 
 const props = defineProps({ stats: { type: Object, default: () => ({}) } })
 const route = useRoute()
@@ -39,11 +40,7 @@ function badge (key) {
 <template>
   <nav class="i-rail" aria-label="Main navigation">
     <div class="i-brand">
-      <span class="i-mark" aria-hidden="true">
-        <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#5b4fd1"/>
-          <path d="M16 7l7 3.5v6c0 4.4-2.9 7.6-7 8.5-4.1-.9-7-4.1-7-8.5v-6L16 7z"
-                fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/></svg>
-      </span>
+      <span class="i-mark"><Mark :size="22" /></span>
       <span class="i-wm">InstaSafe</span>
       <span class="i-tenant">demo</span>
     </div>

@@ -4,6 +4,7 @@ import { ref, computed, onMounted } from 'vue'
 import { portalUser, portalSignOut } from '../../lib/portal-session.js'
 import AccountMenu from '../../components/shell/AccountMenu.vue'
 import DemoStates from '../../components/portal/DemoStates.vue'
+import Mark from '../../components/ui/Mark.vue'
 import { demo } from '../../lib/demo-state.js'
 
 /**
@@ -106,9 +107,7 @@ onMounted(() => {
     <nav class="i-rail" aria-label="Main navigation">
       <div class="i-brand">
         <span class="i-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#5b4fd1" />
-            <path d="M16 7l7 3.5v6c0 4.4-2.9 7.6-7 8.5-4.1-.9-7-4.1-7-8.5v-6L16 7z"
-                  fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" /></svg>
+          <Mark :size="22" />
         </span>
         <span class="i-wm">InstaSafe</span>
         <span class="i-tenant">my access</span>

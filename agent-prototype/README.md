@@ -74,7 +74,11 @@ support call longer.
 
 | | |
 |---|---|
-| `Agent.cs` | theme, drawing, the shared controls, the frameless window |
+| `Theme.cs` | the light palette, rounded shapes, the shared controls, the frameless window |
+| `SvgPath.cs` | an SVG path-data parser, so GDI+ can fill the brand artwork directly |
+| `Brand.cs` | the mark, the lockup, and the four tray states |
+| `Installer.cs` | the four-step install wizard |
 | `App.cs` | tray, panel, sign-in, toasts, About, exit confirmation |
-| `icons.py` | the same four tray states as PNGs, if they are wanted as assets |
+| `brand/` | the six supplied SVGs — the source of truth for the mark |
+| `DESIGN-NOTES.md` | the research behind the wizard, and the decisions it led to |
 | `build.cmd` | one command, no toolchain |
