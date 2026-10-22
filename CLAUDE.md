@@ -63,6 +63,18 @@ fails live. Two separate bugs shipped this way. For anything touching
 `src/api/adapters/http.js` or `netlify/functions/`, verify on
 `instasafe-console-demo.netlify.app`.
 
+### Any password signs in — on purpose
+
+`auth.login` accepts any non-empty password on both adapters. A visitor
+cannot know a seeded account's password, so a correct-password check could
+only ever refuse them; two people were stuck on that screen. The answer
+carries `passwordMatched` so a screen can still say whether it was right.
+
+What stays real: the MFA step verifies a genuine TOTP code against the
+enrolled secret, and `auth.setPassword` still hashes with PBKDF2 and still
+enforces every rule. Only the refusal is gone, and every sign-in screen says
+so rather than implying a check it does not make.
+
 ### Interaction: editing is a row click
 The real console has **no per-row edit button anywhere**. The whole table is
 `cursor:pointer` and clicking a row opens the slide-in panel with that record
@@ -76,6 +88,33 @@ tenant, not a drift — see `console/VELTO-AUDIT.md` §22. Everywhere else the r
 click goes straight to the editable panel.
 
 ### Gotchas already hit — do not rediscover
+- **Every `adapter.call` name must exist on *both* adapters.** `auth.login`,
+  `auth.setPassword`, `auth.checkInvite`, `auth.invite`, `auth.sendOtp`,
+  `auth.verifyOtp` and `auth.logout` existed only in the mock, so the hosted
+  site threw `No HTTP implementation for "…"` and nobody could sign in —
+  while `npm run dev` was perfect. Before adding an `api.x.y()`, add it to
+  `http.js` too, or it ships broken and local testing cannot see it.
+- **Clear `busy` in a `finally`, never after the await.** The above surfaced
+  as a button stuck on "Checking…" for ever, with no error, because the throw
+  skipped the line that reset it. A missing route is a bug; a spinner that
+  never stops turns a clear failure into a mystery.
+- **Seed rows must be uniform — and an omitted field is not a null.** The
+  bulk inserter takes the union of keys across a chunk, so one row missing a
+  field binds null for it. Against a NOT NULL column that fails the whole
+  insert and the tenant ends up with no users. The `admin` row has caused
+  this twice, with `isAdmin` and with `mfaRequired`. `seedTenant` now
+  substitutes the type's empty value for a NOT NULL column instead of null,
+  but keep seed rows uniform anyway.
+- **A custom property is typed, even though CSS will not say so.**
+  `background: var(--i-float)` rendered transparent because `--i-float` is a
+  *shadow*. Three separate bugs have now come from using a token for the
+  wrong property — `--p-line` and `--i-surface` did not exist at all, and
+  this one existed and was the wrong kind. A build-time check that every
+  `var(--x)` resolves, and to the right sort of value, is still owed.
+- **`:global(...)` eats what follows it.** In an SFC, `:global(html[…]) .pip`
+  compiles to `html[…]` alone — the descendant is dropped, so the rule lands
+  on the wrong element. For an ancestor condition just write
+  `html[data-i-theme='dark'] .pip`; scoped CSS handles it correctly.
 - Exactly **one** `netlify.toml`, at the repo root. With `base = "console"` Netlify also
   reads `console/netlify.toml` and lets it win, which double-nests the paths. That was
   two failed deploys.
