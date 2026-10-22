@@ -12,16 +12,16 @@ const emit = defineEmits(['toggle-nav', 'open-inbox', 'open-tours'])
  * What belongs under the administrator's own name.
  *
  * Company details, because that is what the old rail footer opened and
- * somebody will go looking for it there. The member portal, because an
- * administrator is also an employee and the two consoles should know about
- * each other. Reset demo, which was a bare icon beside the theme toggle —
- * one destructive control sitting among four cosmetic ones.
+ * somebody will go looking for it there. My access, because an administrator
+ * is also somebody with applications of their own — it is the same product
+ * from a different seat, not a second one. Reset demo, which was a bare icon
+ * beside the theme toggle: one destructive control among four cosmetic ones.
  */
 const ACCOUNT_ITEMS = [
   { to: '/settings/company-details', label: 'Company details', icon: 'fa-building' },
   { to: '/sub-admin/all', label: 'Sub admins & roles', icon: 'fa-user-shield' },
   { divider: true },
-  { to: '/portal', label: 'My access (employee view)', icon: 'fa-user' },
+  { to: '/portal', label: 'My access', icon: 'fa-user' },
   { divider: true },
   { action: 'reset', label: 'Reset demo', icon: 'fa-rotate-left' },
   { action: 'signout', label: 'Sign out', icon: 'fa-right-from-bracket', tone: 'bad' }

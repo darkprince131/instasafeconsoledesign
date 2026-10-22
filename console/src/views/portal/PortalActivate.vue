@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import api from '../../api'
-import { portalSignIn } from '../../lib/portal-session.js'
+import { portalSignIn, pendingActivation } from '../../lib/portal-session.js'
 import { passwordRules } from '../../lib/password.js'
 import { verifyTOTP, secondsRemaining } from '../../lib/totp.js'
 import { qrSvg } from '../../lib/qr.js'
@@ -66,10 +66,10 @@ async function load () {
     step.value = 'password'
     return
   }
-  /* Arrived from the sign-in screen, which passed the account in history
-     state rather than in the URL — an account name in a URL ends up in logs,
-     bookmarks and shoulder-shots. */
-  const handed = history.state?.activateUser
+  /* Arrived from the sign-in screen, which hands the account over in a
+     module ref rather than the URL — an account name in a URL ends up in
+     logs, bookmarks and shoulder-shots. */
+  const handed = pendingActivation.value || history.state?.activateUser
   if (handed) { user.value = handed; step.value = 'password'; return }
 
   step.value = 'invalid'
@@ -291,6 +291,14 @@ onUnmounted(() => clearInterval(ticker))
       </p>
 
       <button class="p-btn p-wide-btn" @click="enter">Go to my access</button>
+
+      <!-- The marketing simulator ends with "log in again, try another
+           method", and it is right: the six factors are the demo, and
+           somebody who has just set one up has met exactly one of them. -->
+      <RouterLink class="p-btn p-ghost p-wide-btn mt-2" to="/portal/signin">
+        <i class="fa-solid fa-rotate" aria-hidden="true" />
+        Sign in again and try the other factors
+      </RouterLink>
 
       <div class="p-actnext">
         <h2>Worth doing next</h2>

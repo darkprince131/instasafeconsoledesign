@@ -18,6 +18,17 @@ const KEY = 'i365.portal.user'
 
 export const portalUser = ref(null)
 
+/**
+ * The account being activated, handed from sign-in to the activation page.
+ *
+ * This went through `history.state` first, which Vue Router does carry — but
+ * the activation page reads it on mount and did not reliably see it, landing
+ * somebody on "this link cannot be used" one click after being invited to set
+ * their password. A module ref has no such timing, and keeps the username out
+ * of the URL, which was the reason for not using a query parameter.
+ */
+export const pendingActivation = ref(null)
+
 export function portalSignIn (user) {
   portalUser.value = user
   try { sessionStorage.setItem(KEY, JSON.stringify(user)) } catch {}

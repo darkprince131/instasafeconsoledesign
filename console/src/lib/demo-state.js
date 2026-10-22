@@ -56,6 +56,53 @@ watch(demo, (v) => {
   try { localStorage.setItem(KEY, JSON.stringify(v)) } catch {}
 }, { deep: true })
 
+/**
+ * The two tenants worth showing, as one click each.
+ *
+ * They are the two audiences this console serves. A visitor should arrive at
+ * a tenant where nothing has happened yet and set it up — that is the only
+ * way to feel what the product asks of you. An engineer should arrive at a
+ * tenant at production scale, because the questions they have are about
+ * density, empty states they will never otherwise reach, and whether the
+ * field sets match.
+ *
+ * Individual switches still work; these just set all of them at once, which
+ * is what somebody standing in front of an audience actually needs.
+ */
+export const PRESETS = {
+  empty: {
+    label: 'New tenant',
+    hint: 'Nothing set up yet. You do it: enrol a factor, install the agent, get applications assigned.',
+    state: {
+      applications: 'none', devices: 'none', history: 'none',
+      agent: 'missing', sessionRecording: false, shiftSchedule: false,
+      geoBinding: false, mfaRequired: true, mfaSimulator: true
+    }
+  },
+  full: {
+    label: 'Running tenant',
+    hint: 'A company already using it — applications assigned, devices registered, policy in force.',
+    state: {
+      applications: 'all', devices: 'some', history: 'some',
+      agent: 'auto', sessionRecording: true, shiftSchedule: true,
+      geoBinding: false, mfaRequired: true, mfaSimulator: true
+    }
+  }
+}
+
+export function applyPreset (key) {
+  const p = PRESETS[key]
+  if (p) Object.assign(demo, p.state)
+}
+
+/** Which preset the switches currently match, if either. */
+export function currentPreset () {
+  for (const [key, p] of Object.entries(PRESETS)) {
+    if (Object.entries(p.state).every(([k, v]) => demo[k] === v)) return key
+  }
+  return ''
+}
+
 export function resetDemoState () {
   Object.assign(demo, DEFAULTS)
 }

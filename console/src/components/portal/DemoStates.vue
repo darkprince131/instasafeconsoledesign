@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { demo, resetDemoState, isModified } from '../../lib/demo-state.js'
+import { demo, resetDemoState, isModified, PRESETS, applyPreset, currentPreset } from '../../lib/demo-state.js'
 
 /**
  * The state switcher.
@@ -18,6 +18,7 @@ import { demo, resetDemoState, isModified } from '../../lib/demo-state.js'
 
 const open = ref(false)
 const modified = computed(() => isModified())
+const preset = computed(() => currentPreset())
 
 /* Grouped the way somebody reviewing would ask for them, not the way the
    object happens to be ordered. */
@@ -84,6 +85,22 @@ const SWITCHES = [
         </div>
         <button v-if="modified" class="d-reset" @click="resetDemoState">Reset</button>
       </header>
+
+      <!-- The two states worth showing, before the nine switches that make
+           up any other. Somebody presenting needs one click, not nine. -->
+      <section class="d-grp">
+        <h3>Start from</h3>
+        <div class="d-presets">
+          <button
+            v-for="(p, key) in PRESETS" :key="key"
+            class="d-preset" :class="{ 'is-on': preset === key }"
+            @click="applyPreset(key)"
+          >
+            <strong>{{ p.label }}</strong>
+            <small>{{ p.hint }}</small>
+          </button>
+        </div>
+      </section>
 
       <section v-for="g in CHOICES" :key="g.group" class="d-grp">
         <h3>{{ g.group }}</h3>

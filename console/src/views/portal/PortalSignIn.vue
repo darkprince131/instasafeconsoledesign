@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import api from '../../api'
-import { portalSignIn } from '../../lib/portal-session.js'
+import { portalSignIn, pendingActivation } from '../../lib/portal-session.js'
 import { verifyTOTP, secondsRemaining } from '../../lib/totp.js'
 import { qrSvg } from '../../lib/qr.js'
 import { demo } from '../../lib/demo-state.js'
@@ -40,6 +40,7 @@ const error = ref('')
 const busy = ref(false)
 const user = ref(null)
 const suggestion = ref('')
+const needsSetup = ref(false)
 
 /* ------------------------------------------------------------- who are you */
 async function submitWho () {
@@ -57,9 +58,17 @@ async function submitWho () {
       u.username?.toLowerCase() === v.toLowerCase() ||
       u.email?.toLowerCase() === v.toLowerCase())
     user.value = hit || { username: v, firstName: '', email: v, unknown: true }
+
+    /* An account nobody has ever set a password on should not be handed a
+       password box. The note said "continue and you will be taken to set
+       one" and then asked for a password anyway, which is a dead end with
+       encouraging copy on it — there is nothing to type and no way forward.
+       In production the server answers this; here the record is local. */
+    needsSetup.value = !!hit && !hit.passwordHash
+
     step.value = 'password'
     await nextTick()
-    document.getElementById('pp')?.focus()
+    if (!needsSetup.value) document.getElementById('pp')?.focus()
   } finally { busy.value = false }
 }
 
@@ -73,7 +82,8 @@ async function submitPassword () {
 
     if (!res?.ok) {
       if (res?.needsActivation) {
-        router.push({ path: '/portal/activate', state: { activateUser: res.user } })
+        pendingActivation.value = res.user
+        router.push('/portal/activate')
         return
       }
       error.value = res?.error || 'That email and password do not match.'
@@ -152,6 +162,11 @@ function enter (u) {
   router.push('/portal')
 }
 
+function goActivate () {
+  pendingActivation.value = user.value
+  router.push('/portal/activate')
+}
+
 function back () {
   error.value = ''
   if (step.value === 'method') { step.value = 'choose'; method.value = null; clearInterval(ticker); return }
@@ -199,9 +214,11 @@ onUnmounted(() => clearInterval(ticker))
       </p>
 
       <p class="p-gnote">
-        <strong>Are you the administrator?</strong>
-        The console is a separate product with its own sign-in:
-        <RouterLink to="/signin">administrator sign-in</RouterLink> —
+        <strong>Administrators sign in here too.</strong>
+        It is one product: what you see depends on what your account is
+        allowed to do. An administrator account lands on the console that runs
+        the tenant, everybody else lands on their own access.
+        <RouterLink to="/signin">Administrator sign-in</RouterLink> —
         <code class="i-tech">admin</code> / <code class="i-tech">demo</code>.
       </p>
     </template>
@@ -218,7 +235,18 @@ onUnmounted(() => clearInterval(ticker))
       <h1 class="p-gh">{{ user?.firstName ? `Hello, ${user.firstName}` : 'Enter your password' }}</h1>
       <p class="p-gs i-tech">{{ user?.email || user?.username }}</p>
 
-      <form @submit.prevent="submitPassword">
+      <!-- Never had a password: there is nothing to type, so do not ask. -->
+      <template v-if="needsSetup">
+        <p class="p-gs">
+          This account has not been set up yet. Choose a password and it is
+          yours — this is exactly what a new employee sees on their first day.
+        </p>
+        <button class="p-btn p-wide-btn" @click="goActivate">
+          <i class="fa-solid fa-arrow-right" aria-hidden="true" /> Set up my account
+        </button>
+      </template>
+
+      <form v-else @submit.prevent="submitPassword">
         <div class="p-field">
           <label for="pp">Password</label>
           <input id="pp" v-model="password" type="password" autocomplete="current-password">
@@ -229,10 +257,9 @@ onUnmounted(() => clearInterval(ticker))
         </button>
       </form>
 
-      <p class="p-gnote">
+      <p v-if="!needsSetup" class="p-gnote">
         The password is checked against a PBKDF2 hash — a wrong one is really
-        refused. An account that has never had one is sent to set it rather
-        than rejected.
+        refused.
       </p>
     </template>
 

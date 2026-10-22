@@ -103,6 +103,14 @@ describe the six methods, it makes you do one.
 screens, no tables of two thousand rows. A visitor can look at all of it
 without being lost.
 
+**Two tenants, one click each.** The widget leads with them, because
+somebody presenting needs one click rather than nine:
+
+| | What it shows |
+|---|---|
+| **New tenant** | Nothing set up. No applications, no devices, no history, agent missing. The visitor does it all: set a password, enrol a factor, find out what is still needed. |
+| **Running tenant** | A company already using it — applications assigned, devices registered, recording and shift schedule in force. What an engineer wants to see. |
+
 **The demo-states widget** is what turns one tenant into many. Nine switches
 — applications, devices, history, agent, recording, shift schedule, geo
 binding, MFA required, teaching mode — so a presenter can show the first-day

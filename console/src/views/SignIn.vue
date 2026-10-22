@@ -101,10 +101,11 @@ function onCode (e) {
             </div>
 
             <div class="i-demo-note mt-2">
-              <strong style="color:var(--i-ink)">Looking for the employee view?</strong>
-              That is a different product with its own sign-in:
-              <RouterLink to="/portal/signin">the member portal</RouterLink>.
-              Every account this console creates can sign in there.
+              <strong style="color:var(--i-ink)">Same product, a different seat.</strong>
+              An administrator account lands here, on the console that runs the
+              tenant. Everybody else lands on
+              <RouterLink to="/portal/signin">their own access</RouterLink> —
+              the same product showing what that person is allowed to do.
             </div>
           </template>
 

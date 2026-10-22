@@ -58,7 +58,16 @@ export function seedUsers (count = 1820) {
      constraint and silently overwrote the earlier row, which hid this. */
   const taken = new Set()
   for (let i = 1; i <= count; i++) {
-    const first = pick(FIRST), last = pick(LAST)
+    /* The portal's demo account is pinned by name, not left to the PRNG.
+       The generator is deterministic but the *stream* is shared, so which
+       name lands on usr_00001 depends on how many numbers the seeders before
+       it happened to draw — and that differs between a first seed and a
+       reset. The account the sign-in screen names and the documentation
+       quotes was therefore a different person after a reseed, which is a
+       first-rate way to make somebody think sign-in is broken. */
+    const demoMember = i === 1
+    const first = demoMember ? 'Ananya' : pick(FIRST)
+    const last = demoMember ? 'Menon' : pick(LAST)
     const base = `${first}.${last}`.toLowerCase()
     let username = base
     let n = 1
@@ -69,7 +78,6 @@ export function seedUsers (count = 1820) {
        unenrolled so that the enrolment path — the thing the portal exists to
        show — is the one a visitor lands on. The seed also gives this account
        its devices and its access history, for the same reason. */
-    const demoMember = i === 1
     const enrolled = demoMember ? false : chance(0.94)   // most people have MFA
     const status = demoMember ? 'active'
       : (chance(0.975) ? 'active' : (chance(0.5) ? 'suspended' : 'pending'))
@@ -82,6 +90,10 @@ export function seedUsers (count = 1820) {
       department: pick(DEPTS),
       authProfile: chance(0.62) ? 'Local' : pick(['Azure AD','RADIUS','LDAP','SAML','Google']),
       mfaEnrolled: enrolled,
+      /* The account the portal opens with is the one a visitor walks the
+         whole first-day path on, and that path is only worth walking if it
+         includes the second factor. */
+      mfaRequired: demoMember ? true : chance(0.6),
       mfaSecret: null,                          // set for real on enrolment
       status,
       groups: [],

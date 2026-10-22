@@ -7,7 +7,13 @@ import DemoStates from '../../components/portal/DemoStates.vue'
 import { demo } from '../../lib/demo-state.js'
 
 /**
- * The end-user portal shell.
+ * The end-user side of the console.
+ *
+ * Not a second product — the same one, seen from a seat with fewer
+ * privileges. An administrator runs the tenant; everybody else sees their own
+ * access. Calling these "two products" in the copy was wrong and has been
+ * taken out: it told a visitor they were being shown something separate when
+ * they were being shown the other half of the same thing.
  *
  * Two earlier mistakes, both now corrected.
  *
@@ -151,7 +157,7 @@ onMounted(() => {
             :name="[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username"
             :secondary="user?.email || user?.username"
             :photo="user?.photo || ''"
-            context="Employee portal"
+            context="My access"
             :items="ACCOUNT_ITEMS" @select="onAccount"
           />
         </div>
