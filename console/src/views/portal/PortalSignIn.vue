@@ -7,6 +7,7 @@ import { verifyTOTP, secondsRemaining } from '../../lib/totp.js'
 import { qrSvg } from '../../lib/qr.js'
 import { demo } from '../../lib/demo-state.js'
 import MfaSimulator from '../../components/portal/MfaSimulator.vue'
+import MfaArt from '../../components/portal/MfaArt.vue'
 
 /**
  * Signing in to the member portal.
@@ -114,28 +115,56 @@ async function submitPassword () {
  * email are here because they are what most people have met before, and a
  * demo that omits the familiar one teaches nobody anything.
  */
+/**
+ * Velto's six, named as velto names them.
+ *
+ * Its Two Factor Authentication screen offers TOTP, Authenticator, SMS,
+ * E-mail, Hardware Key and Use Backup Code, as a three-by-two grid of tiles.
+ * The set is kept exactly; what changes is the shape and what the screen
+ * says while you are choosing.
+ *
+ * Velto draws six identical tiles with a word under each and no explanation
+ * anywhere, so the choice is made on familiarity — which is how everybody
+ * ends up on SMS, the weakest of the six. Stacked here, with a drawing of the
+ * mechanism beside them and one line on what each costs you, the choice is
+ * made on something.
+ *
+ * TOTP and Authenticator look like duplicates and are not: one is a code you
+ * read out of any authenticator app, the other is InstaSafe's own app
+ * answering a push. Velto distinguishes them and so does this.
+ */
 const METHODS = [
-  { key: 'totp', label: 'Authenticator app', icon: 'fa-mobile-screen', real: true,
-    sub: 'A rotating six-digit code',
-    note: 'Works with no signal and no data.' },
-  { key: 'push', label: 'Push approval', icon: 'fa-bell',
-    sub: 'Approve a prompt on your phone',
-    note: 'You see what you are approving — and can refuse it.' },
-  { key: 'key', label: 'Hardware key', icon: 'fa-key',
-    sub: 'Tap a security key',
-    note: 'The only method that cannot be phished.' },
-  { key: 'bio', label: 'Biometric', icon: 'fa-fingerprint',
-    sub: 'Fingerprint on this machine',
-    note: 'Nothing to type and nothing to lose.' },
-  { key: 'sms', label: 'OTP by SMS', icon: 'fa-comment-dots',
-    sub: 'A code to your phone',
-    note: 'Familiar, and the weakest of the six — SIMs get swapped.' },
-  { key: 'email', label: 'OTP by email', icon: 'fa-envelope',
-    sub: 'A code to your inbox',
-    note: 'Only as strong as the mailbox it lands in.' }
+  { key: 'totp', label: 'TOTP', icon: 'fa-clock', real: true,
+    sub: 'A rotating code from an authenticator app',
+    good: 'Works with no signal and no data — nothing is ever sent, so nothing can be intercepted.',
+    hint: 'Open your authenticator app and read the six digits for InstaSafe.' },
+  { key: 'push', label: 'Authenticator', icon: 'fa-bell',
+    sub: 'Approve a prompt in the InstaSafe app',
+    good: 'You see the device, address and location before you approve — and you can refuse.',
+    hint: 'Check the request matches where you are, then approve or reject it.' },
+  { key: 'sms', label: 'SMS', icon: 'fa-comment-dots',
+    sub: 'A code sent to your phone number',
+    good: 'The most familiar, and the weakest here: a number can be ported away from you.',
+    hint: 'Type the code from the text message.' },
+  { key: 'email', label: 'E-mail', icon: 'fa-envelope',
+    sub: 'A code sent to your inbox',
+    good: 'Only as strong as the mailbox it lands in — which is often protected by a password alone.',
+    hint: 'Type the code from the email.' },
+  { key: 'key', label: 'Hardware Key', icon: 'fa-key',
+    sub: 'A security key, or this machine’s fingerprint reader',
+    good: 'The only one that cannot be phished: the key checks which site is asking before it answers.',
+    hint: 'Pick the key you are holding.' },
+  { key: 'backup', label: 'Use Backup Code', icon: 'fa-list-ol',
+    sub: 'One of the ten you saved',
+    good: 'The way back in when the phone is lost, broken or flat. Each code works once.',
+    hint: 'Enter any one of your saved codes.' }
 ]
 
+
 const method = ref(null)
+/* What the right-hand pane explains while nothing is chosen yet. */
+const preview = ref('')
+const shown = computed(() => METHODS.find(m => m.key === preview.value) || null)
 const code = ref('')
 const left = ref(secondsRemaining())
 const pushState = ref('idle')     // idle · waiting · approved
@@ -169,7 +198,10 @@ function goActivate () {
 
 function back () {
   error.value = ''
-  if (step.value === 'method') { step.value = 'choose'; method.value = null; clearInterval(ticker); return }
+  if (step.value === 'method') {
+    step.value = 'choose'; method.value = null; preview.value = ''
+    clearInterval(ticker); return
+  }
   if (step.value === 'choose') { step.value = 'password'; return }
   if (step.value === 'password') { step.value = 'who'; password.value = ''; return }
 }
@@ -263,57 +295,87 @@ onUnmounted(() => clearInterval(ticker))
       </p>
     </template>
 
-    <!-- --------------------------------------------------- choose factor -->
-    <template v-else-if="step === 'choose'">
-      <button class="p-back" @click="back">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true" /> Back
-      </button>
-
-      <h1 class="p-gh">Prove it is you</h1>
-      <p class="p-gs">
-        Your administrator requires a second factor. Choose whichever you have
-        to hand.
-      </p>
-
-      <ul class="p-methods">
-        <li v-for="m in METHODS" :key="m.key">
-          <button class="p-method" @click="pick(m)">
-            <span class="p-micon"><i class="fa-solid" :class="m.icon" aria-hidden="true" /></span>
-            <span class="p-mbody">
-              <strong>
-                {{ m.label }}
-                <span v-if="m.real" class="p-tag is-ok">verified for real</span>
-              </strong>
-              <small>{{ m.sub }}</small>
-              <small class="p-mnote">{{ m.note }}</small>
-            </span>
-            <i class="fa-solid fa-chevron-right p-mchev" aria-hidden="true" />
-          </button>
-        </li>
-      </ul>
-    </template>
-
-    <!-- -------------------------------------------------------- a method -->
+    <!-- ------------------------------------------- the second factor -->
     <template v-else>
       <button class="p-back" @click="back">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true" /> Other methods
+        <i class="fa-solid fa-arrow-left" aria-hidden="true" />
+        {{ step === 'method' ? 'Other methods' : 'Back' }}
       </button>
 
-      <span class="p-micon is-lg"><i class="fa-solid" :class="chosen?.icon" aria-hidden="true" /></span>
-      <h1 class="p-gh">{{ chosen?.label }}</h1>
+      <h1 class="p-gh">Two-factor authentication</h1>
+      <p class="p-gs">
+        {{ step === 'method'
+          ? chosen?.sub
+          : 'Your password is one half. Choose how you want to prove the other.' }}
+      </p>
 
-      <MfaSimulator
-        :method="method" :user="user"
-        @verified="enter(user)" @other="back"
-      />
+      <!-- Two panes: the choice on the left, what it means on the right.
+           Velto gives six tiles and no explanation, so people pick the one
+           they recognise — which is how everybody ends up on SMS. -->
+      <div class="p-2up">
+        <ul class="p-mlist">
+          <li v-for="m in METHODS" :key="m.key">
+            <button
+              class="p-mrow" :class="{ 'is-on': method === m.key }"
+              @mouseenter="preview = m.key" @mouseleave="preview = ''"
+              @focus="preview = m.key" @blur="preview = ''"
+              @click="pick(m)"
+            >
+              <span class="p-micon"><i class="fa-solid" :class="m.icon" aria-hidden="true" /></span>
+              <span class="p-mbody">
+                <strong>
+                  {{ m.label }}
+                  <span v-if="m.real" class="p-tag is-ok">verified for real</span>
+                </strong>
+                <small>{{ m.sub }}</small>
+              </span>
+              <i class="fa-solid fa-chevron-right p-mchev" aria-hidden="true" />
+            </button>
+          </li>
+        </ul>
 
-      <p v-if="demo.mfaSimulator && (method === 'totp')" class="p-simwarn">
+        <aside class="p-side" :class="{ 'is-live': step === 'method' }">
+          <!-- Before a choice: the drawing explains the mechanism. After
+               one: the simulator runs, and the drawing sits above it. -->
+          <MfaArt :method="step === 'method' ? method : preview" />
+
+          <template v-if="step === 'method'">
+            <MfaSimulator
+              :key="method" :method="method" :user="user"
+              @verified="enter(user)" @other="back"
+            />
+            <p class="p-sidehint">
+              <i class="fa-solid fa-circle-info" aria-hidden="true" />
+              <span>{{ chosen?.hint }}</span>
+            </p>
+          </template>
+
+          <template v-else>
+            <h2 class="p-sideh">{{ shown ? shown.label : 'Why a second factor' }}</h2>
+            <p class="p-sidep">
+              {{ shown
+                ? shown.good
+                : 'A password can be guessed, reused or stolen without you knowing. A second factor is something you physically have, so knowing the password is not enough.' }}
+            </p>
+            <p class="p-sidehint">
+              <i class="fa-solid fa-hand-pointer" aria-hidden="true" />
+              <span>
+                {{ shown
+                  ? 'Choose it on the left to try it. Nothing here signs you in to anything real.'
+                  : 'Point at any method to see how it works. Choose one to try it.' }}
+              </span>
+            </p>
+          </template>
+        </aside>
+      </div>
+
+      <p v-if="demo.mfaSimulator && step === 'method' && method === 'totp'" class="p-simwarn">
         <i class="fa-solid fa-triangle-exclamation" aria-hidden="true" />
         <span>
           <strong>Teaching mode.</strong>
-          The code is shown above so you can try this without a phone. Turn
-          “Accept any code” off in the demo-states widget and the authenticator
-          is verified against your real enrolled secret instead.
+          The code is shown so you can try this without a phone. Turn “Accept
+          any code” off in the demo-states widget and the authenticator is
+          verified against your real enrolled secret instead.
         </span>
       </p>
     </template>

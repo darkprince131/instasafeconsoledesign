@@ -2130,6 +2130,52 @@ read-panel and endpoint-strip borders silently drew nothing. An undefined
 custom property does not warn — it simply produces no value, which is why
 they survived review.
 
+## 59. Two Factor Authentication: velto's six, and why anybody picks one
+
+Velto's 2FA screen is a three-by-two grid of identical tiles — TOTP,
+Authenticator, SMS, E-mail, Hardware Key, Use Backup Code — each a word under
+an icon, with no explanation anywhere on the screen.
+
+The set is kept exactly, including the pair that look like duplicates and are
+not: **TOTP** is a code read out of any authenticator app, **Authenticator**
+is InstaSafe's own app answering a push. Velto distinguishes them and so does
+this.
+
+**What changes is that the screen now says something.** Six identical tiles
+and no guidance means the choice is made on familiarity, and familiarity is
+how everybody ends up on SMS — the weakest of the six. So the tiles are a
+stacked list on the left, and the right-hand pane answers "what am I
+choosing" before the choice and "what is happening" after it.
+
+| State | Right-hand pane |
+|---|---|
+| Nothing chosen | why a second factor exists at all |
+| Pointing at one | that method's drawing, and the one-line trade-off |
+| Chosen | the drawing, the live simulator, and what to do next |
+
+### The drawings animate the mechanism, not the mood
+
+"Phishing-resistant" means nothing to somebody who has never seen what gets
+phished, so each method draws the step that matters:
+
+| Method | What the drawing shows |
+|---|---|
+| TOTP | a code rolling over on a timer, with an open gap either side — nothing is sent, so nothing can be intercepted |
+| Authenticator | a request going out and an approval coming back; the round trip *is* the method |
+| SMS | the same code crossing a network, with the point where it can be lifted marked in red |
+| E-mail | a code landing in a mailbox, which is as safe as the mailbox |
+| Hardware Key | a challenge signed and bound to this site, with a lookalike site refused |
+| Backup Code | ten codes, one being struck off for good |
+
+Inline SVG and CSS keyframes, no library, and everything stops under
+`prefers-reduced-motion`.
+
+The trade-off line is the part velto omits and the part that decides the
+choice: SMS says *a number can be ported away from you*; e-mail says *only as
+strong as the mailbox it lands in*; the hardware key says *the key checks
+which site is asking before it answers*. Nobody picks SMS after reading those
+three, which is the point.
+
 ## Route coverage
 
 67 of velto's 68 nav destinations were already present. The only absence,
