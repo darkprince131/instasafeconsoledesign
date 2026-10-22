@@ -108,8 +108,13 @@ defineProps({
   display: block;
   overflow: visible;
 }
-:global(html[data-i-theme='dark']) .pip,
-:global(html[data-p-theme='dark']) .pip {
+/* No `:global()` here. With a descendant after it the SFC compiler drops the
+   descendant entirely — `:global(html[…]) .pip` compiled to `html[…]` alone,
+   so these landed on the document element and `.pip[data-v]` overrode every
+   one of them. A plain ancestor selector is scoped correctly and outranks the
+   block above on its own. */
+html[data-i-theme='dark'] .pip,
+html[data-p-theme='dark'] .pip {
   --pip-shell: #221d33;
   --pip-edge: #a98fd4;
   --pip-visor: #15111f;

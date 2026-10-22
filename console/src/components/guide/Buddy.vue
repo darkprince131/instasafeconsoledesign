@@ -153,7 +153,12 @@ const pose = computed(() => (current.value?.state) || 'idle')
    this component is mounted in both, so each surface gets its own mapping
    rather than one set of hard-coded colours that is wrong on one of them. */
 .pip-console {
-  --pb-card: var(--i-float, #fff);
+  /* `--i-canvas`, not `--i-float`: `--i-float` is the console's elevation
+     *shadow*, and a shadow value used as a background resolves to nothing, so
+     the dock rendered transparent over the table behind it. Third time a
+     token has been used for the wrong property in this codebase, which is
+     what the build-time check in the backlog is for. */
+  --pb-card: var(--i-canvas, #fff);
   --pb-rule: var(--i-rule, #e4e4ea);
   --pb-ink: var(--i-ink, #1b1c20);
   --pb-dim: var(--i-dim, #5a5c66);
