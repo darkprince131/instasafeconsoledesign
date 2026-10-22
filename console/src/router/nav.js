@@ -181,6 +181,7 @@ export const NAV = [
           { label: 'RADIUS Service', to: '/authserver/radius' }
         ]
       },
+      { label: 'Desktop agent', icon: 'fa-display', to: '/agent', isNew: true },
       { label: 'Tech support', icon: 'fa-headset', to: '/tech-support' }
     ]
   }

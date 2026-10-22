@@ -63,7 +63,10 @@ const bespoke = {
 
   '/reports/network-test': () => import('../views/monitoring/NetworkTest.vue'),
   '/tech-support':         () => import('../views/TechSupport.vue'),
-  '/graph':                () => import('../views/Graph.vue')
+  '/graph':                () => import('../views/Graph.vue'),
+
+  /* The desktop agent, redesigned end to end. */
+  '/agent':                () => import('../views/agent/AgentPrototype.vue')
 }
 
 const routes = [
