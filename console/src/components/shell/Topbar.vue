@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../../api'
 import CommandSearch from './CommandSearch.vue'
 import AccountMenu from './AccountMenu.vue'
+import DemoStates from './DemoStates.vue'
 
 defineProps({ unread: { type: Number, default: 0 } })
 const emit = defineEmits(['toggle-nav', 'open-inbox', 'open-tours'])
@@ -118,6 +119,11 @@ onUnmounted(() => clearInterval(timer))
         <span class="d-none d-xl-inline">Inbox</span>
         <span v-if="unread" class="i-count">{{ unread }}</span>
       </button>
+
+      <!-- Beside Flows, because both answer "what am I being shown": one
+           walks you through the work, the other decides whether the tenant
+           you are walking through has anything in it. -->
+      <DemoStates class="d-none d-md-block" />
 
       <span class="i-tsep" aria-hidden="true" />
 

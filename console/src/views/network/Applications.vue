@@ -283,6 +283,7 @@ onMounted(async () => {
 <template>
   <div class="i-page">
     <PageHeader
+      collection="applications"
       title="Applications"
       subtitle="What people connect to. RDP, SSH and VNC applications can be launched from here."
     >
@@ -328,11 +329,27 @@ onMounted(async () => {
         <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
       </template>
       <template #empty>
+        <!-- "No applications of this type" was shown on All as well, where
+             there is no type to blame. An empty tenant and a filter that
+             hides everything need different sentences. -->
         <EmptyState
+          v-if="search"
+          icon="fa-magnifying-glass"
+          title="Nothing matches that search"
+          body="Try a shorter term, or clear the search."
+        />
+        <EmptyState
+          v-else-if="filter !== 'all'"
+          icon="fa-filter"
+          title="No applications of this type"
+          body="Switch back to All to see every application."
+        />
+        <EmptyState
+          v-else
           icon="fa-grip"
-          :title="search ? 'Nothing matches that search' : 'No applications of this type'"
-          body="An application is a host and a port that an access rule can point at."
-          :action-label="search ? '' : 'Add application'"
+          title="No applications yet"
+          body="An application is a host and a port that an access rule can point at. Nothing is reachable until one exists."
+          action-label="Add application"
           @action="openAdd"
         />
       </template>

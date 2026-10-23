@@ -69,6 +69,7 @@ onUnmounted(() => clearInterval(tick))
 <template>
   <div class="i-page">
     <PageHeader
+      collection="sessions"
       title="Live sessions"
       :subtitle="total.toLocaleString() + ' sessions open right now. Refreshes every 15 seconds.'"
     >

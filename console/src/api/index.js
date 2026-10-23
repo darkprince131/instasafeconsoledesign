@@ -30,6 +30,8 @@ const adapter = import.meta.env.VITE_BACKEND === 'http'
   ? httpAdapter({ baseURL: '/api' })
   : mockAdapter
 
+import { isEmptied, applyEmptyState } from '../lib/console-state.js'
+
 export const BACKEND = import.meta.env.VITE_BACKEND === 'http' ? 'postgres' : 'browser'
 
 /**
@@ -38,14 +40,54 @@ export const BACKEND = import.meta.env.VITE_BACKEND === 'http' ? 'postgres' : 'b
  */
 function resource (name) {
   return {
-    list: (params) => adapter.list(name, params),
+    list: (params) => listWithState(name, params),
     get: (id) => adapter.get(name, id),
     create: (body) => adapter.create(name, body),
     update: (id, body) => adapter.update(name, id, body),
     remove: (id) => adapter.remove(name, id),
     removeMany: (ids) => adapter.removeMany(name, ids),
-    count: (params) => adapter.count(name, params)
+    count: (params) => countWithState(name, params)
   }
+}
+
+/**
+ * The empty-state switch, applied once for all 54 list screens.
+ *
+ * Here rather than in each screen because they all come through this factory,
+ * and 54 copies of a rule is 54 chances to disagree about what empty means.
+ * A collection set to empty drops its seeded rows and keeps anything created
+ * since, so a guided flow run against an empty tenant still shows what you
+ * just made — see `lib/console-state.js` for why that matters.
+ *
+ * When nothing is emptied this is one property check and the adapter's own
+ * answer, untouched.
+ *
+ * When something *is* emptied it fetches the collection whole and paginates
+ * what survives, rather than filtering a page and then trying to work out
+ * what the total should have been. That arithmetic cannot be done honestly
+ * without a second query — a page of 25 that loses all 25 tells you nothing
+ * about the other 1,796 — and a total that is wrong by any amount gives you
+ * a pager offering pages that do not exist. The extra fetch is affordable
+ * precisely because this state exists to make a collection small.
+ */
+async function listWithState (name, params = {}) {
+  if (!isEmptied(name)) return adapter.list(name, params)
+
+  const all = await adapter.list(name, { ...params, page: 1, perPage: 0 })
+  const kept = applyEmptyState(name, all.data || [])
+
+  const perPage = Number(params.perPage) || 0
+  if (!perPage) return { ...all, data: kept, total: kept.length }
+
+  const page = Math.max(1, Number(params.page) || 1)
+  const start = (page - 1) * perPage
+  return { ...all, data: kept.slice(start, start + perPage), total: kept.length }
+}
+
+async function countWithState (name, params) {
+  if (!isEmptied(name)) return adapter.count(name, params)
+  const all = await adapter.list(name, { ...params, page: 1, perPage: 0 })
+  return applyEmptyState(name, all.data || []).length
 }
 
 export const api = {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import Rail from './components/shell/Rail.vue'
 import Topbar from './components/shell/Topbar.vue'
@@ -7,6 +7,7 @@ import DemoInbox from './components/shell/DemoInbox.vue'
 import Toasts from './components/ui/Toasts.vue'
 import Tour from './components/shell/Tour.vue'
 import Buddy from './components/guide/Buddy.vue'
+import DemoStates from './components/shell/DemoStates.vue'
 import api from './api'
 
 const route = useRoute()
@@ -31,6 +32,15 @@ provide('openInbox', () => { inboxOpen.value = true })
 provide('startTour', (id) => id ? tourRef.value?.start(id) : tourRef.value?.openMenu())
 
 const bare = computed(() => route.meta?.bare === true)
+
+/* Flipping an empty-state switch changes what every list would fetch, and
+   screens fetch on mount. Rather than teach 54 of them to listen, the whole
+   view is remounted by changing its key — which is exactly what a screen
+   does on navigation anyway, so nothing new has to be correct. */
+const stateEpoch = ref(0)
+function onDemoState () { stateEpoch.value++; refreshStats() }
+onMounted(() => window.addEventListener('i365:demo-state', onDemoState))
+onUnmounted(() => window.removeEventListener('i365:demo-state', onDemoState))
 
 const theme = ref(document.documentElement.getAttribute('data-i-theme') || 'light')
 function toggleTheme () {
@@ -69,7 +79,7 @@ onMounted(refreshStats)
       />
       <RouterView v-slot="{ Component }">
         <Suspense>
-          <component :is="Component" @changed="refreshStats" />
+          <component :is="Component" :key="route.path + ':' + stateEpoch" @changed="refreshStats" />
           <template #fallback>
             <div class="i-page"><div class="i-skeleton-page" aria-busy="true" /></div>
           </template>

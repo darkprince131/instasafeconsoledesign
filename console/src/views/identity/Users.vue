@@ -398,6 +398,7 @@ onMounted(load)
 <template>
   <div class="i-page">
     <PageHeader
+      collection="users"
       title="Users"
       :subtitle="total.toLocaleString() + ' users · policy is inherited from the groups they belong to'"
     >
@@ -453,10 +454,30 @@ onMounted(load)
         <button class="i-btn i-sm i-danger" @click="confirmOpen = true">Delete</button>
       </template>
       <template #empty>
+        <!-- Three different situations, which the production console tells
+             apart not at all: it ships "No results found" on every one of
+             its 54 lists. A search that found nothing, a filter that hides
+             everything, and a tenant with no users in it are not the same
+             problem and do not have the same way out. -->
         <EmptyState
-          :icon="search ? 'fa-magnifying-glass' : 'fa-users'"
-          :title="search ? 'Nothing matches that search' : 'No users match this filter'"
-          :body="search ? 'Try a shorter term, or clear the search.' : 'Switch back to All to see everyone.'"
+          v-if="search"
+          icon="fa-magnifying-glass"
+          title="Nothing matches that search"
+          body="Try a shorter term, or clear the search."
+        />
+        <EmptyState
+          v-else-if="filter !== 'all'"
+          icon="fa-filter"
+          :title="`No ${filter} users`"
+          body="Switch back to All to see everyone."
+        />
+        <EmptyState
+          v-else
+          icon="fa-users"
+          title="No users yet"
+          body="Add the first one, or connect a directory and let it fill this in."
+          actionLabel="Add a user"
+          @action="openAdd"
         />
       </template>
     </DataTable>

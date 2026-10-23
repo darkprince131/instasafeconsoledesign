@@ -65,6 +65,7 @@ onMounted(load)
 <template>
   <div class="i-page">
     <PageHeader
+      collection="eventLog"
       title="Event logs"
       subtitle="Everything that happened, including everything you have done in this demo."
     >

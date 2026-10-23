@@ -239,6 +239,7 @@ onMounted(async () => {
 <template>
   <div class="i-page">
     <PageHeader
+      collection="accessRules"
       title="Access rules"
       subtitle="Evaluated top to bottom. The first rule that matches decides, and the rest never run."
     >

@@ -296,6 +296,7 @@ onMounted(() => { loadLicence(); load() })
 <template>
   <div class="i-page">
     <PageHeader
+      collection="gateways"
       title="Gateways"
       subtitle="The data plane. Traffic reaches the networks behind a gateway through it."
     />

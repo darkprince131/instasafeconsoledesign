@@ -288,6 +288,7 @@ onMounted(async () => {
 <template>
   <div class="i-page">
     <PageHeader
+      collection="devices"
       title="Devices"
       subtitle="Every endpoint that has tried to connect. Approving a device binds it to its user."
     >
@@ -370,12 +371,34 @@ onMounted(async () => {
         <button class="i-btn i-sm i-danger ms-1" @click="rejectSelected">Reject</button>
       </template>
       <template #empty>
+        <!-- Four situations. "Nothing pending" is the healthy end of a
+             queue and should read as good news; an empty tenant is day one
+             and should offer the way in. Neither is "no results found". -->
         <EmptyState
-          :icon="filter === 'pending' ? 'fa-circle-check' : 'fa-laptop'"
-          :title="filter === 'pending' ? 'Nothing waiting for approval' : 'No devices match this filter'"
-          :body="filter === 'pending'
-            ? 'Every enrolled device has been dealt with. That is the healthy state.'
-            : 'Try another filter, or clear the search.'"
+          v-if="search"
+          icon="fa-magnifying-glass"
+          title="Nothing matches that search"
+          body="Try a shorter term, or clear the search."
+        />
+        <EmptyState
+          v-else-if="filter === 'pending'"
+          icon="fa-circle-check"
+          title="Nothing waiting for approval"
+          body="Every enrolled device has been dealt with. That is the healthy state."
+        />
+        <EmptyState
+          v-else-if="filter !== 'all'"
+          icon="fa-filter"
+          :title="`No ${filter} devices`"
+          body="Switch back to All to see every device."
+        />
+        <EmptyState
+          v-else
+          icon="fa-laptop"
+          title="No devices yet"
+          body="A device appears here the first time somebody signs in to the agent on it."
+          actionLabel="Add one by hand"
+          @action="openAdd"
         />
       </template>
     </DataTable>
