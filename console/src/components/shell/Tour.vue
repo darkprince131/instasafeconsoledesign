@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { TOURS, findTour } from '../../tours.js'
 import api from '../../api'
+import { useDock } from '../../lib/draggable.js'
+import { pointAt, clearPointer, celebrate } from '../../lib/guide-bus.js'
 
 /**
  * The guided-flow runner.
@@ -38,6 +40,26 @@ const ctx = ref({})
 const finished = ref(false)
 const checking = ref(false)
 const doneTours = ref(new Set())
+
+/* The panel docks bottom-right, which is where the slide-in sheet arrives, so
+   a step saying "press Add application" ended up sitting on the Add
+   application form. It dodges to the other side of the sheet now, and can be
+   dragged by its header — at which point the visitor's position wins and the
+   dodging stops. */
+const dock = useDock('flow', { width: 372, height: 380 })
+
+/* Collapse while a form is covering the page.
+ *
+ * The step has already been read by the time the form is open — that is what
+ * the step asked you to do — so the panel's job for the next minute is to
+ * stay out of the way and keep showing progress. It springs back open when
+ * the form closes, unless the visitor expanded it themselves in the
+ * meantime, in which case their choice stands. */
+const autoMin = ref(false)
+watch(() => dock.covered.value, (hidden) => {
+  if (hidden && !minimised.value) { minimised.value = true; autoMin.value = true }
+  else if (!hidden && autoMin.value) { minimised.value = false; autoMin.value = false }
+})
 
 const step = computed(() => tour.value?.steps[index.value] || null)
 const completed = computed(() => status.value.filter(s => s === 'done').length)
@@ -77,6 +99,7 @@ async function start (id) {
 function stop () {
   open.value = false; picking.value = false
   tour.value = null; rect.value = null
+  clearPointer()
 }
 
 function openMenu () { loadDone(); picking.value = true; open.value = true; minimised.value = false }
@@ -127,6 +150,17 @@ function measure () {
   rect.value = onScreen
     ? { top: r.top - 6, left: r.left - 6, width: r.width + 12, height: r.height + 12 }
     : null
+
+  /* Pip follows the ring. Publishing it rather than passing a prop through
+     four layers of shell keeps the two independent: the runner owns the
+     spotlight and does not know or care whether anybody is reading it. */
+  publish()
+}
+
+/** Tell the guide where the ring is, and what this step is asking for. */
+function publish () {
+  if (!open.value || picking.value || finished.value || minimised.value) { clearPointer(); return }
+  pointAt(rect.value, step.value?.body || '', index.value, step.value?.title || '')
 }
 
 /** Polls the current step's check. This is what makes it a flow. */
@@ -168,6 +202,9 @@ function jumpTo (i) { index.value = i; goto() }
 
 function finish () {
   finished.value = true
+  clearPointer()
+  /* The one moment a cheer is honest. */
+  celebrate()
   rect.value = null
   if (tour.value) { doneTours.value.add(tour.value.id); saveDone() }
 }
@@ -250,9 +287,13 @@ defineExpose({ start, openMenu })
                   width: rect.width + 'px', height: rect.height + 'px' }"
       />
 
-      <aside class="i-flow" :class="{ 'is-min': minimised }" aria-live="polite">
-        <!-- header -->
-        <header class="i-flow-head">
+      <aside
+        class="i-flow" :class="{ 'is-min': minimised, 'is-dragging': dock.dragging.value }"
+        :style="dock.style()" data-dock aria-live="polite"
+      >
+        <!-- The header is the drag handle: a grab anywhere on the body would
+             fight with scrolling the step list. -->
+        <header class="i-flow-head" @pointerdown="dock.onDown">
           <i class="fa-solid" :class="tour.icon" aria-hidden="true" />
           <div style="flex:1;min-width:0">
             <div class="i-flow-title">{{ tour.title }}</div>
@@ -260,6 +301,12 @@ defineExpose({ start, openMenu })
               {{ completed }} of {{ tour.steps.length }} done<template v-if="skipped"> · {{ skipped }} skipped</template>
             </div>
           </div>
+          <button
+            v-if="dock.moved.value" class="i-x" style="width:24px;height:24px"
+            @click="dock.reset()" aria-label="Return to the corner" title="Return to the corner"
+          >
+            <i class="fa-solid fa-arrow-rotate-left" style="font-size:11px" aria-hidden="true" />
+          </button>
           <button class="i-x" style="width:24px;height:24px" @click="minimised = !minimised"
                   :aria-label="minimised ? 'Expand' : 'Minimise'">
             <i class="fa-solid" :class="minimised ? 'fa-chevron-up' : 'fa-chevron-down'"
@@ -388,7 +435,16 @@ defineExpose({ start, openMenu })
 .i-flow-head {
   display: flex; align-items: center; gap: 10px; flex: none;
   padding: 11px 10px 11px 15px; border-bottom: 1px solid var(--i-rule);
+  cursor: grab; touch-action: none; user-select: none;
 }
+.i-flow.is-dragging .i-flow-head { cursor: grabbing; }
+/* While it is being dragged it stops reacting to anything else, so a pointer
+   crossing the page underneath does not trigger hovers all the way across. */
+.i-flow.is-dragging { transition: none; }
+/* Moving between corners is animated; being dragged is not, because a panel
+   that eases toward the cursor feels broken. */
+.i-flow { transition: left .32s cubic-bezier(.2,.8,.3,1), top .32s cubic-bezier(.2,.8,.3,1); }
+@media (prefers-reduced-motion: reduce) { .i-flow { transition: none; } }
 .i-flow-head > i.fa-solid { color: var(--i-v600); font-size: 14px; }
 .i-flow-title { font-size: 13px; font-weight: 500; color: var(--i-ink); }
 .i-flow-prog { font-size: 11px; color: var(--i-mute); }

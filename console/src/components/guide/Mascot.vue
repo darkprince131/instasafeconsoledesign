@@ -2,266 +2,303 @@
 /**
  * Pip — the guide.
  *
- * A drawn character rather than an illustration pasted in, for the same
- * reason the agent parses the brand mark instead of shipping a PNG: it has to
- * work at 40px in a corner and at 160px on an empty state, in light and dark,
- * and a bitmap only works at the size it was exported.
+ * **Why it has no legs.** A walk cycle is four moving parts that only ever
+ * read at one size, and it pins the character to a floor. Pip hovers instead:
+ * one float loop serves every state, it can be anywhere on the screen without
+ * looking like it is standing on nothing, and travelling across the page is a
+ * translate rather than a gait. The shadow underneath is what sells the
+ * height, so it is a separate element that never moves with the body — it
+ * only shrinks and fades as Pip rises, and returns to full size on landing.
  *
- * **Why it looks like this.** It is built out of the mark's own parts — a
- * purple sphere for a head, an orange broken ring orbiting it — so it belongs
- * to the product without being the product's logo. A mascot that *is* the
- * logo with eyes drawn on is the thing brand guidelines exist to prevent;
- * this is a separate character that happens to be made of the same two
- * shapes. Everything else is a rounded rectangle, because the simplest
- * possible body is the one that still reads at 40px.
+ * **Why it looks like this.** The head is a visor: one dark shape with two
+ * bright eyes, which reads as a face at 34px where a mouth and a nose do not.
+ * The antenna's bead and the broken ring behind it are the mark's orange and
+ * the mark's geometry, so Pip belongs to the product without being the logo
+ * with eyes drawn on — which is the thing brand guidelines exist to prevent.
  *
- * **Why it moves.** The states are the ones a guide actually needs: it sits
- * while you read, points at the thing it just mentioned, runs when it is
- * taking you somewhere, jumps when you finish, and sleeps when dismissed.
- * Motion is CSS on grouped `<g>` elements, so nothing re-renders — and all of
- * it stops under `prefers-reduced-motion`, where a character that bounces for
- * ever is not charming, it is an accessibility failure.
+ * **Why it turns.** A guide that points at something across the room while
+ * facing you is not pointing. `facing` slides the visor and the arms toward
+ * the side it is looking at and drops the far eye, and `left` is the same
+ * drawing mirrored — one profile, not two.
+ *
+ * All motion is CSS on grouped elements, so nothing re-renders, and all of it
+ * stops under `prefers-reduced-motion`: a character that bobs for ever is not
+ * charming there, it is an accessibility failure.
  */
 
-defineProps({
-  /** idle · point · walk · run · jump · think · cheer · sleep */
+import { computed } from 'vue'
+
+const props = defineProps({
+  /** idle · point · travel · jump · think · cheer · sleep · poke */
   state: { type: String, default: 'idle' },
-  size: { type: Number, default: 96 },
-  /** Face the other way — for when it is on the left of what it points at. */
-  flip: { type: Boolean, default: false }
+  /** front · left · right */
+  facing: { type: String, default: 'front' },
+  size: { type: Number, default: 96 }
 })
+
+const side = computed(() => props.facing !== 'front')
 </script>
 
 <template>
   <svg
-    class="pip" :class="['is-' + state, { 'is-flip': flip }]"
+    class="pip"
+    :class="['is-' + state, side ? 'is-side' : 'is-front', 'face-' + facing]"
     :width="size" :height="size" viewBox="0 0 120 120"
     role="img" aria-label="Pip, the guide"
   >
-    <!-- the orbit: the mark's broken ring, kept behind the character -->
-    <g class="pip-orbit">
-      <circle
-        cx="60" cy="52" r="34" fill="none" stroke="#F06823" stroke-width="4"
-        stroke-linecap="round" stroke-dasharray="46 26 18 34"
-      />
-    </g>
+    <!-- The shadow is outside the floating group on purpose: it is on the
+         ground, and the whole trick of a hover is that the body moves and
+         this does not. -->
+    <ellipse class="pip-shadow" cx="60" cy="112" rx="19" ry="5" />
 
-    <!-- the shadow, which is what tells you it left the ground -->
-    <ellipse class="pip-shadow" cx="60" cy="110" rx="22" ry="5" />
-
-    <g class="pip-body">
-      <!-- legs -->
-      <g class="pip-legs">
-        <rect class="pip-leg l" x="46" y="92" width="9" height="16" rx="4.5" />
-        <rect class="pip-leg r" x="65" y="92" width="9" height="16" rx="4.5" />
+    <g class="pip-float">
+      <!-- The mark's broken ring, behind everything and slowly turning. It
+           sits just outside the helmet so it reads as a halo rather than
+           cutting across the face. -->
+      <g class="pip-orbit">
+        <circle
+          cx="60" cy="45" r="34" fill="none" stroke="#F06823" stroke-width="3.5"
+          stroke-linecap="round" stroke-dasharray="42 28 15 34"
+        />
       </g>
 
-      <!-- arms -->
+      <!-- Arms, drawn before the body so the body's outline covers where
+           they join it. Set far enough in that they touch the torso: at a
+           distance they read as two detached blobs beside the character. -->
       <g class="pip-arms">
-        <rect class="pip-arm l" x="24" y="62" width="9" height="26" rx="4.5" />
-        <rect class="pip-arm r" x="87" y="62" width="9" height="26" rx="4.5" />
+        <rect class="pip-arm l" x="39" y="63" width="9" height="20" rx="4.5" />
+        <rect class="pip-arm r" x="72" y="63" width="9" height="20" rx="4.5" />
       </g>
+
+      <!-- the body: small, and clearly under the head rather than beside it -->
+      <rect class="pip-torso" x="47" y="66" width="26" height="26" rx="11" />
 
       <!-- antenna -->
       <g class="pip-antenna">
-        <path d="M60 30 V20" stroke="#652C8F" stroke-width="4" stroke-linecap="round" fill="none" />
-        <circle cx="60" cy="16" r="5" fill="#F06823" />
+        <path d="M60 18 V9" stroke="#652C8F" stroke-width="3.6" stroke-linecap="round" fill="none" />
+        <circle cx="60" cy="6" r="4.6" fill="#F06823" />
       </g>
 
-      <!-- head -->
-      <rect class="pip-head" x="30" y="28" width="60" height="56" rx="20" />
-
-      <!-- the visor: one dark shape, so two dots read as a face -->
-      <rect class="pip-visor" x="38" y="40" width="44" height="30" rx="14" />
-
-      <g class="pip-eyes">
-        <ellipse class="pip-eye l" cx="51" cy="55" rx="5" ry="6.5" />
-        <ellipse class="pip-eye r" cx="69" cy="55" rx="5" ry="6.5" />
+      <!-- the discs at the sides of the helmet, as the reference has -->
+      <g class="pip-ears">
+        <circle class="pip-ear l" cx="31" cy="44" r="6.5" />
+        <circle class="pip-ear r" cx="89" cy="44" r="6.5" />
       </g>
 
-      <!-- a mouth only when it is worth having one -->
-      <path
-        class="pip-smile" d="M53 76 q7 6 14 0"
-        fill="none" stroke="#652C8F" stroke-width="3" stroke-linecap="round"
-      />
+      <!-- the helmet -->
+      <rect class="pip-head" x="33" y="17" width="54" height="52" rx="23" />
+
+      <!-- The face. One group, so turning is a single translate.
+           Each eye is wrapped: the wrapper carries the turn, the ellipse
+           carries the blink. One element cannot do both, because the blink is
+           an animation on `transform` and would wipe the turn every frame. -->
+      <g class="pip-face">
+        <rect class="pip-visor" x="42" y="29" width="36" height="26" rx="12" />
+        <g class="pip-eyewrap l"><ellipse class="pip-eye l" cx="52" cy="42" rx="4.8" ry="6.2" /></g>
+        <g class="pip-eyewrap r"><ellipse class="pip-eye r" cx="68" cy="42" rx="4.8" ry="6.2" /></g>
+        <!-- a highlight, so the visor reads as glass rather than a hole -->
+        <ellipse class="pip-gleam" cx="50" cy="34" rx="5.5" ry="2.4" />
+      </g>
     </g>
 
     <!-- thinking: three dots that climb -->
     <g class="pip-think">
-      <circle cx="96" cy="34" r="3" />
-      <circle cx="104" cy="26" r="4" />
-      <circle cx="113" cy="17" r="5" />
+      <circle cx="94" cy="26" r="2.8" />
+      <circle cx="102" cy="18" r="3.8" />
+      <circle cx="111" cy="9" r="4.8" />
     </g>
   </svg>
 </template>
 
 <style scoped>
-/* The character's own tokens, so one line changes it everywhere and the dark
-   theme is a redefinition rather than a second copy of every rule. */
 .pip {
   --pip-shell: #ffffff;
   --pip-edge: #652c8f;
-  --pip-visor: #652c8f;
-  --pip-eye: #ffffff;
+  --pip-visor: #3b2258;
+  --pip-eye: #8ad2ff;
   --pip-limb: #b8a6d6;
-  --pip-shadow: rgba(26, 20, 44, .16);
+  --pip-shadow: rgba(26, 20, 44, .18);
   display: block;
   overflow: visible;
 }
 /* No `:global()` here. With a descendant after it the SFC compiler drops the
-   descendant entirely — `:global(html[…]) .pip` compiled to `html[…]` alone,
-   so these landed on the document element and `.pip[data-v]` overrode every
-   one of them. A plain ancestor selector is scoped correctly and outranks the
-   block above on its own. */
+   descendant entirely, so these would land on the document element and the
+   block above would override every one of them. */
 html[data-i-theme='dark'] .pip,
 html[data-p-theme='dark'] .pip {
-  --pip-shell: #221d33;
+  --pip-shell: #2a2340;
   --pip-edge: #a98fd4;
-  --pip-visor: #15111f;
-  --pip-eye: #cdb8f0;
+  --pip-visor: #120e1c;
+  --pip-eye: #7fc6ff;
   --pip-limb: #5a4a7d;
-  --pip-shadow: rgba(0, 0, 0, .4);
+  --pip-shadow: rgba(0, 0, 0, .42);
 }
-.pip.is-flip { transform: scaleX(-1); }
 
 .pip-head {
   fill: var(--pip-shell);
   stroke: var(--pip-edge);
   stroke-width: 3.5;
 }
+.pip-torso { fill: var(--pip-shell); stroke: var(--pip-edge); stroke-width: 3.5; }
+.pip-ear { fill: var(--pip-limb); }
 .pip-visor { fill: var(--pip-visor); }
 .pip-eye { fill: var(--pip-eye); }
-.pip-leg, .pip-arm { fill: var(--pip-limb); }
+.pip-gleam { fill: #fff; opacity: .16; }
+.pip-arm { fill: var(--pip-limb); }
 .pip-shadow { fill: var(--pip-shadow); }
-.pip-smile { opacity: 0; }
 .pip-think { fill: var(--pip-edge); opacity: 0; }
 
-/* ---------------------------------------------------------------- motion */
-/* Transform origins are set per part, because a limb that rotates about the
-   middle of the viewBox swings like a clock hand instead of a shoulder. */
-.pip-body { transform-origin: 60px 100px; }
-.pip-arm.l { transform-origin: 28px 66px; }
-.pip-arm.r { transform-origin: 91px 66px; }
-.pip-leg.l { transform-origin: 50px 94px; }
-.pip-leg.r { transform-origin: 69px 94px; }
-.pip-antenna { transform-origin: 60px 32px; }
-.pip-orbit { transform-origin: 60px 52px; animation: pip-spin 14s linear infinite; }
+/* ----------------------------------------------------------------- turn */
+/* One profile, mirrored. Facing left is the right-facing drawing flipped,
+   which is half the geometry and cannot drift out of sync with itself. */
+.pip.face-left { transform: scaleX(-1); }
 
+.pip-face { transition: transform .28s cubic-bezier(.2, .8, .3, 1); }
+.pip.is-side .pip-face { transform: translateX(4px); }
+
+/* Both eyes stay in profile.
+ *
+ * Dropping the far one gives a true side view and loses the character: two
+ * eyes are most of what makes this read as a face at 34px. So it is a
+ * three-quarter turn instead — the far eye narrows and slides toward the edge
+ * of the visor, the near one barely moves — which is how an illustrated
+ * character turns without becoming a different drawing.
+ *
+ * The transform lives on the wrapper because the ellipse's own `transform` is
+ * already spoken for by the blink. */
+.pip-eyewrap { transition: transform .28s cubic-bezier(.2, .8, .3, 1); }
+.pip-eyewrap.l { transform-origin: 52px 42px; }
+.pip-eyewrap.r { transform-origin: 68px 42px; }
+.pip.is-side .pip-eyewrap.l { transform: translateX(3px) scaleX(.52); }
+.pip.is-side .pip-eyewrap.r { transform: translateX(-2px) scaleX(1.02); }
+
+.pip.is-side .pip-gleam { opacity: .08; }
+/* The far disc shrinks rather than vanishing, for the same reason. */
+.pip.is-side .pip-ear.r { transform: scale(.7); opacity: .75; }
+.pip.is-side .pip-ear.l { transform: translateX(4px); }
+.pip.is-side .pip-arm.l { opacity: .62; }
+.pip-ear.l { transform-origin: 31px 44px; }
+.pip-ear.r { transform-origin: 89px 44px; }
+.pip-ear, .pip-arm, .pip-gleam {
+  transition: opacity .25s ease, transform .28s cubic-bezier(.2, .8, .3, 1);
+}
+
+/* --------------------------------------------------------------- motion */
+.pip-float { transform-origin: 60px 70px; }
+.pip-arm.l { transform-origin: 37.5px 68px; }   /* the shoulder, not the hand */
+.pip-arm.r { transform-origin: 82.5px 68px; }
+.pip-antenna { transform-origin: 60px 20px; }
+.pip-orbit { transform-origin: 60px 45px; animation: pip-spin 16s linear infinite; }
 @keyframes pip-spin { to { transform: rotate(360deg); } }
 
-/* Breathing. Always on, in every state, because a character that is utterly
+/* The hover. One loop, every state, because a character that is utterly
    still reads as a broken image. */
-@keyframes pip-breathe {
-  0%, 100% { transform: translateY(0) scaleY(1); }
-  50%      { transform: translateY(-2px) scaleY(1.015); }
-}
-.pip-body { animation: pip-breathe 3.6s ease-in-out infinite; }
-
-/* Blinking, off-rhythm from the breathing so the two never sync into a tic. */
-@keyframes pip-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95%           { transform: scaleY(.1); }
-}
-.pip-eyes { transform-origin: 60px 55px; animation: pip-blink 5.1s infinite; }
-
-/* idle — a slow sway, as if waiting without minding. */
-.is-idle .pip-antenna { animation: pip-sway 4s ease-in-out infinite; }
-@keyframes pip-sway {
-  0%, 100% { transform: rotate(-5deg); }
-  50%      { transform: rotate(5deg); }
-}
-
-/* point — one arm up and held, the other still. The arm that points is the
-   right one, and `flip` turns the whole character when the target is left. */
-.is-point .pip-arm.r { animation: pip-point 1.6s ease-in-out infinite; }
-@keyframes pip-point {
-  0%, 100% { transform: rotate(-128deg) translateY(2px); }
-  50%      { transform: rotate(-138deg) translateY(0); }
-}
-.is-point .pip-smile { opacity: 1; }
-
-/* walk — legs alternate, body bobs on the step. */
-.is-walk .pip-leg.l, .is-run .pip-leg.l { animation: pip-step 760ms ease-in-out infinite; }
-.is-walk .pip-leg.r, .is-run .pip-leg.r { animation: pip-step 760ms ease-in-out infinite reverse; }
-.is-walk .pip-arm.l, .is-run .pip-arm.l { animation: pip-swing 760ms ease-in-out infinite reverse; }
-.is-walk .pip-arm.r, .is-run .pip-arm.r { animation: pip-swing 760ms ease-in-out infinite; }
-.is-walk .pip-body { animation: pip-bob 380ms ease-in-out infinite; }
-@keyframes pip-step {
-  0%, 100% { transform: rotate(24deg); }
-  50%      { transform: rotate(-24deg); }
-}
-@keyframes pip-swing {
-  0%, 100% { transform: rotate(18deg); }
-  50%      { transform: rotate(-18deg); }
-}
-@keyframes pip-bob {
+@keyframes pip-hover {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-2.5px); }
+  50%      { transform: translateY(-5px); }
+}
+.pip-float { animation: pip-hover 3.4s ease-in-out infinite; }
+
+/* The shadow breathes against the hover, never with it. */
+@keyframes pip-hover-shadow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(.88); opacity: .72; }
+}
+.pip-shadow { transform-origin: 60px 112px; animation: pip-hover-shadow 3.4s ease-in-out infinite; }
+
+/* Blinking, off-rhythm from the hover so the two never sync into a tic. */
+@keyframes pip-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96%           { transform: scaleY(.08); }
+}
+.pip-eye { transform-origin: 60px 42px; animation: pip-blink 5.3s infinite; }
+
+/* idle — the antenna sways, as if waiting without minding. */
+.is-idle .pip-antenna { animation: pip-sway 4.2s ease-in-out infinite; }
+@keyframes pip-sway {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
 }
 
-/* run — the same cycle, faster and leaning, with the shadow tightening. */
-.is-run .pip-leg.l, .is-run .pip-leg.r,
-.is-run .pip-arm.l, .is-run .pip-arm.r { animation-duration: 340ms; }
-.is-run .pip-body { animation: pip-lean 340ms ease-in-out infinite; }
-.is-run .pip-smile { opacity: 1; }
-@keyframes pip-lean {
-  0%, 100% { transform: translateY(0) rotate(7deg); }
-  50%      { transform: translateY(-4px) rotate(7deg); }
+/* point — the near arm up and held. */
+.is-point .pip-arm.r { animation: pip-point 1.7s ease-in-out infinite; }
+@keyframes pip-point {
+  0%, 100% { transform: rotate(-120deg) translateY(2px); }
+  50%      { transform: rotate(-132deg) translateY(0); }
 }
-.is-run .pip-shadow { animation: pip-shadow 340ms ease-in-out infinite; }
 
-/* jump — the shadow shrinks as it rises, which is the whole trick. */
-.is-jump .pip-body { animation: pip-jump 900ms cubic-bezier(.3, .7, .3, 1) infinite; }
-.is-jump .pip-arm.l { transform: rotate(150deg); }
-.is-jump .pip-arm.r { transform: rotate(-150deg); }
-.is-jump .pip-shadow { animation: pip-shadow 900ms ease-in-out infinite; }
-.is-jump .pip-smile { opacity: 1; }
+/* travel — leaning into the direction of movement, arms trailing. The
+   translation itself belongs to whatever is carrying Pip across the page;
+   this is only the attitude. */
+.is-travel .pip-float { animation: pip-hover 1.1s ease-in-out infinite; }
+.is-travel .pip-head, .is-travel .pip-torso, .is-travel .pip-face { transform-box: fill-box; }
+.is-travel .pip-arm.r { transform: rotate(32deg); }
+.is-travel .pip-arm.l { transform: rotate(26deg); }
+.is-travel .pip-shadow { animation: pip-hover-shadow 1.1s ease-in-out infinite; }
+
+/* jump — the shadow shrinks as Pip rises and is full again the moment it
+   lands. That contrast is the entire reason a jump reads as a jump. */
+.is-jump .pip-float { animation: pip-jump 980ms cubic-bezier(.3, .7, .3, 1) infinite; }
+.is-jump .pip-arm.l { transform: rotate(148deg); }
+.is-jump .pip-arm.r { transform: rotate(-148deg); }
+.is-jump .pip-shadow { animation: pip-jump-shadow 980ms cubic-bezier(.3, .7, .3, 1) infinite; }
 @keyframes pip-jump {
   0%, 100% { transform: translateY(0) scaleY(1); }
-  18%      { transform: translateY(4px) scaleY(.92); }
-  50%      { transform: translateY(-22px) scaleY(1.04); }
-  82%      { transform: translateY(2px) scaleY(.96); }
+  14%      { transform: translateY(5px) scaleY(.9); }   /* the crouch */
+  48%      { transform: translateY(-30px) scaleY(1.05); }
+  80%      { transform: translateY(3px) scaleY(.94); }  /* the landing */
 }
-@keyframes pip-shadow {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%      { transform: scale(.6); opacity: .5; }
+@keyframes pip-jump-shadow {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  14%      { transform: scale(1.1); opacity: 1; }
+  48%      { transform: scale(.42); opacity: .34; }
+  80%      { transform: scale(1.08); opacity: 1; }
 }
 
-/* cheer — both arms up, a small hop, the antenna flicking. */
-.is-cheer .pip-body { animation: pip-hop 620ms ease-in-out infinite; }
-.is-cheer .pip-arm.l { transform: rotate(160deg); }
-.is-cheer .pip-arm.r { transform: rotate(-160deg); }
-.is-cheer .pip-antenna { animation: pip-flick 620ms ease-in-out infinite; }
-.is-cheer .pip-smile { opacity: 1; }
-@keyframes pip-hop {
+/* cheer — both arms up, a quick hop, the antenna flicking. */
+.is-cheer .pip-float { animation: pip-cheer 640ms ease-in-out infinite; }
+.is-cheer .pip-arm.l { transform: rotate(158deg); }
+.is-cheer .pip-arm.r { transform: rotate(-158deg); }
+.is-cheer .pip-antenna { animation: pip-flick 640ms ease-in-out infinite; }
+.is-cheer .pip-shadow { animation: pip-jump-shadow 640ms ease-in-out infinite; }
+@keyframes pip-cheer {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-9px); }
+  50%      { transform: translateY(-13px); }
 }
 @keyframes pip-flick {
-  0%, 100% { transform: rotate(-14deg); }
-  50%      { transform: rotate(14deg); }
+  0%, 100% { transform: rotate(-16deg); }
+  50%      { transform: rotate(16deg); }
 }
 
-/* think — dots climb, one eye narrows. */
-.is-think .pip-think { animation: pip-dots 1.5s ease-in-out infinite; opacity: 1; }
-.is-think .pip-eye.r { transform: scaleY(.55); transform-origin: 69px 55px; }
+/* poke — what happens when you click it: a startle, then settle. */
+.is-poke .pip-float { animation: pip-poke 620ms cubic-bezier(.3, 1.4, .4, 1); }
+.is-poke .pip-eye { transform: scaleY(1.22); }
+.is-poke .pip-antenna { animation: pip-flick 300ms ease-in-out 2; }
+@keyframes pip-poke {
+  0%   { transform: translateY(0) rotate(0); }
+  25%  { transform: translateY(-11px) rotate(-7deg); }
+  55%  { transform: translateY(-3px) rotate(5deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+/* think — dots climb, the visible eye narrows. */
+.is-think .pip-think { animation: pip-dots 1.6s ease-in-out infinite; opacity: 1; }
+.is-think .pip-eyewrap.r { transform: scaleY(.6); }
 @keyframes pip-dots {
   0%        { opacity: 0; }
   30%       { opacity: .4; }
   60%, 100% { opacity: 1; }
 }
 
-/* sleep — eyes closed, antenna drooped, nothing else moving. */
-.is-sleep .pip-eyes { animation: none; transform: scaleY(.08); transform-origin: 60px 55px; }
-.is-sleep .pip-antenna { transform: rotate(26deg); }
-.is-sleep .pip-body { animation: pip-breathe 5.5s ease-in-out infinite; }
-.is-sleep .pip-orbit { animation-duration: 40s; opacity: .5; }
+/* sleep — eyes shut, antenna drooped, barely moving. */
+.is-sleep .pip-eye { animation: none; transform: scaleY(.07); }
+.is-sleep .pip-antenna { transform: rotate(28deg); }
+.is-sleep .pip-float { animation: pip-hover 6s ease-in-out infinite; }
+.is-sleep .pip-shadow { animation: pip-hover-shadow 6s ease-in-out infinite; }
+.is-sleep .pip-orbit { animation-duration: 48s; opacity: .45; }
 
-/* Everything above is decoration. Someone who has asked their system to stop
-   animating things means it, so the character holds still and keeps only the
-   breath — without which it reads as a broken image rather than a calm one. */
 @media (prefers-reduced-motion: reduce) {
-  .pip *, .pip { animation: none !important; }
-  .pip-body { animation: pip-breathe 6s ease-in-out infinite !important; }
+  .pip *, .pip { animation: none !important; transition: none !important; }
+  .pip-float { animation: pip-hover 7s ease-in-out infinite !important; }
 }
 </style>
