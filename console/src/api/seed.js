@@ -315,7 +315,7 @@ export function seedApplications () {
     ['Finance Shares',      'wfs',  '10.20.4.50',                445, 'Finance',     0, 0, 0],
     ['Partner Portal',      'fqdn', 'partners.instasafe.com',    443, 'Sales',       0, 0, 0]
   ]
-  const GW = ['gw-mum-01', 'gw-blr-01', 'gw-lon-01', 'gw-sin-01']
+  const GW = ['gw-mum-01', 'gw-blr-01', 'gw-sin-01']
   return apps.map(([name, type, host, port, owner, rec, cpb, wm], i) => ({
     id: `app_${pad(i + 1, 4)}`,
     name, type, host, port, owner,
@@ -473,14 +473,26 @@ export function seedControllers () {
  * the graph, the network test and Live Gateways all read them. They are
  * operational telemetry that belongs on those screens, not columns here.
  */
+/**
+ * Three gateways on a licence for four.
+ *
+ * It used to seed four, and the licence allows four, so "Add a gateway" —
+ * the second step of the main guided flow — refused with *Maximum gateway
+ * limit reached* and the flow could not be finished. The refusal is correct
+ * behaviour and worth keeping; what was wrong was seeding the tenant right
+ * up against its own limit, which left no room to do the thing the demo
+ * exists to demonstrate.
+ *
+ * London is the one that goes: Singapore stays because it is the degraded
+ * one, and a tenant where nothing is wrong has nothing for the dashboard's
+ * attention band to say.
+ */
 export function seedGateways () {
   return [
     ['gw-mum-01', 'gw-mum-02', 'Mumbai', '103.21.44.12', 'up', 188,
       ['10.130.0.0/16', '192.168.10.0/24']],
     ['gw-blr-01', 'gw-blr-02', 'Bengaluru', '103.21.45.9', 'up', 104,
-      ['10.140.0.0/16']],
-    ['gw-lon-01', 'gw-lon-02', 'London', '185.42.7.18', 'up', 22,
-      ['10.20.0.0/16', '172.16.4.0/24', '0.0.0.0/0']],
+      ['10.140.0.0/16', '172.16.4.0/24']],
     ['gw-sin-01', 'gw-sin-02', 'Singapore', '139.59.12.4', 'degraded', 4,
       ['10.60.0.0/16', '192.168.60.0/24']]
   ].map(([name, backupName, location, ip, status, sessions, protectedNetworks], i) => ({
@@ -1274,7 +1286,7 @@ export function seedSessions (users, apps) {
       id: `ses_${pad(i + 1, 5)}`,
       userId: u.id, username: u.username,
       applicationId: a.id, application: a.name, type: a.type,
-      gateway: pick(['gw-mum-01', 'gw-blr-01', 'gw-lon-01', 'gw-sin-01']),
+      gateway: pick(['gw-mum-01', 'gw-blr-01', 'gw-sin-01']),
       city,
       startedAt,
       endedAt: active ? null : new Date(new Date(startedAt).getTime() + durationMin * 60000).toISOString(),

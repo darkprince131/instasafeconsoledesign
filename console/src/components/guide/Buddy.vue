@@ -55,6 +55,12 @@ const seen = ref({})
 const line = ref(0)
 const poking = ref(false)
 const celebrating = ref(false)
+/* An occasional flicker of expression while nothing is happening. A face
+   that holds exactly one shape between interactions is a sticker; one that
+   winks at you now and then is a character. Rare and short on purpose —
+   often enough to notice, not often enough to pull your eye off the work. */
+const idleFace = ref('')
+let faceTimer = null
 
 /* Where Pip is, in viewport pixels. */
 const at = ref(null)
@@ -245,11 +251,13 @@ onMounted(() => {
   mo = new MutationObserver(watchCover)
   mo.observe(document.body, { childList: true, subtree: true })
   watchCover()
+  scheduleFace()
 })
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
   window.removeEventListener('pointermove', onMove)
   mo?.disconnect()
+  clearTimeout(faceTimer)
 })
 
 watch(() => route.path, arrive)
@@ -274,6 +282,24 @@ function act () {
   next()
 }
 
+/** What the face does when the pose does not already decide. */
+const expression = computed(() => {
+  if (poking.value || celebrating.value || away.value) return ''
+  if (following.value || dragging.value) return ''
+  return idleFace.value
+})
+
+function scheduleFace () {
+  clearTimeout(faceTimer)
+  faceTimer = setTimeout(() => {
+    if (!away.value && !following.value && !dragging.value) {
+      idleFace.value = ['wink', 'happy', 'squint'][Math.floor(Math.random() * 3)]
+      setTimeout(() => { idleFace.value = '' }, 1300)
+    }
+    scheduleFace()
+  }, 9000 + Math.random() * 9000)
+}
+
 const style = computed(() => at.value
   ? { left: at.value.x + 'px', top: at.value.y + 'px' }
   : { right: '24px', bottom: '56px' })
@@ -291,7 +317,7 @@ const style = computed(() => at.value
       :aria-label="away ? 'Wake Pip' : 'Pip, the guide'"
       @pointerdown="onDown"
     >
-      <Mascot :size="88" :state="pose" :facing="facing" />
+      <Mascot :size="88" :state="pose" :facing="facing" :expression="expression" />
     </button>
 
     <!-- `aria-live` polite, never a dialog: a guide that takes the keyboard
