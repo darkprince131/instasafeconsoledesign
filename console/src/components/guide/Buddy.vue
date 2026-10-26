@@ -239,6 +239,12 @@ function onResize () {
   if (at.value) { at.value = clamp(at.value); pickSide() }
 }
 
+/** Only move Pip if the visitor has not put it somewhere themselves. */
+function onBadge () {
+  if (dragged.value || following.value) return
+  at.value = corner(); pickSide()
+}
+
 /* Watch for anything laid over the page. A MutationObserver rather than a
    poll, because a sheet is a `v-if` and arrives as a DOM change. */
 let mo = null
@@ -263,6 +269,9 @@ onMounted(() => {
   pickSide()
   arrive()
   window.addEventListener('resize', onResize)
+  /* The host's deploy badge arrives after mount, so the corner chosen a
+     moment ago may now be underneath it. */
+  window.addEventListener('i365:badge', onBadge)
   mo = new MutationObserver(watchCover)
   mo.observe(document.body, { childList: true, subtree: true })
   watchCover()
@@ -270,6 +279,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('i365:badge', onBadge)
   window.removeEventListener('pointermove', onMove)
   mo?.disconnect()
   clearTimeout(faceTimer)

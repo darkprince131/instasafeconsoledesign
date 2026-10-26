@@ -25,13 +25,14 @@ const SELECTOR = '#nl-badge-frame, .netlify-badge, [id^="netlify-badge"]'
 /** A little more than the badge, so a row's hover edge is not flush with it. */
 const PAD = 8
 
+let lastH = -1
+
 function apply () {
   const el = document.querySelector(SELECTOR)
   const root = document.documentElement
 
   if (!el) {
-    root.style.setProperty('--i-badge-h', '0px')
-    root.style.setProperty('--i-badge-w', '0px')
+    set(root, 0, 0)
     return
   }
 
@@ -40,8 +41,24 @@ function apply () {
      Guard against a zero box so an absent badge cannot reserve 8px for ever. */
   const h = r.height > 0 ? Math.ceil(r.height) + PAD : 0
   const w = r.width > 0 ? Math.ceil(r.width) + PAD : 0
+  set(root, h, w)
+}
+
+/**
+ * Publish the gap, and say so when it changes.
+ *
+ * CSS picks the property up on its own, but anything that computed a
+ * position in JavaScript did so before the badge existed — it is injected
+ * from the edge well after mount, so Pip had already chosen a corner on the
+ * assumption of no badge and sat underneath it. The event lets those few
+ * places re-place themselves.
+ */
+function set (root, h, w) {
   root.style.setProperty('--i-badge-h', h + 'px')
   root.style.setProperty('--i-badge-w', w + 'px')
+  if (h === lastH) return
+  lastH = h
+  window.dispatchEvent(new CustomEvent('i365:badge', { detail: { h, w } }))
 }
 
 export function watchDeployBadge () {
