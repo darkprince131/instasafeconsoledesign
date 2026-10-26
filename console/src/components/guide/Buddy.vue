@@ -133,9 +133,24 @@ function clamp (p) {
   }
 }
 
-/** The resting corner, clear of the deploy badge in the other one. */
+/**
+ * The resting corner.
+ *
+ * The host pins a deploy badge to the bottom-right at the maximum z-index,
+ * so the gap is read from the same custom property the stylesheet uses
+ * rather than guessed at — see `lib/badge-gap.js`. It is 0 where there is no
+ * badge, which is every environment except the deployed site.
+ */
+function badgeGap () {
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--i-badge-h')
+  return parseInt(v, 10) || 0
+}
+
 function corner () {
-  return clamp({ x: window.innerWidth - PH - 24, y: window.innerHeight - PH - 56 })
+  return clamp({
+    x: window.innerWidth - PH - 24,
+    y: window.innerHeight - PH - 24 - badgeGap()
+  })
 }
 
 /**
@@ -302,7 +317,7 @@ function scheduleFace () {
 
 const style = computed(() => at.value
   ? { left: at.value.x + 'px', top: at.value.y + 'px' }
-  : { right: '24px', bottom: '56px' })
+  : { right: '24px', bottom: 'calc(24px + var(--i-badge-h, 0px))' })
 </script>
 
 <template>

@@ -426,7 +426,9 @@ defineExpose({ start, openMenu })
 
 /* Docked rather than modal: the visitor has to be able to work. */
 .i-flow {
-  position: fixed; z-index: 91; right: 18px; bottom: 18px;
+  position: fixed; z-index: 91; right: 18px;
+  /* Clear of the host's deploy badge — see lib/badge-gap.js. */
+  bottom: calc(18px + var(--i-badge-h, 0px));
   width: min(372px, calc(100vw - 28px));
   max-height: calc(100vh - 36px); display: flex; flex-direction: column;
   background: var(--i-canvas); border-radius: var(--i-r-float);

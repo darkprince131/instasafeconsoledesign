@@ -402,7 +402,15 @@ html[data-i-theme="dark"] .i-cmdpop{ box-shadow:none; outline:1px solid rgba(255
   font-family:var(--i-mono); font-size:var(--i-t-micro); color:var(--i-mute);
   padding-right:6px; font-variant-numeric:tabular-nums;
 }
-.i-page{ padding:26px var(--i-gut) 72px; flex:1; min-width:0; }
+/* The trailing 72px was for breathing room; `--i-badge-h` adds whatever the
+   host's deploy badge occupies on top of it. Netlify pins a 197x64 iframe to
+   this corner at the maximum z-index, and it was swallowing clicks on the
+   last table row. The variable is 0 unless a badge is actually measured, so
+   local development and any other host are unchanged. See lib/badge-gap.js. */
+.i-page{
+  padding:26px var(--i-gut) calc(72px + var(--i-badge-h, 0px));
+  flex:1; min-width:0;
+}
 
 /* ================== 4 · page header ================== */
 /* One header for all 66 screens: title, one line of context, actions right.
@@ -670,7 +678,11 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 .i-sheeth h2{ margin:0; font-size:17px; font-weight:450; letter-spacing:-.016em; }
 .i-sheeth .i-sub{ margin:4px 0 0; font-size:var(--i-t-meta); color:var(--i-mute); }
 .i-sheetb{ flex:1; min-height:0; overflow-y:auto; padding:20px 22px 28px; }
+/* The sheet's Save and Cancel are bottom-right, which is the badge's corner;
+   without this the primary action of every add and edit form is unclickable
+   on the deployed site. */
 .i-sheetf{
+  margin-bottom: var(--i-badge-h, 0px);
   flex:none; display:flex; align-items:center; gap:8px;
   padding:14px 22px; border-top:1px solid var(--i-rule); background:var(--i-canvas);
 }
@@ -697,7 +709,8 @@ html[data-i-theme="dark"] .i-bartrack{ background:rgba(255,255,255,.08); }
 .i-modalf{ display:flex; justify-content:flex-end; gap:8px; padding:18px 24px 20px; }
 
 .i-toasts{
-  position:fixed; z-index:80; right:18px; bottom:18px;
+  position:fixed; z-index:80; right:18px;
+  bottom:calc(18px + var(--i-badge-h, 0px));
   display:flex; flex-direction:column; gap:8px; align-items:flex-end;
 }
 .i-toast{

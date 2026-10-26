@@ -22,9 +22,12 @@ try {
   if (saved) document.documentElement.setAttribute('data-i-theme', saved)
 } catch {}
 import { restorePortalSession } from './lib/portal-session.js'
+import { watchDeployBadge } from './lib/badge-gap.js'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
 // a portal sign-in lives in sessionStorage; pick it up before the first route
 restorePortalSession()
 
 createApp(App).use(createPinia()).use(router).mount('#app')
+
+watchDeployBadge()

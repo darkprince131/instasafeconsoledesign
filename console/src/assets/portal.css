@@ -113,7 +113,10 @@ html[data-i-theme="dark"]{
 }
 .p-menui:hover{ background:var(--p-bg); }
 
-.p-main{ flex:1; width:100%; max-width:640px; margin:0 auto; padding:30px 20px 60px; }
+/* Room for the host's deploy badge; 0 when there is none.
+   See lib/badge-gap.js. */
+.p-main{
+  padding-bottom: var(--i-badge-h, 0px); flex:1; width:100%; max-width:640px; margin:0 auto; padding:30px 20px 60px; }
 .p-narrow{ max-width:400px; margin:40px auto 0; }
 
 .p-foot{
